@@ -40,16 +40,39 @@ class RegistryClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        self._http_client: httpx.Client | None = None
 
-    # -- helpers ----------------------------------------------------------------
+    # -- lifecycle --------------------------------------------------------------
 
     def _client(self) -> httpx.Client:
-        """Return a pre-configured ``httpx.Client``."""
-        return httpx.Client(
-            base_url=self.registry_url,
-            headers=self._headers,
-            timeout=30.0,
-        )
+        """
+        Return the shared ``httpx.Client`` instance.
+
+        The client is created lazily and reused for the lifetime of
+        this ``RegistryClient``.  Call :meth:`close` when the client is
+        no longer needed to release network resources.
+        """
+        if self._http_client is None:
+            self._http_client = httpx.Client(
+                base_url=self.registry_url,
+                headers=self._headers,
+                timeout=30.0,
+            )
+        return self._http_client
+
+    def close(self) -> None:
+        """Close the underlying HTTP client, releasing held resources."""
+        if self._http_client is not None:
+            self._http_client.close()
+            self._http_client = None
+
+    def __enter__(self) -> RegistryClient:
+        """Allow ``RegistryClient`` to be used as a context manager."""
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        """Ensure the underlying client is closed when leaving the context."""
+        self.close()
 
     # -- public API -------------------------------------------------------------
 

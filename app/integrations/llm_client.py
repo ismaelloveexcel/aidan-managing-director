@@ -50,20 +50,45 @@ class LLMClient:
         self.api_key = api_key
         self.model = model
         self.base_url = base_url
+        self._http_client: httpx.Client | None = None
 
-    # -- helpers ----------------------------------------------------------------
+    # -- lifecycle --------------------------------------------------------------
 
     def _client(self) -> httpx.Client:
-        """Return a pre-configured ``httpx.Client``."""
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-        return httpx.Client(
-            base_url=self.base_url or "https://api.openai.com/v1",
-            headers=headers,
-            timeout=60.0,
-        )
+        """
+        Return the shared ``httpx.Client`` instance.
+
+        The client is created lazily and reused for the lifetime of
+        this ``LLMClient``.  Call :meth:`close` when the client is no
+        longer needed to release network resources.
+        """
+        if self._http_client is None:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            self._http_client = httpx.Client(
+                base_url=self.base_url or "https://api.openai.com/v1",
+                headers=headers,
+                timeout=60.0,
+            )
+        return self._http_client
+
+    def close(self) -> None:
+        """Close the underlying HTTP client, releasing held resources."""
+        if self._http_client is not None:
+            self._http_client.close()
+            self._http_client = None
+
+    def __enter__(self) -> LLMClient:
+        """Allow ``LLMClient`` to be used as a context manager."""
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        """Ensure the underlying client is closed when leaving the context."""
+        self.close()
+
+    # -- helpers ----------------------------------------------------------------
 
     # -- public API -------------------------------------------------------------
 
@@ -166,9 +191,34 @@ class LLMClient:
         Returns:
             The model's function-call result as a dictionary.
         """
-        first_fn = functions[0]["name"] if functions else "unknown"
+        if not functions:
+            raise ValueError("function_call requires at least one function schema.")
+
+        first_schema = functions[0]
+        fn_name: str | None = None
+
+        if isinstance(first_schema, dict):
+            # Support simple {"name": "..."} schemas
+            name_direct = first_schema.get("name")
+            if isinstance(name_direct, str) and name_direct:
+                fn_name = name_direct
+            else:
+                # Support provider-style {"type": "function", "function": {"name": "..."}}
+                nested = first_schema.get("function")
+                if isinstance(nested, dict):
+                    nested_name = nested.get("name")
+                    if isinstance(nested_name, str) and nested_name:
+                        fn_name = nested_name
+
+        if not fn_name:
+            raise ValueError(
+                "Invalid function schema: missing 'name'. "
+                "Expected either {'name': ...} or "
+                "{'type': 'function', 'function': {'name': ...}}."
+            )
+
         return {
-            "function": first_fn,
+            "function": fn_name,
             "arguments": {},
             "stub": True,
         }

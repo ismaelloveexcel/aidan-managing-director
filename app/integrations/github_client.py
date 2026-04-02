@@ -24,6 +24,9 @@ class GitHubClient:
     Every public method returns structured data that mirrors the shape
     of the real GitHub API response so that callers can be developed
     and tested before live credentials are available.
+
+    Use as a context manager or call :meth:`close` explicitly to
+    release network resources when done.
     """
 
     def __init__(self, token: str, base_url: str = "https://api.github.com") -> None:
@@ -40,39 +43,84 @@ class GitHubClient:
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github+json",
         }
+        self._http_client: httpx.Client | None = None
+
+    # -- lifecycle --------------------------------------------------------------
+
+    def _client(self) -> httpx.Client:
+        """
+        Return the shared ``httpx.Client`` instance.
+
+        The client is created lazily and reused for the lifetime of
+        this ``GitHubClient``.  Call :meth:`close` when the client is
+        no longer needed to release network resources.
+        """
+        if self._http_client is None:
+            self._http_client = httpx.Client(
+                base_url=self.base_url,
+                headers=self._headers,
+                timeout=30.0,
+            )
+        return self._http_client
+
+    def close(self) -> None:
+        """Close the underlying HTTP client, releasing held resources."""
+        if self._http_client is not None:
+            self._http_client.close()
+            self._http_client = None
+
+    def __enter__(self) -> GitHubClient:
+        """Allow ``GitHubClient`` to be used as a context manager."""
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        """Ensure the underlying client is closed when leaving the context."""
+        self.close()
 
     # -- helpers ----------------------------------------------------------------
 
-    def _client(self) -> httpx.Client:
-        """Return a pre-configured ``httpx.Client``."""
-        return httpx.Client(
-            base_url=self.base_url,
-            headers=self._headers,
-            timeout=30.0,
-        )
+    @staticmethod
+    def _stub_id() -> int:
+        """Return a random integer ID that mirrors real GitHub IDs."""
+        return int(uuid.uuid4().int % 900_000_000) + 100_000_000
+
+    def _html_base(self) -> str:
+        """Derive the HTML base URL from the API base URL.
+
+        For the public API (``api.github.com``) the HTML host is
+        ``github.com``.  For GHES the base URL is used as-is.
+        """
+        if "api.github.com" in self.base_url:
+            return "https://github.com"
+        return self.base_url
 
     # -- public API -------------------------------------------------------------
 
-    def create_repo(self, name: str, private: bool = True) -> dict[str, Any]:
+    def create_repo(
+        self,
+        name: str,
+        owner: str = "ai-dan",
+        private: bool = True,
+    ) -> dict[str, Any]:
         """
         Create a new GitHub repository.
 
         Args:
             name: Repository name.
+            owner: Repository owner or organisation.
             private: Whether the repository should be private.
 
         Returns:
             Repository metadata dictionary.
         """
-        # Stub – return realistic placeholder data
-        repo_id = uuid.uuid4().hex[:8]
+        html_base = self._html_base()
         return {
-            "id": repo_id,
+            "id": self._stub_id(),
             "name": name,
-            "full_name": f"ai-dan/{name}",
+            "full_name": f"{owner}/{name}",
             "private": private,
-            "html_url": f"https://github.com/ai-dan/{name}",
-            "clone_url": f"https://github.com/ai-dan/{name}.git",
+            "html_url": f"{html_base}/{owner}/{name}",
+            "clone_url": f"{html_base}/{owner}/{name}.git",
             "stub": True,
         }
 
@@ -98,14 +146,15 @@ class GitHubClient:
             Issue metadata dictionary.
         """
         issue_number = int(uuid.uuid4().int % 9_999) + 1
+        html_base = self._html_base()
         return {
-            "id": uuid.uuid4().hex[:8],
+            "id": self._stub_id(),
             "number": issue_number,
             "title": title,
             "body": body,
             "labels": labels or [],
             "state": "open",
-            "html_url": f"https://github.com/{owner}/{repo}/issues/{issue_number}",
+            "html_url": f"{html_base}/{owner}/{repo}/issues/{issue_number}",
             "stub": True,
         }
 
@@ -133,15 +182,16 @@ class GitHubClient:
             Pull-request metadata dictionary.
         """
         pr_number = int(uuid.uuid4().int % 9_999) + 1
+        html_base = self._html_base()
         return {
-            "id": uuid.uuid4().hex[:8],
+            "id": self._stub_id(),
             "number": pr_number,
             "title": title,
             "body": body,
             "head": head,
             "base": base,
             "state": "open",
-            "html_url": f"https://github.com/{owner}/{repo}/pull/{pr_number}",
+            "html_url": f"{html_base}/{owner}/{repo}/pull/{pr_number}",
             "stub": True,
         }
 
