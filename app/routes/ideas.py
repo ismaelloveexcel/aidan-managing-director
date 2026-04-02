@@ -1,15 +1,32 @@
 """
 ideas.py – Routes for idea generation and management.
 
-Exposes endpoints for creating, listing, and evaluating ideas.
+Exposes endpoints for creating, listing, evaluating, and critiquing ideas.
 """
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
+
+from app.reasoning.critic import Critic
+from app.reasoning.evaluator import Evaluator
+from app.reasoning.idea_engine import IdeaEngine
+from app.reasoning.models import CritiqueResult, EvaluationResult, Idea
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Singletons – lightweight, stateless reasoning modules
+# ---------------------------------------------------------------------------
+_idea_engine = IdeaEngine()
+_evaluator = Evaluator()
+_critic = Critic()
+
+
+# ---------------------------------------------------------------------------
+# Request / response schemas
+# ---------------------------------------------------------------------------
 
 
 class IdeaRequest(BaseModel):
@@ -19,29 +36,49 @@ class IdeaRequest(BaseModel):
     context: dict[str, Any] | None = None
 
 
-class IdeaResponse(BaseModel):
-    """Structured representation of a generated idea."""
+class BrainstormRequest(BaseModel):
+    """Payload for brainstorming multiple ideas."""
 
-    idea_id: str
-    title: str
-    summary: str
-
-
-@router.post("/generate", response_model=IdeaResponse)
-async def generate_idea(request: IdeaRequest) -> IdeaResponse:
-    """
-    Generate a new idea based on the given prompt and optional context.
-
-    Business logic to be implemented in a future iteration.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    prompt: str
+    count: int = Field(default=5, ge=1, le=10)
 
 
-@router.get("/", response_model=list[IdeaResponse])
-async def list_ideas() -> list[IdeaResponse]:
-    """
-    Return all stored ideas.
+class IdeaEvaluateRequest(BaseModel):
+    """Payload for evaluating a previously generated idea."""
 
-    Business logic to be implemented in a future iteration.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    idea: Idea
+
+
+class IdeaCritiqueRequest(BaseModel):
+    """Payload for critiquing a previously generated idea."""
+
+    idea: Idea
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/generate", response_model=Idea)
+async def generate_idea(request: IdeaRequest) -> Idea:
+    """Generate a single structured idea from the given prompt."""
+    return _idea_engine.generate(request.prompt, request.context)
+
+
+@router.post("/brainstorm", response_model=list[Idea])
+async def brainstorm_ideas(request: BrainstormRequest) -> list[Idea]:
+    """Generate multiple candidate ideas for the given prompt."""
+    return _idea_engine.brainstorm(request.prompt, request.count)
+
+
+@router.post("/evaluate", response_model=EvaluationResult)
+async def evaluate_idea(request: IdeaEvaluateRequest) -> EvaluationResult:
+    """Score an idea across feasibility, profitability, speed, and competition."""
+    return _evaluator.score(request.idea)
+
+
+@router.post("/critique", response_model=CritiqueResult)
+async def critique_idea(request: IdeaCritiqueRequest) -> CritiqueResult:
+    """Produce an adversarial critique of the given idea."""
+    return _critic.critique(request.idea)
