@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -95,7 +96,8 @@ class GitHubClient:
         For the public API (``api.github.com``) the HTML host is
         ``github.com``.  For GHES the base URL is used as-is.
         """
-        if "api.github.com" in self.base_url:
+        parsed = urlparse(self.base_url)
+        if parsed.hostname == "api.github.com":
             return "https://github.com"
         return self.base_url
 
