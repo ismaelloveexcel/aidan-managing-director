@@ -76,7 +76,7 @@ class TestPrioritise:
     def test_sorted_by_length(self) -> None:
         objectives = ["Long objective description", "Short", "Mid-size obj"]
         result = self.strategist.prioritise(objectives)
-        assert result[0] == "Short"
+        assert result == ["Short", "Mid-size obj", "Long objective description"]
 
     def test_single_objective(self) -> None:
         assert self.strategist.prioritise(["Only one"]) == ["Only one"]

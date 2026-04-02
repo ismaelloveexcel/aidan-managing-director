@@ -122,13 +122,13 @@ class IdeaEngine:
 
         Uses a simple hash to deterministically map prompts to templates.
         """
-        index = int(hashlib.md5(prompt.encode()).hexdigest(), 16) % len(_TEMPLATES)  # noqa: S324
+        index = int(hashlib.sha256(prompt.encode()).hexdigest(), 16) % len(_TEMPLATES)
         return _TEMPLATES[index]
 
     @staticmethod
     def _build_idea(template: dict[str, Any], domain: str) -> Idea:
         """Instantiate an :class:`Idea` from a *template* and *domain*."""
-        idea_id = hashlib.md5(  # noqa: S324
+        idea_id = hashlib.sha256(
             f"{template['title']}-{domain}".encode(),
         ).hexdigest()[:12]
 
