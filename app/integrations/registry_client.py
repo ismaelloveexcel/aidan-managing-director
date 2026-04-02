@@ -2,17 +2,28 @@
 registry_client.py – Integration with the AI-DAN service registry.
 
 Provides a typed client for registering, discovering, and querying
-services and agents within the AI-DAN ecosystem.
+services and projects within the AI-DAN ecosystem.
+
+All methods are currently **stub implementations** that return
+realistic placeholder data.  Real HTTP calls (via ``httpx``) will
+replace the stubs once registry credentials are provisioned.
 """
 
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timezone
 from typing import Any
+
+import httpx
 
 
 class RegistryClient:
     """
     Wraps the AI-DAN service registry API.
 
-    Business logic to be implemented in a future iteration.
+    Every public method returns structured placeholder data so that
+    callers can be developed and tested before the registry is live.
     """
 
     def __init__(self, registry_url: str, api_key: str) -> None:
@@ -23,8 +34,78 @@ class RegistryClient:
             registry_url: Base URL of the service registry.
             api_key: API key for authenticating with the registry.
         """
-        self.registry_url = registry_url
+        self.registry_url = registry_url.rstrip("/")
         self.api_key = api_key
+        self._headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+    # -- helpers ----------------------------------------------------------------
+
+    def _client(self) -> httpx.Client:
+        """Return a pre-configured ``httpx.Client``."""
+        return httpx.Client(
+            base_url=self.registry_url,
+            headers=self._headers,
+            timeout=30.0,
+        )
+
+    # -- public API -------------------------------------------------------------
+
+    def create_project_record(
+        self,
+        name: str,
+        description: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a new project record in the registry.
+
+        Args:
+            name: Unique project name.
+            description: Short description of the project.
+            metadata: Optional additional metadata (tags, owner, etc.).
+
+        Returns:
+            The newly created project record.
+        """
+        project_id = f"proj-{uuid.uuid4().hex[:8]}"
+        now = datetime.now(tz=timezone.utc).isoformat()
+        return {
+            "project_id": project_id,
+            "name": name,
+            "description": description,
+            "status": "active",
+            "metadata": metadata or {},
+            "created_at": now,
+            "updated_at": now,
+            "stub": True,
+        }
+
+    def update_project_status(
+        self,
+        project_id: str,
+        status: str,
+    ) -> dict[str, Any]:
+        """
+        Update the status of an existing project in the registry.
+
+        Args:
+            project_id: Registry-assigned project identifier.
+            status: New status value (e.g. ``"active"``, ``"paused"``,
+                ``"completed"``, ``"archived"``).
+
+        Returns:
+            The updated project record.
+        """
+        now = datetime.now(tz=timezone.utc).isoformat()
+        return {
+            "project_id": project_id,
+            "status": status,
+            "updated_at": now,
+            "stub": True,
+        }
 
     def register_service(self, name: str, metadata: dict[str, Any]) -> str:
         """
@@ -37,7 +118,7 @@ class RegistryClient:
         Returns:
             The registry-assigned service ID.
         """
-        raise NotImplementedError
+        return f"svc-{uuid.uuid4().hex[:8]}"
 
     def discover(self, capability: str) -> list[dict[str, Any]]:
         """
@@ -47,9 +128,9 @@ class RegistryClient:
             capability: Capability tag to search for.
 
         Returns:
-            A list of matching service records.
+            A list of matching service records (empty in stub mode).
         """
-        raise NotImplementedError
+        return []
 
     def get_service(self, service_id: str) -> dict[str, Any]:
         """
@@ -61,4 +142,10 @@ class RegistryClient:
         Returns:
             Service metadata dictionary.
         """
-        raise NotImplementedError
+        return {
+            "service_id": service_id,
+            "name": "stub-service",
+            "status": "active",
+            "metadata": {},
+            "stub": True,
+        }
