@@ -103,7 +103,6 @@ def compile_commands(plan: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(steps, list):
         raise ValueError("'steps' must be a list of step dictionaries.")
 
-    validated_steps: list[dict[str, Any]] = []
     for index, step in enumerate(steps):
         if not isinstance(step, dict):
             raise ValueError(
@@ -114,7 +113,6 @@ def compile_commands(plan: dict[str, Any]) -> list[dict[str, Any]]:
             raise ValueError(
                 f"Each step must contain a non-empty 'action' string (index {index}).",
             )
-        validated_steps.append(step)
 
     idea_name = plan.get("idea_name")
     if idea_name is not None and not isinstance(idea_name, str):
@@ -122,7 +120,7 @@ def compile_commands(plan: dict[str, Any]) -> list[dict[str, Any]]:
 
     return [
         _step_to_command(step, plan_id=plan_id, idea_name=idea_name)
-        for step in validated_steps
+        for step in steps
     ]
 
 
