@@ -192,24 +192,11 @@ class LLMClient:
             The model's function-call result as a dictionary.
         """
         if not functions:
-            raise ValueError("function_call requires at least one function schema.")
+            raise ValueError(
+                "The 'functions' parameter requires at least one function schema."
+            )
 
-        first_schema = functions[0]
-        fn_name: str | None = None
-
-        if isinstance(first_schema, dict):
-            # Support simple {"name": "..."} schemas
-            name_direct = first_schema.get("name")
-            if isinstance(name_direct, str) and name_direct:
-                fn_name = name_direct
-            else:
-                # Support provider-style {"type": "function", "function": {"name": "..."}}
-                nested = first_schema.get("function")
-                if isinstance(nested, dict):
-                    nested_name = nested.get("name")
-                    if isinstance(nested_name, str) and nested_name:
-                        fn_name = nested_name
-
+        fn_name = self._extract_function_name(functions[0])
         if not fn_name:
             raise ValueError(
                 "Invalid function schema: missing 'name'. "
@@ -222,3 +209,36 @@ class LLMClient:
             "arguments": {},
             "stub": True,
         }
+
+    # -- private helpers --------------------------------------------------------
+
+    @staticmethod
+    def _extract_function_name(schema: dict[str, Any]) -> str | None:
+        """Extract the function name from a function-call schema.
+
+        Supports both simple ``{"name": "..."}`` schemas and
+        provider-style ``{"type": "function", "function": {"name": "..."}}``
+        schemas.
+
+        Args:
+            schema: A single function schema dictionary.
+
+        Returns:
+            The function name, or ``None`` if it could not be resolved.
+        """
+        if not isinstance(schema, dict):
+            return None
+
+        # Simple {"name": "..."} format
+        name_direct = schema.get("name")
+        if isinstance(name_direct, str) and name_direct:
+            return name_direct
+
+        # Provider-style {"type": "function", "function": {"name": "..."}}
+        nested = schema.get("function")
+        if isinstance(nested, dict):
+            nested_name = nested.get("name")
+            if isinstance(nested_name, str) and nested_name:
+                return nested_name
+
+        return None

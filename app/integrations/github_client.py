@@ -81,7 +81,12 @@ class GitHubClient:
 
     @staticmethod
     def _stub_id() -> int:
-        """Return a random integer ID that mirrors real GitHub IDs."""
+        """Return a random integer ID that mirrors real GitHub IDs.
+
+        Real GitHub IDs are large positive integers typically in the
+        hundreds-of-millions range.  We produce values between
+        100 000 000 and 999 999 999 to stay realistic.
+        """
         return int(uuid.uuid4().int % 900_000_000) + 100_000_000
 
     def _html_base(self) -> str:
