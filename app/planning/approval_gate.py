@@ -84,6 +84,7 @@ class ApprovalGate:
 
     def __init__(self) -> None:
         self._pending: dict[str, ApprovalRecord] = {}
+        self._resolved: dict[str, ApprovalRecord] = {}
 
     def requires_approval(self, command: dict[str, Any]) -> bool:
         """Proxy to the module-level :func:`requires_approval`."""
@@ -121,13 +122,14 @@ class ApprovalGate:
         Raises:
             KeyError: If no pending record matches *action_id*.
         """
-        if action_id not in self._pending:
+        record = self._pending.pop(action_id, None)
+        if record is None:
             raise KeyError(f"No pending approval found for action_id={action_id!r}")
 
-        record = self._pending[action_id]
         record.status = "approved" if approved else "rejected"
         record.reason = reason
         record.resolved_at = datetime.now(timezone.utc).isoformat()
+        self._resolved[action_id] = record
         return record.model_dump()
 
     def list_pending(self) -> list[dict[str, Any]]:
@@ -140,5 +142,4 @@ class ApprovalGate:
         return [
             record.model_dump()
             for record in self._pending.values()
-            if record.status == "pending"
         ]
