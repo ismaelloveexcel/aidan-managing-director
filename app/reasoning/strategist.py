@@ -72,6 +72,15 @@ class Strategist:
     All logic is deterministic — no external API calls are made.
     """
 
+    def __init__(self) -> None:
+        from app.reasoning.critic import Critic
+        from app.reasoning.evaluator import Evaluator
+        from app.reasoning.idea_engine import IdeaEngine
+
+        self._idea_engine = IdeaEngine()
+        self._evaluator = Evaluator()
+        self._critic = Critic()
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -137,20 +146,17 @@ class Strategist:
         """
         from app.planning.command_compiler import compile_commands
         from app.planning.planner import create_plan
-        from app.reasoning.critic import Critic
-        from app.reasoning.evaluator import Evaluator
-        from app.reasoning.idea_engine import IdeaEngine
 
         ctx: dict[str, Any] = dict(context) if context else {}
-        ctx.setdefault("message", message)
+        ctx["message"] = message
 
         direction = self.analyse(ctx)
 
         # Route to the correct reasoning pipeline based on intent.
         if direction.intent in (IntentType.BUILD, IntentType.EXPLORE):
             return self._flow_generate(
-                message, direction, IdeaEngine(), Evaluator(), Critic(),
-                create_plan, compile_commands,
+                message, direction, self._idea_engine, self._evaluator,
+                self._critic, create_plan, compile_commands, ctx,
             )
 
         if direction.intent == IntentType.IMPROVE:
@@ -183,9 +189,10 @@ class Strategist:
         critic: Any,
         create_plan: Any,
         compile_commands: Any,
+        context: dict[str, Any] | None = None,
     ) -> FounderResponse:
         """Generate an idea, evaluate, critique, plan, and compile commands."""
-        idea = idea_engine.generate(message)
+        idea = idea_engine.generate(message, context=context)
         evaluation = evaluator.score(idea)
         critique = critic.critique(idea)
 
@@ -332,6 +339,13 @@ class Strategist:
                 ),
             ],
             suggested_next_action=suggested,
+            commands=[
+                CommandOutput(
+                    action="setup_project",
+                    parameters={"description": "Pivot discovery and analysis"},
+                    priority="high",
+                ),
+            ],
             strategy=direction,
         )
 

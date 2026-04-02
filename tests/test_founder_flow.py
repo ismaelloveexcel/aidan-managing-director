@@ -71,6 +71,7 @@ class TestProcessFounderInput:
         result = self.strategist.process_founder_input("We should pivot to a new direction")
         assert result.strategy.intent == IntentType.PIVOT
         assert len(result.risks) > 0
+        assert len(result.commands) > 0
 
     def test_unknown_intent_asks_for_clarification(self) -> None:
         result = self.strategist.process_founder_input("hello there")
@@ -89,6 +90,15 @@ class TestProcessFounderInput:
         assert "Reach 100 users" in result.strategy.objectives
         # Verify the strategy also reflects the BUILD intent.
         assert result.strategy.intent == IntentType.BUILD
+
+    def test_context_domain_passed_to_idea_engine(self) -> None:
+        result = self.strategist.process_founder_input(
+            "Build something",
+            context={"domain": "fintech"},
+        )
+        assert result.strategy.intent == IntentType.BUILD
+        # The domain from context should appear in the summary.
+        assert "fintech" in result.summary.lower()
 
 
 class TestChatRouteFounderFlow:
@@ -175,3 +185,4 @@ class TestChatRouteFounderFlow:
         body = resp.json()
         assert body["strategy"]["intent"] == "pivot"
         assert len(body["founder_response"]["risks"]) > 0
+        assert len(body["founder_response"]["commands"]) > 0
