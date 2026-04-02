@@ -28,6 +28,8 @@ _KNOWN_ACTIONS = frozenset(
         "deploy",
         "setup_monetization",
         "launch_marketing",
+        "delete_repo",
+        "modify_billing",
     },
 )
 
@@ -35,7 +37,7 @@ _KNOWN_ACTIONS = frozenset(
 class Command(BaseModel):
     """A single structured command ready for dispatch."""
 
-    command_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:10])
+    command_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     action: str
     parameters: dict[str, Any] = Field(default_factory=dict)
     priority: str = "medium"
@@ -81,50 +83,91 @@ def compile_commands(plan: dict[str, Any]) -> list[dict[str, Any]]:
     Args:
         plan: A plan dictionary as returned by
               :func:`app.planning.planner.create_plan`.  Must contain
-              ``steps`` (list) and ``plan_id`` (str).
+              ``plan_id`` (str) and ``steps`` (list of dicts, each with
+              a non-empty ``action`` string).
 
     Returns:
         An ordered list of command dictionaries, one per plan step.
 
     Raises:
-        ValueError: If the plan is missing required fields.
+        ValueError: If the plan is missing required fields or has invalid types.
     """
     if "steps" not in plan:
         raise ValueError("Plan must contain a 'steps' field.")
 
     plan_id = plan.get("plan_id")
+    if not isinstance(plan_id, str) or not plan_id:
+        raise ValueError("Plan must contain a non-empty 'plan_id' string.")
+
+    steps = plan["steps"]
+    if not isinstance(steps, list):
+        raise ValueError("'steps' must be a list of step dictionaries.")
+
+    validated_steps: list[dict[str, Any]] = []
+    for index, step in enumerate(steps):
+        if not isinstance(step, dict):
+            raise ValueError(
+                f"Each step must be a dict; got {type(step).__name__} at index {index}.",
+            )
+        action = step.get("action")
+        if not isinstance(action, str) or not action:
+            raise ValueError(
+                f"Each step must contain a non-empty 'action' string (index {index}).",
+            )
+        validated_steps.append(step)
+
     idea_name = plan.get("idea_name")
+    if idea_name is not None and not isinstance(idea_name, str):
+        raise ValueError("If provided, 'idea_name' must be a string.")
 
     return [
         _step_to_command(step, plan_id=plan_id, idea_name=idea_name)
-        for step in plan["steps"]
+        for step in validated_steps
     ]
 
 
 class CommandCompiler:
     """Compiles structured commands from abstract plan representations."""
 
-    def compile(self, plan: dict[str, Any]) -> dict[str, Any]:
+    def compile(
+        self,
+        step: dict[str, Any],
+        *,
+        plan_id: str | None = None,
+        idea_name: str | None = None,
+    ) -> dict[str, Any]:
         """Compile a single plan step into a structured command payload.
 
         Args:
-            plan: A single plan-step representation.
+            step: A single plan-step representation.
+            plan_id: Optional plan identifier for provenance tracking.
+            idea_name: Optional idea name to include in command parameters.
 
         Returns:
             A command dictionary ready for dispatch.
         """
-        return _step_to_command(plan)
+        return _step_to_command(step, plan_id=plan_id, idea_name=idea_name)
 
-    def compile_batch(self, plans: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def compile_batch(
+        self,
+        steps: list[dict[str, Any]],
+        *,
+        plan_id: str | None = None,
+        idea_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Compile multiple plan steps into a list of command payloads.
 
         Args:
-            plans: List of plan-step representations.
+            steps: List of plan-step representations.
+            plan_id: Optional plan identifier for provenance tracking.
+            idea_name: Optional idea name to include in command parameters.
 
         Returns:
             A list of command dictionaries ready for dispatch.
         """
-        return [self.compile(p) for p in plans]
+        return [
+            self.compile(s, plan_id=plan_id, idea_name=idea_name) for s in steps
+        ]
 
     def validate(self, command: dict[str, Any]) -> bool:
         """Validate a compiled command before it is dispatched.

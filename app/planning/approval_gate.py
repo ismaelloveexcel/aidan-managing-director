@@ -35,7 +35,7 @@ HIGH_IMPACT_ACTIONS: frozenset[str] = frozenset(
 class ApprovalRecord(BaseModel):
     """Tracks the lifecycle of a single approval request."""
 
-    action_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:10])
+    action_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     command: dict[str, Any]
     status: str = "pending"  # pending | approved | rejected
     reason: str | None = None
@@ -82,9 +82,12 @@ class ApprovalGate:
     public interface.
     """
 
-    def __init__(self) -> None:
+    _MAX_RESOLVED: int = 1000
+
+    def __init__(self, *, max_resolved: int = _MAX_RESOLVED) -> None:
         self._pending: dict[str, ApprovalRecord] = {}
         self._resolved: dict[str, ApprovalRecord] = {}
+        self._max_resolved = max_resolved
 
     def requires_approval(self, command: dict[str, Any]) -> bool:
         """Proxy to the module-level :func:`requires_approval`."""
@@ -130,6 +133,12 @@ class ApprovalGate:
         record.reason = reason
         record.resolved_at = datetime.now(timezone.utc).isoformat()
         self._resolved[action_id] = record
+
+        # Evict oldest resolved records when the cap is exceeded.
+        if len(self._resolved) > self._max_resolved:
+            oldest_key = next(iter(self._resolved))
+            del self._resolved[oldest_key]
+
         return record.model_dump()
 
     def list_pending(self) -> list[dict[str, Any]]:

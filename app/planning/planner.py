@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 class PlanStep(BaseModel):
     """A single actionable step within a plan."""
 
-    step_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:8])
+    step_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     order: int
     action: str
     description: str
@@ -34,7 +34,7 @@ class PlanStep(BaseModel):
 class Plan(BaseModel):
     """Structured output representing a full execution plan for an idea."""
 
-    plan_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
+    plan_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     idea_name: str
     idea_summary: str
     steps: list[PlanStep]
