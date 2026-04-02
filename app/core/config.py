@@ -6,6 +6,8 @@ Uses pydantic-settings to load values from environment variables and
 that integration clients never read os.environ directly.
 """
 
+from functools import lru_cache as _lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,6 +40,7 @@ class Settings(BaseSettings):
     registry_api_key: str = ""
 
 
+@_lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return a cached application settings instance."""
     return Settings()

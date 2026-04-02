@@ -97,7 +97,7 @@ class GitHubClient:
         Returns:
             Issue metadata dictionary.
         """
-        issue_number = int(uuid.uuid4().int % 10_000)
+        issue_number = int(uuid.uuid4().int % 9_999) + 1
         return {
             "id": uuid.uuid4().hex[:8],
             "number": issue_number,
@@ -132,7 +132,7 @@ class GitHubClient:
         Returns:
             Pull-request metadata dictionary.
         """
-        pr_number = int(uuid.uuid4().int % 10_000)
+        pr_number = int(uuid.uuid4().int % 9_999) + 1
         return {
             "id": uuid.uuid4().hex[:8],
             "number": pr_number,
