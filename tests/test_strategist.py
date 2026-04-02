@@ -80,3 +80,14 @@ class TestPrioritise:
 
     def test_single_objective(self) -> None:
         assert self.strategist.prioritise(["Only one"]) == ["Only one"]
+
+    def test_string_goals_coerced_to_list(self) -> None:
+        result = self.strategist.analyse({
+            "message": "build something",
+            "goals": "Reach 100 users",
+        })
+        assert "Reach 100 users" in result.objectives
+
+    def test_ship_does_not_match_membership(self) -> None:
+        result = self.strategist.analyse({"message": "our membership programme"})
+        assert result.intent != IntentType.BUILD

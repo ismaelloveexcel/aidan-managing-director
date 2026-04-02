@@ -46,6 +46,17 @@ class Evaluator:
 
     def __init__(self, weights: dict[str, float] | None = None) -> None:
         self._weights = weights or dict(_DEFAULT_WEIGHTS)
+        _required_keys = set(_DEFAULT_WEIGHTS)
+        missing = _required_keys - set(self._weights)
+        if missing:
+            raise ValueError(
+                f"Weights must include all scoring criteria. Missing: {sorted(missing)}"
+            )
+        for key, value in self._weights.items():
+            if value < 0:
+                raise ValueError(
+                    f"Weight for '{key}' must be non-negative, got {value}"
+                )
 
     # ------------------------------------------------------------------
     # Public API

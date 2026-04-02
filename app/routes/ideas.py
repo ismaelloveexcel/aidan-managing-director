@@ -1,7 +1,7 @@
 """
 ideas.py – Routes for idea generation and management.
 
-Exposes endpoints for creating, listing, evaluating, and critiquing ideas.
+Exposes endpoints for generating, brainstorming, evaluating, and critiquing ideas.
 """
 
 from typing import Any
@@ -40,7 +40,7 @@ class BrainstormRequest(BaseModel):
     """Payload for brainstorming multiple ideas."""
 
     prompt: str
-    count: int = Field(default=5, ge=1, le=10)
+    count: int = Field(default=5, ge=1, le=5)
 
 
 class IdeaEvaluateRequest(BaseModel):

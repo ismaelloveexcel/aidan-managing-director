@@ -1,5 +1,7 @@
 """Tests for app.reasoning.evaluator."""
 
+import pytest
+
 from app.reasoning.evaluator import Evaluator
 from app.reasoning.idea_engine import IdeaEngine
 from app.reasoning.models import EvaluationResult
@@ -68,3 +70,20 @@ class TestEvaluatorRank:
         ideas = self.engine.brainstorm("marketing tools", count=3)
         ranked = self.evaluator.rank(ideas)
         assert len(ranked) == 3
+
+
+class TestEvaluatorWeightsValidation:
+    """Weight validation tests."""
+
+    def test_missing_key_raises(self) -> None:
+        with pytest.raises(ValueError, match="Missing"):
+            Evaluator(weights={"feasibility": 1.0})
+
+    def test_negative_weight_raises(self) -> None:
+        with pytest.raises(ValueError, match="non-negative"):
+            Evaluator(weights={
+                "feasibility": -0.1,
+                "profitability": 0.3,
+                "speed": 0.2,
+                "competition": 0.2,
+            })

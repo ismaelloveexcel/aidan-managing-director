@@ -78,11 +78,12 @@ class IdeaEngine:
     ) -> Idea:
         """Generate a single :class:`Idea` from *prompt* and optional *context*.
 
-        The first matching template is selected based on prompt keywords.
+        A template is selected deterministically via a SHA-256 hash of the
+        prompt.  The domain is extracted from *context* or the prompt itself.
         """
         domain = self._extract_domain(prompt, context)
         template = self._select_template(prompt)
-        return self._build_idea(template, domain)
+        return self._build_idea(template, domain, prompt)
 
     def brainstorm(self, prompt: str, count: int = 5) -> list[Idea]:
         """Generate up to *count* :class:`Idea` instances for the given *prompt*."""
@@ -90,7 +91,7 @@ class IdeaEngine:
         domain = self._extract_domain(prompt)
         ideas: list[Idea] = []
         for template in _TEMPLATES[:count]:
-            ideas.append(self._build_idea(template, domain))
+            ideas.append(self._build_idea(template, domain, prompt))
         return ideas
 
     # ------------------------------------------------------------------
@@ -109,7 +110,7 @@ class IdeaEngine:
         if context and "domain" in context:
             return str(context["domain"])
 
-        # Use the longest capitalised word as a rough domain proxy.
+        # Use the longest word (>3 chars) as a rough domain proxy.
         words = prompt.split()
         candidates = [w.strip(".,!?") for w in words if len(w) > 3]
         if candidates:
@@ -126,10 +127,10 @@ class IdeaEngine:
         return _TEMPLATES[index]
 
     @staticmethod
-    def _build_idea(template: dict[str, Any], domain: str) -> Idea:
-        """Instantiate an :class:`Idea` from a *template* and *domain*."""
+    def _build_idea(template: dict[str, Any], domain: str, prompt: str = "") -> Idea:
+        """Instantiate an :class:`Idea` from a *template*, *domain*, and *prompt*."""
         idea_id = hashlib.sha256(
-            f"{template['title']}-{domain}".encode(),
+            f"{template['title']}-{domain}-{prompt}".encode(),
         ).hexdigest()[:12]
 
         return Idea(

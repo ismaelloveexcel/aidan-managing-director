@@ -7,6 +7,8 @@ directional strategies, and prioritising objectives.
 
 from __future__ import annotations
 
+import re
+
 from app.reasoning.models import IntentType, StrategicDirection
 
 # ---------------------------------------------------------------------------
@@ -72,7 +74,15 @@ class Strategist:
         ``"goals"``) are used to refine the analysis when present.
         """
         message: str = str(context.get("message", ""))
-        goals: list[str] = list(context.get("goals", []))
+        raw_goals = context.get("goals", [])
+        if isinstance(raw_goals, str):
+            goals: list[str] = [raw_goals]
+        elif isinstance(raw_goals, list):
+            goals = [str(g) for g in raw_goals]
+        elif not raw_goals:
+            goals = []
+        else:
+            goals = [str(raw_goals)]
 
         intent, confidence = self._classify_intent(message)
         objectives = self._derive_objectives(intent, message, goals)
@@ -105,7 +115,17 @@ class Strategist:
         scores: dict[IntentType, int] = {}
 
         for intent, keywords in _INTENT_KEYWORDS.items():
-            hits = sum(1 for kw in keywords if kw in lower)
+            hits = 0
+            for kw in keywords:
+                # Multi-word phrases use substring match; single words use
+                # word-boundary matching to avoid false positives (e.g.
+                # "ship" should not match "membership").
+                if " " in kw:
+                    if kw in lower:
+                        hits += 1
+                else:
+                    if re.search(rf"\b{re.escape(kw)}\b", lower):
+                        hits += 1
             if hits:
                 scores[intent] = hits
 
