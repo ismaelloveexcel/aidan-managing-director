@@ -5,7 +5,9 @@ Handles queuing, reviewing, and resolving approval requests before
 AI-DAN dispatches high-impact commands.
 """
 
-from fastapi import APIRouter
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -16,7 +18,7 @@ class ApprovalRequest(BaseModel):
 
     action_id: str
     action_type: str
-    payload: dict
+    payload: dict[str, Any]
 
 
 class ApprovalDecision(BaseModel):
@@ -41,7 +43,7 @@ async def request_approval(request: ApprovalRequest) -> ApprovalResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.post("/decide", response_model=ApprovalResponse)
@@ -51,7 +53,7 @@ async def decide_approval(decision: ApprovalDecision) -> ApprovalResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.get("/", response_model=list[ApprovalResponse])
@@ -61,4 +63,4 @@ async def list_pending_approvals() -> list[ApprovalResponse]:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")

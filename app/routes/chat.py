@@ -4,7 +4,7 @@ chat.py – Routes for conversational interaction with AI-DAN.
 Handles incoming chat messages and returns AI-DAN's responses.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -31,4 +31,4 @@ async def send_message(request: ChatRequest) -> ChatResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")

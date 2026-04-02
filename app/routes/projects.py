@@ -4,7 +4,7 @@ projects.py – Routes for project portfolio management.
 Handles listing, creating, and updating projects tracked by AI-DAN.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -34,7 +34,7 @@ async def create_project(request: ProjectRequest) -> ProjectResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.get("/", response_model=list[ProjectResponse])
@@ -44,7 +44,7 @@ async def list_projects() -> list[ProjectResponse]:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -54,4 +54,4 @@ async def get_project(project_id: str) -> ProjectResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")

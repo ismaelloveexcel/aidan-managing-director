@@ -4,7 +4,9 @@ ideas.py – Routes for idea generation and management.
 Exposes endpoints for creating, listing, and evaluating ideas.
 """
 
-from fastapi import APIRouter
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -14,7 +16,7 @@ class IdeaRequest(BaseModel):
     """Payload for submitting a new idea prompt."""
 
     prompt: str
-    context: dict | None = None
+    context: dict[str, Any] | None = None
 
 
 class IdeaResponse(BaseModel):
@@ -32,7 +34,7 @@ async def generate_idea(request: IdeaRequest) -> IdeaResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.get("/", response_model=list[IdeaResponse])
@@ -42,4 +44,4 @@ async def list_ideas() -> list[IdeaResponse]:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")

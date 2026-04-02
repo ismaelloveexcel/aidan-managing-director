@@ -5,7 +5,9 @@ Handles compiling, validating, and routing structured commands produced
 by the planning layer to downstream systems.
 """
 
-from fastapi import APIRouter
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -15,7 +17,7 @@ class CommandRequest(BaseModel):
     """Payload for dispatching a new command."""
 
     command_type: str
-    parameters: dict
+    parameters: dict[str, Any]
     project_id: str | None = None
 
 
@@ -34,7 +36,7 @@ async def dispatch_command(request: CommandRequest) -> CommandResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.get("/{command_id}", response_model=CommandResponse)
@@ -44,4 +46,4 @@ async def get_command_status(command_id: str) -> CommandResponse:
 
     Business logic to be implemented in a future iteration.
     """
-    raise NotImplementedError
+    raise HTTPException(status_code=501, detail="Not implemented")
