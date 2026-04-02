@@ -141,7 +141,7 @@ class Strategist:
         from app.reasoning.evaluator import Evaluator
         from app.reasoning.idea_engine import IdeaEngine
 
-        ctx: dict[str, object] = dict(context) if context else {}
+        ctx: dict[str, Any] = dict(context) if context else {}
         ctx.setdefault("message", message)
 
         direction = self.analyse(ctx)

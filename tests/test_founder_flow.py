@@ -75,7 +75,11 @@ class TestProcessFounderInput:
     def test_unknown_intent_asks_for_clarification(self) -> None:
         result = self.strategist.process_founder_input("hello there")
         assert result.strategy.intent == IntentType.UNKNOWN
-        assert "clarif" in result.decision.lower() or "clarif" in result.suggested_next_action.lower()
+        assert (
+            "clarification" in result.decision.lower()
+            or "clarify" in result.suggested_next_action.lower()
+            or "rephrase" in result.suggested_next_action.lower()
+        )
 
     def test_context_passed_through(self) -> None:
         result = self.strategist.process_founder_input(
@@ -83,6 +87,8 @@ class TestProcessFounderInput:
             context={"goals": ["Reach 100 users"]},
         )
         assert "Reach 100 users" in result.strategy.objectives
+        # Verify the strategy also reflects the BUILD intent.
+        assert result.strategy.intent == IntentType.BUILD
 
 
 class TestChatRouteFounderFlow:
@@ -142,6 +148,7 @@ class TestChatRouteFounderFlow:
         body = resp.json()
         objectives = body["founder_response"]["strategy"]["objectives"]
         assert "Reach 100 users" in objectives
+        assert body["strategy"]["intent"] == "build"
 
     def test_chat_reply_mentions_intent(self) -> None:
         resp = client.post("/chat/", json={"message": "I want to build a SaaS"})

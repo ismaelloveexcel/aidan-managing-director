@@ -8,14 +8,9 @@ The route stays thin: validation and delegation only.
 from typing import Any
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from app.reasoning.models import (
-    CommandOutput,
-    FounderResponse,
-    Risk,
-    StrategicDirection,
-)
+from app.reasoning.models import FounderResponse, StrategicDirection
 from app.reasoning.strategist import Strategist
 
 router = APIRouter()
