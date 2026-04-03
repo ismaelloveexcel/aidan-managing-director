@@ -22,6 +22,7 @@ _REQUIRED_COMMAND_FIELDS = {"action", "parameters"}
 _KNOWN_ACTIONS = frozenset(
     {
         "create_repo",
+        "create_project_repo",
         "setup_project",
         "implement_core",
         "add_tests",

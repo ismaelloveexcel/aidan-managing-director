@@ -2,7 +2,9 @@
 github_client.py – GitHub API integration for the GitHub Factory.
 
 Provides a typed client for interacting with GitHub repositories,
-issues, pull requests, and workflow dispatch events.
+issues, pull requests, and workflow dispatch events.  Also exposes
+higher-level helpers for preparing structured project-creation
+request payloads that downstream factory systems can consume.
 
 All methods are currently **stub implementations** that return
 realistic placeholder data.  Real HTTP calls (via ``httpx``) will
@@ -12,10 +14,93 @@ replace the stubs once API credentials are provisioned.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
+from pydantic import BaseModel, Field
+
+
+# ---------------------------------------------------------------------------
+# Pydantic schemas for GitHub Factory request payloads
+# ---------------------------------------------------------------------------
+
+
+class RepoRequest(BaseModel):
+    """Structured payload for requesting a new repository from the factory."""
+
+    name: str = Field(description="Repository name.")
+    owner: str = Field(description="Repository owner or organisation.")
+    description: str = Field(default="", description="Short repository description.")
+    private: bool = Field(default=True, description="Whether the repo is private.")
+    template: str | None = Field(
+        default=None,
+        description="Optional template repository to clone from.",
+    )
+    topics: list[str] = Field(
+        default_factory=list,
+        description="GitHub topics to apply to the repository.",
+    )
+    request_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        description="Unique identifier for this request.",
+    )
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Timestamp when the request was created.",
+    )
+
+
+class IssueSpec(BaseModel):
+    """Specification for a single issue within an issue bundle."""
+
+    title: str = Field(description="Issue title.")
+    body: str = Field(default="", description="Issue body in Markdown.")
+    labels: list[str] = Field(
+        default_factory=list,
+        description="Labels to apply to the issue.",
+    )
+
+
+class IssueBundleRequest(BaseModel):
+    """A batch of issues to create in a repository."""
+
+    owner: str = Field(description="Repository owner.")
+    repo: str = Field(description="Repository name.")
+    issues: list[IssueSpec] = Field(description="Ordered list of issues to create.")
+    bundle_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        description="Unique identifier for this bundle.",
+    )
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Timestamp when the bundle was created.",
+    )
+
+
+class RepoStatus(BaseModel):
+    """Status snapshot of a repository."""
+
+    owner: str = Field(description="Repository owner.")
+    repo: str = Field(description="Repository name.")
+    exists: bool = Field(description="Whether the repository exists.")
+    default_branch: str | None = Field(
+        default=None,
+        description="Default branch name, if the repo exists.",
+    )
+    open_issues_count: int = Field(
+        default=0,
+        description="Number of open issues.",
+    )
+    html_url: str | None = Field(
+        default=None,
+        description="Browser URL for the repository.",
+    )
+    stub: bool = Field(
+        default=True,
+        description="True when the response is a stub (not from a live API).",
+    )
 
 
 class GitHubClient:
@@ -222,3 +307,120 @@ class GitHubClient:
             ``True`` if the dispatch was accepted (stub always succeeds).
         """
         return True
+
+    # -- GitHub Factory request helpers ----------------------------------------
+
+    def prepare_repo_request(
+        self,
+        name: str,
+        owner: str = "ai-dan",
+        *,
+        description: str = "",
+        private: bool = True,
+        template: str | None = None,
+        topics: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Prepare a structured repository creation request payload.
+
+        Builds a :class:`RepoRequest` that downstream factory systems
+        can consume to provision a new repository.  No actual API call
+        is made.
+
+        Args:
+            name: Repository name (e.g. ``"idea-x"``).
+            owner: Repository owner or organisation.
+            description: Short repository description.
+            private: Whether the repository should be private.
+            template: Optional template repository to clone from.
+            topics: GitHub topics to apply to the repository.
+
+        Returns:
+            Serialised :class:`RepoRequest` dictionary.
+        """
+        request = RepoRequest(
+            name=name,
+            owner=owner,
+            description=description,
+            private=private,
+            template=template,
+            topics=topics or [],
+        )
+        return request.model_dump()
+
+    def create_issue_bundle(
+        self,
+        owner: str,
+        repo: str,
+        issues: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Build a bundled issue-creation request for a repository.
+
+        Each entry in *issues* must contain at least a ``title`` key.
+        Optional keys are ``body`` (Markdown string) and ``labels``
+        (list of label names).
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+            issues: List of issue specifications.
+
+        Returns:
+            Serialised :class:`IssueBundleRequest` dictionary.
+
+        Raises:
+            ValueError: If *issues* is empty or any entry lacks a title.
+        """
+        if not issues:
+            raise ValueError("Issue bundle must contain at least one issue.")
+
+        specs: list[IssueSpec] = []
+        for idx, raw in enumerate(issues):
+            title = raw.get("title")
+            if not title or not isinstance(title, str):
+                raise ValueError(
+                    f"Each issue must have a non-empty 'title' string (index {idx}).",
+                )
+            specs.append(
+                IssueSpec(
+                    title=title,
+                    body=raw.get("body", ""),
+                    labels=raw.get("labels", []),
+                ),
+            )
+
+        bundle = IssueBundleRequest(
+            owner=owner,
+            repo=repo,
+            issues=specs,
+        )
+        return bundle.model_dump()
+
+    def get_repo_status(
+        self,
+        owner: str,
+        repo: str,
+    ) -> dict[str, Any]:
+        """Return the current status of a repository.
+
+        This is a **stub** that always reports the repository as
+        existing.  When live credentials are available it will query
+        the GitHub API.
+
+        Args:
+            owner: Repository owner.
+            repo: Repository name.
+
+        Returns:
+            Serialised :class:`RepoStatus` dictionary.
+        """
+        html_base = self._html_base()
+        status = RepoStatus(
+            owner=owner,
+            repo=repo,
+            exists=True,
+            default_branch="main",
+            open_issues_count=0,
+            html_url=f"{html_base}/{owner}/{repo}",
+            stub=True,
+        )
+        return status.model_dump()
