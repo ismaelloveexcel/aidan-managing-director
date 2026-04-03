@@ -14,7 +14,6 @@ class TestChatRoute:
         resp = client.post("/chat/", json={"message": "I want to build a SaaS"})
         assert resp.status_code == 200
         body = resp.json()
-        assert "reply" in body
         assert "strategy" in body
         assert body["strategy"]["intent"] == "build"
 

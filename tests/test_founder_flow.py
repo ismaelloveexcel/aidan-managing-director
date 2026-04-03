@@ -6,6 +6,7 @@ from app.reasoning.models import (
     CommandOutput,
     FounderResponse,
     IntentType,
+    ScoreOutput,
 )
 from app.reasoning.strategist import Strategist
 from main import app
@@ -32,7 +33,12 @@ class TestProcessFounderInput:
     def test_build_intent_has_score(self) -> None:
         result = self.strategist.process_founder_input("Build a new product")
         assert result.score is not None
-        assert 0.0 <= result.score <= 1.0
+        assert isinstance(result.score, ScoreOutput)
+        assert 0.0 <= result.score.aggregate <= 1.0
+        assert 0.0 <= result.score.feasibility <= 1.0
+        assert 0.0 <= result.score.profitability <= 1.0
+        assert 0.0 <= result.score.speed <= 1.0
+        assert 0.0 <= result.score.competition <= 1.0
 
     def test_build_intent_has_risks(self) -> None:
         result = self.strategist.process_founder_input("Build a new product")
@@ -61,17 +67,20 @@ class TestProcessFounderInput:
         assert result.strategy.intent == IntentType.IMPROVE
         assert len(result.commands) > 0
         assert result.decision
+        assert result.score is not None
 
     def test_monetise_intent(self) -> None:
         result = self.strategist.process_founder_input("How can we monetize this?")
         assert result.strategy.intent == IntentType.MONETISE
         assert len(result.commands) > 0
+        assert result.score is not None
 
     def test_pivot_intent(self) -> None:
         result = self.strategist.process_founder_input("We should pivot to a new direction")
         assert result.strategy.intent == IntentType.PIVOT
         assert len(result.risks) > 0
         assert len(result.commands) > 0
+        assert result.score is not None
 
     def test_unknown_intent_asks_for_clarification(self) -> None:
         result = self.strategist.process_founder_input("hello there")
@@ -102,37 +111,43 @@ class TestProcessFounderInput:
 
 
 class TestChatRouteFounderFlow:
-    """Integration tests for the chat endpoint with founder flow."""
+    """Integration tests for the chat endpoint returning the mandatory format."""
 
-    def test_chat_returns_founder_response(self) -> None:
+    def test_chat_returns_mandatory_format(self) -> None:
         resp = client.post("/chat/", json={"message": "I want to build a SaaS"})
         assert resp.status_code == 200
         body = resp.json()
-        assert "founder_response" in body
-        fr = body["founder_response"]
-        assert "summary" in fr
-        assert "decision" in fr
-        assert "risks" in fr
-        assert "suggested_next_action" in fr
-        assert "commands" in fr
-        assert "strategy" in fr
+        # Mandatory top-level fields
+        assert "summary" in body
+        assert "decision" in body
+        assert "score" in body
+        assert "risks" in body
+        assert "suggested_next_action" in body
+        assert "commands" in body
+        assert "strategy" in body
 
     def test_chat_build_has_commands(self) -> None:
         resp = client.post("/chat/", json={"message": "Build a new product"})
         body = resp.json()
-        commands = body["founder_response"]["commands"]
+        commands = body["commands"]
         assert len(commands) > 0
         assert all("action" in c for c in commands)
 
-    def test_chat_build_has_score(self) -> None:
+    def test_chat_build_has_score_object(self) -> None:
         resp = client.post("/chat/", json={"message": "Build a new product"})
         body = resp.json()
-        assert body["founder_response"]["score"] is not None
+        score = body["score"]
+        assert isinstance(score, dict)
+        assert "feasibility" in score
+        assert "profitability" in score
+        assert "speed" in score
+        assert "competition" in score
+        assert "aggregate" in score
 
     def test_chat_unknown_has_no_score(self) -> None:
         resp = client.post("/chat/", json={"message": "hello"})
         body = resp.json()
-        assert body["founder_response"]["score"] is None
+        assert body["score"] is None
 
     def test_chat_still_returns_strategy(self) -> None:
         resp = client.post("/chat/", json={"message": "I want to build a SaaS"})
@@ -156,33 +171,31 @@ class TestChatRouteFounderFlow:
         )
         assert resp.status_code == 200
         body = resp.json()
-        objectives = body["founder_response"]["strategy"]["objectives"]
+        objectives = body["strategy"]["objectives"]
         assert "Reach 100 users" in objectives
         assert body["strategy"]["intent"] == "build"
-
-    def test_chat_reply_mentions_intent(self) -> None:
-        resp = client.post("/chat/", json={"message": "I want to build a SaaS"})
-        body = resp.json()
-        assert "build" in body["reply"].lower()
 
     def test_chat_improve_flow(self) -> None:
         resp = client.post("/chat/", json={"message": "We need to improve our app"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["strategy"]["intent"] == "improve"
-        assert len(body["founder_response"]["commands"]) > 0
+        assert len(body["commands"]) > 0
+        assert body["score"] is not None
 
     def test_chat_monetise_flow(self) -> None:
         resp = client.post("/chat/", json={"message": "How do we monetize?"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["strategy"]["intent"] == "monetise"
-        assert len(body["founder_response"]["commands"]) > 0
+        assert len(body["commands"]) > 0
+        assert body["score"] is not None
 
     def test_chat_pivot_flow(self) -> None:
         resp = client.post("/chat/", json={"message": "We need to pivot"})
         assert resp.status_code == 200
         body = resp.json()
         assert body["strategy"]["intent"] == "pivot"
-        assert len(body["founder_response"]["risks"]) > 0
-        assert len(body["founder_response"]["commands"]) > 0
+        assert len(body["risks"]) > 0
+        assert len(body["commands"]) > 0
+        assert body["score"] is not None
