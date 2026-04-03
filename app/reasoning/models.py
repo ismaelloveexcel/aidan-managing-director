@@ -211,3 +211,79 @@ class FounderResponse(BaseModel):
     strategy: StrategicDirection = Field(
         description="Underlying strategic direction that drove the response.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Registry / persistence models
+# ---------------------------------------------------------------------------
+
+
+class ProjectStatus(str, Enum):
+    """Lifecycle status of a project in the registry."""
+
+    ACTIVE = "active"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    ARCHIVED = "archived"
+
+
+class ProjectRecord(BaseModel):
+    """Persisted project record returned by the registry."""
+
+    project_id: str = Field(description="Registry-assigned project identifier.")
+    name: str = Field(description="Unique project name.")
+    description: str = Field(description="Short description of the project.")
+    status: ProjectStatus = Field(
+        default=ProjectStatus.ACTIVE,
+        description="Current lifecycle status.",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional additional metadata (tags, owner, etc.).",
+    )
+    created_at: str = Field(description="ISO-8601 creation timestamp.")
+    updated_at: str = Field(description="ISO-8601 last-update timestamp.")
+    stub: bool = Field(
+        default=True,
+        description="True while the record is served from stub storage.",
+    )
+
+
+class IdeaRecord(BaseModel):
+    """Persisted idea record returned by the registry."""
+
+    record_id: str = Field(description="Registry-assigned record identifier.")
+    idea: dict[str, Any] = Field(description="Serialised idea payload.")
+    project_id: str | None = Field(
+        default=None,
+        description="Optional project this idea belongs to.",
+    )
+    created_at: str = Field(description="ISO-8601 creation timestamp.")
+    stub: bool = Field(
+        default=True,
+        description="True while the record is served from stub storage.",
+    )
+
+
+class CommandRecord(BaseModel):
+    """Persisted command record returned by the registry."""
+
+    record_id: str = Field(description="Registry-assigned record identifier.")
+    command_type: str = Field(description="Type of command dispatched.")
+    parameters: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Command-specific parameters.",
+    )
+    project_id: str | None = Field(
+        default=None,
+        description="Optional project this command belongs to.",
+    )
+    status: str = Field(
+        default="pending",
+        description="Current command status (pending, running, completed, failed).",
+    )
+    created_at: str = Field(description="ISO-8601 creation timestamp.")
+    stub: bool = Field(
+        default=True,
+        description="True while the record is served from stub storage.",
+    )

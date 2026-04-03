@@ -2,7 +2,8 @@
 commands.py – Routes for dispatching commands to the GitHub Factory.
 
 Handles compiling, validating, and routing structured commands produced
-by the planning layer to downstream systems.
+by the planning layer to downstream systems.  Commands are persisted
+through the registry client.
 """
 
 from typing import Any
@@ -10,7 +11,20 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.core.dependencies import get_registry_client
+from app.reasoning.models import CommandRecord
+
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Shared registry client – single instance across all route modules
+# ---------------------------------------------------------------------------
+_registry = get_registry_client()
+
+
+# ---------------------------------------------------------------------------
+# Request / response schemas
+# ---------------------------------------------------------------------------
 
 
 class CommandRequest(BaseModel):
@@ -29,14 +43,20 @@ class CommandResponse(BaseModel):
     message: str | None = None
 
 
-@router.post("/dispatch", response_model=CommandResponse)
-async def dispatch_command(request: CommandRequest) -> CommandResponse:
-    """
-    Compile and dispatch a command to the appropriate downstream system.
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
-    Business logic to be implemented in a future iteration.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented")
+
+@router.post("/dispatch", response_model=CommandRecord)
+async def dispatch_command(request: CommandRequest) -> CommandRecord:
+    """Compile and dispatch a command, persisting it via the registry."""
+    record = _registry.create_command_record(
+        command_type=request.command_type,
+        parameters=request.parameters,
+        project_id=request.project_id,
+    )
+    return CommandRecord(**record)
 
 
 @router.get("/{command_id}", response_model=CommandResponse)

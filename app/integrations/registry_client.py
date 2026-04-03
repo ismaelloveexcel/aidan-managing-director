@@ -42,6 +42,11 @@ class RegistryClient:
         }
         self._http_client: httpx.Client | None = None
 
+        # In-memory stub storage – replaced by real DB once wired.
+        self._projects: dict[str, dict[str, Any]] = {}
+        self._ideas: dict[str, dict[str, Any]] = {}
+        self._commands: dict[str, dict[str, Any]] = {}
+
     # -- lifecycle --------------------------------------------------------------
 
     def _client(self) -> httpx.Client:
@@ -95,7 +100,7 @@ class RegistryClient:
         """
         project_id = f"proj-{uuid.uuid4().hex[:8]}"
         now = datetime.now(tz=timezone.utc).isoformat()
-        return {
+        record = {
             "project_id": project_id,
             "name": name,
             "description": description,
@@ -105,12 +110,14 @@ class RegistryClient:
             "updated_at": now,
             "stub": True,
         }
+        self._projects[project_id] = record
+        return record
 
     def update_project_status(
         self,
         project_id: str,
         status: str,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """
         Update the status of an existing project in the registry.
 
@@ -120,15 +127,99 @@ class RegistryClient:
                 ``"completed"``, ``"archived"``).
 
         Returns:
-            The updated project record.
+            The updated project record, or ``None`` if not found.
         """
         now = datetime.now(tz=timezone.utc).isoformat()
-        return {
+        if project_id not in self._projects:
+            return None
+        self._projects[project_id]["status"] = status
+        self._projects[project_id]["updated_at"] = now
+        return self._projects[project_id]
+
+    def reset(self) -> None:
+        """Clear all in-memory stub storage.  Useful for test isolation."""
+        self._projects.clear()
+        self._ideas.clear()
+        self._commands.clear()
+
+    def list_projects(self) -> list[dict[str, Any]]:
+        """
+        Return all project records currently held in the registry.
+
+        Returns:
+            A list of project record dictionaries.
+        """
+        return list(self._projects.values())
+
+    def get_project(self, project_id: str) -> dict[str, Any] | None:
+        """
+        Retrieve a single project record by its ID.
+
+        Args:
+            project_id: Registry-assigned project identifier.
+
+        Returns:
+            The project record, or ``None`` if not found.
+        """
+        return self._projects.get(project_id)
+
+    def create_idea_record(
+        self,
+        idea: dict[str, Any],
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Persist an idea in the registry.
+
+        Args:
+            idea: Serialised idea payload (matches ``Idea`` schema).
+            project_id: Optional project to associate the idea with.
+
+        Returns:
+            The persisted idea record.
+        """
+        record_id = f"idea-{uuid.uuid4().hex[:8]}"
+        now = datetime.now(tz=timezone.utc).isoformat()
+        record = {
+            "record_id": record_id,
+            "idea": idea,
             "project_id": project_id,
-            "status": status,
-            "updated_at": now,
+            "created_at": now,
             "stub": True,
         }
+        self._ideas[record_id] = record
+        return record
+
+    def create_command_record(
+        self,
+        command_type: str,
+        parameters: dict[str, Any],
+        project_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Persist a dispatched command in the registry.
+
+        Args:
+            command_type: Type of command being dispatched.
+            parameters: Command-specific parameters.
+            project_id: Optional project to associate the command with.
+
+        Returns:
+            The persisted command record.
+        """
+        record_id = f"cmd-{uuid.uuid4().hex[:8]}"
+        now = datetime.now(tz=timezone.utc).isoformat()
+        record = {
+            "record_id": record_id,
+            "command_type": command_type,
+            "parameters": parameters,
+            "project_id": project_id,
+            "status": "pending",
+            "created_at": now,
+            "stub": True,
+        }
+        self._commands[record_id] = record
+        return record
 
     def register_service(self, name: str, metadata: dict[str, Any]) -> str:
         """

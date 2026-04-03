@@ -2,6 +2,7 @@
 ideas.py – Routes for idea generation and management.
 
 Exposes endpoints for generating, brainstorming, evaluating, and critiquing ideas.
+Generated ideas are persisted through the registry client.
 """
 
 from typing import Any
@@ -9,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from app.core.dependencies import get_registry_client
 from app.reasoning.critic import Critic
 from app.reasoning.evaluator import Evaluator
 from app.reasoning.idea_engine import IdeaEngine
@@ -23,6 +25,8 @@ _idea_engine = IdeaEngine()
 _evaluator = Evaluator()
 _critic = Critic()
 
+_registry = get_registry_client()
+
 
 # ---------------------------------------------------------------------------
 # Request / response schemas
@@ -34,6 +38,7 @@ class IdeaRequest(BaseModel):
 
     prompt: str
     context: dict[str, Any] | None = None
+    project_id: str | None = None
 
 
 class BrainstormRequest(BaseModel):
@@ -41,6 +46,7 @@ class BrainstormRequest(BaseModel):
 
     prompt: str
     count: int = Field(default=5, ge=1, le=5)
+    project_id: str | None = None
 
 
 class IdeaEvaluateRequest(BaseModel):
@@ -63,13 +69,24 @@ class IdeaCritiqueRequest(BaseModel):
 @router.post("/generate", response_model=Idea)
 async def generate_idea(request: IdeaRequest) -> Idea:
     """Generate a single structured idea from the given prompt."""
-    return _idea_engine.generate(request.prompt, request.context)
+    idea = _idea_engine.generate(request.prompt, request.context)
+    _registry.create_idea_record(
+        idea=idea.model_dump(),
+        project_id=request.project_id,
+    )
+    return idea
 
 
 @router.post("/brainstorm", response_model=list[Idea])
 async def brainstorm_ideas(request: BrainstormRequest) -> list[Idea]:
     """Generate multiple candidate ideas for the given prompt."""
-    return _idea_engine.brainstorm(request.prompt, request.count)
+    ideas = _idea_engine.brainstorm(request.prompt, request.count)
+    for idea in ideas:
+        _registry.create_idea_record(
+            idea=idea.model_dump(),
+            project_id=request.project_id,
+        )
+    return ideas
 
 
 @router.post("/evaluate", response_model=EvaluationResult)
