@@ -58,14 +58,19 @@ class ProjectRequestPayload(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _repo_name_from_idea(idea_name: str) -> str:
-    """Derive a repository name from an idea title.
+def _slugify(text: str) -> str:
+    """Convert a human-readable string into a URL-safe slug.
 
     Lowercases, replaces spaces with hyphens, and strips characters
     that are not alphanumeric or hyphens.
     """
-    slug = idea_name.lower().replace(" ", "-")
+    slug = text.lower().replace(" ", "-")
     return "".join(ch for ch in slug if ch.isalnum() or ch == "-").strip("-")
+
+
+def _repo_name_from_idea(idea_name: str) -> str:
+    """Derive a repository name from an idea title."""
+    return _slugify(idea_name)
 
 
 def _default_issues_for_project(idea_name: str, description: str) -> list[dict[str, Any]]:
@@ -136,7 +141,7 @@ def build_project_request(
     # Collect optional topics from idea metadata.
     topics: list[str] = []
     if idea.get("target_user"):
-        topics.append(idea["target_user"].lower().replace(" ", "-"))
+        topics.append(_slugify(idea["target_user"]))
     if idea.get("monetization_path"):
         topics.append("monetised")
 

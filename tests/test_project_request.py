@@ -263,8 +263,6 @@ class TestBuildProjectRequest:
     def test_accepts_custom_github_client(self) -> None:
         custom = GitHubClient(token="custom-token", base_url="https://ghes.example.com/api/v3")
         result = build_project_request(self._valid_idea(), github_client=custom)
-        assert "ghes.example.com" in result["repo_request"]["request_id"] or True
-        # Mainly verify it doesn't raise.
         assert result["project_name"] == "Smart Widget"
 
     def test_public_repo(self) -> None:
