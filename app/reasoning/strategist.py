@@ -2,14 +2,24 @@
 strategist.py – High-level strategic reasoning for AI-DAN.
 
 Responsible for interpreting user intent, synthesising context into
-directional strategies, and prioritising objectives.
+directional strategies, and prioritising objectives.  Also orchestrates
+the full founder-to-command flow by routing to the appropriate reasoning
+and planning modules.
 """
 
 from __future__ import annotations
 
 import re
+from typing import Any
 
-from app.reasoning.models import IntentType, StrategicDirection
+from app.reasoning.models import (
+    CommandOutput,
+    FounderResponse,
+    IntentType,
+    Risk,
+    RiskSeverity,
+    StrategicDirection,
+)
 
 # ---------------------------------------------------------------------------
 # Intent keyword mapping – deterministic classification
@@ -62,6 +72,15 @@ class Strategist:
     All logic is deterministic — no external API calls are made.
     """
 
+    def __init__(self) -> None:
+        from app.reasoning.critic import Critic
+        from app.reasoning.evaluator import Evaluator
+        from app.reasoning.idea_engine import IdeaEngine
+
+        self._idea_engine = IdeaEngine()
+        self._evaluator = Evaluator()
+        self._critic = Critic()
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -104,6 +123,231 @@ class Strategist:
         if not objectives:
             return []
         return sorted(objectives, key=lambda o: len(o))
+
+    def process_founder_input(
+        self,
+        message: str,
+        context: dict[str, object] | None = None,
+    ) -> FounderResponse:
+        """Run the full founder-to-command flow for a single message.
+
+        1. Classify intent via :meth:`analyse`.
+        2. Route to the appropriate reasoning modules (idea engine,
+           evaluator, critic) based on the detected intent.
+        3. Build a plan and compile commands when actionable.
+        4. Return a structured :class:`FounderResponse`.
+
+        Args:
+            message: The raw founder message.
+            context: Optional additional context (goals, portfolio, etc.).
+
+        Returns:
+            A fully populated :class:`FounderResponse`.
+        """
+        from app.planning.command_compiler import compile_commands
+        from app.planning.planner import create_plan
+
+        ctx: dict[str, Any] = dict(context) if context else {}
+        ctx["message"] = message
+
+        direction = self.analyse(ctx)
+
+        # Route to the correct reasoning pipeline based on intent.
+        if direction.intent in (IntentType.BUILD, IntentType.EXPLORE):
+            return self._flow_generate(
+                message, direction, self._idea_engine, self._evaluator,
+                self._critic, create_plan, compile_commands, ctx,
+            )
+
+        if direction.intent == IntentType.IMPROVE:
+            return self._flow_improve(message, direction)
+
+        if direction.intent == IntentType.MONETISE:
+            return self._flow_monetise(message, direction)
+
+        if direction.intent == IntentType.PIVOT:
+            return self._flow_pivot(message, direction)
+
+        # UNKNOWN – ask for clarification.
+        return FounderResponse(
+            summary="Unable to determine intent from the provided message.",
+            decision="Request clarification before proceeding.",
+            suggested_next_action="Rephrase your request with more detail.",
+            strategy=direction,
+        )
+
+    # ------------------------------------------------------------------
+    # Flow implementations (private)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _flow_generate(
+        message: str,
+        direction: StrategicDirection,
+        idea_engine: Any,
+        evaluator: Any,
+        critic: Any,
+        create_plan: Any,
+        compile_commands: Any,
+        context: dict[str, Any] | None = None,
+    ) -> FounderResponse:
+        """Generate an idea, evaluate, critique, plan, and compile commands."""
+        idea = idea_engine.generate(message, context=context)
+        evaluation = evaluator.score(idea)
+        critique = critic.critique(idea)
+
+        plan = create_plan({
+            "name": idea.title,
+            "description": idea.summary,
+            "target_user": idea.target_user,
+            "monetization_path": idea.monetization_path,
+            "difficulty": idea.difficulty.value,
+            "time_to_launch": idea.time_to_launch,
+        })
+
+        raw_commands = compile_commands(plan)
+        commands = [
+            CommandOutput(
+                action=cmd["action"],
+                parameters=cmd.get("parameters", {}),
+                priority=cmd.get("priority", "medium"),
+            )
+            for cmd in raw_commands
+        ]
+
+        decision = (
+            f"Idea '{idea.title}' scored {evaluation.aggregate:.2f}. "
+            f"Critic verdict: {critique.verdict}. "
+            f"Recommendation: {evaluation.recommendation}"
+        )
+
+        suggested = (
+            direction.objectives[0]
+            if direction.objectives
+            else "Define MVP scope"
+        )
+
+        return FounderResponse(
+            summary=(
+                f"Generated and evaluated idea: {idea.title}. "
+                f"Difficulty: {idea.difficulty.value}, "
+                f"time to launch: {idea.time_to_launch}."
+            ),
+            decision=decision,
+            score=evaluation.aggregate,
+            risks=critique.risks,
+            suggested_next_action=suggested,
+            commands=commands,
+            strategy=direction,
+        )
+
+    @staticmethod
+    def _flow_improve(
+        message: str,
+        direction: StrategicDirection,
+    ) -> FounderResponse:
+        """Handle improvement-oriented requests."""
+        suggested = (
+            direction.objectives[0]
+            if direction.objectives
+            else "Audit current performance"
+        )
+
+        return FounderResponse(
+            summary="Analysed improvement request and identified key areas.",
+            decision=(
+                "Focus on targeted enhancements to existing assets. "
+                "Prioritise quality and performance gains."
+            ),
+            risks=[
+                Risk(
+                    description="Scope creep during improvement cycles.",
+                    severity=RiskSeverity.MEDIUM,
+                    mitigation="Define clear acceptance criteria before starting.",
+                ),
+            ],
+            suggested_next_action=suggested,
+            commands=[
+                CommandOutput(
+                    action="setup_project",
+                    parameters={"description": "Audit and improve existing project"},
+                    priority="high",
+                ),
+            ],
+            strategy=direction,
+        )
+
+    @staticmethod
+    def _flow_monetise(
+        message: str,
+        direction: StrategicDirection,
+    ) -> FounderResponse:
+        """Handle monetisation-oriented requests."""
+        suggested = (
+            direction.objectives[0]
+            if direction.objectives
+            else "Identify monetisation levers"
+        )
+
+        return FounderResponse(
+            summary="Analysed monetisation request and identified revenue opportunities.",
+            decision=(
+                "Activate revenue-generating strategies. "
+                "Prioritise quick wins with proven models."
+            ),
+            risks=[
+                Risk(
+                    description="Premature monetisation may alienate early users.",
+                    severity=RiskSeverity.MEDIUM,
+                    mitigation="Validate willingness-to-pay before hard paywalls.",
+                ),
+            ],
+            suggested_next_action=suggested,
+            commands=[
+                CommandOutput(
+                    action="setup_monetization",
+                    parameters={"description": "Integrate revenue model"},
+                    priority="high",
+                ),
+            ],
+            strategy=direction,
+        )
+
+    @staticmethod
+    def _flow_pivot(
+        message: str,
+        direction: StrategicDirection,
+    ) -> FounderResponse:
+        """Handle pivot-oriented requests."""
+        suggested = (
+            direction.objectives[0]
+            if direction.objectives
+            else "Diagnose current blockers"
+        )
+
+        return FounderResponse(
+            summary="Analysed pivot request and evaluated strategic alternatives.",
+            decision=(
+                "Prepare for a strategic direction change. "
+                "Evaluate alternatives before committing resources."
+            ),
+            risks=[
+                Risk(
+                    description="Pivoting too aggressively may waste prior investment.",
+                    severity=RiskSeverity.HIGH,
+                    mitigation="Conduct a structured pivot analysis before acting.",
+                ),
+            ],
+            suggested_next_action=suggested,
+            commands=[
+                CommandOutput(
+                    action="setup_project",
+                    parameters={"description": "Pivot discovery and analysis"},
+                    priority="high",
+                ),
+            ],
+            strategy=direction,
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers

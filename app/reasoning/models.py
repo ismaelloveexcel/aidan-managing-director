@@ -5,7 +5,10 @@ Defines structured, typed data models used across strategist, idea engine,
 evaluator, and critic modules.
 """
 
+from __future__ import annotations
+
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -153,4 +156,58 @@ class CritiqueResult(BaseModel):
     )
     verdict: str = Field(
         description="Overall verdict: proceed, revise, or reject.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Founder response models
+# ---------------------------------------------------------------------------
+
+
+class CommandOutput(BaseModel):
+    """A structured command emitted as part of the founder response."""
+
+    action: str = Field(description="The action to execute.")
+    parameters: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Action-specific parameters.",
+    )
+    priority: str = Field(
+        default="medium",
+        description="Execution priority (low, medium, high).",
+    )
+
+
+class FounderResponse(BaseModel):
+    """Full structured response for a founder-to-command flow turn.
+
+    Includes strategic analysis, optional evaluation/critique output,
+    and any commands that should be dispatched next.
+    """
+
+    summary: str = Field(
+        description="High-level summary of the analysis.",
+    )
+    decision: str = Field(
+        description="The strategic decision or recommendation.",
+    )
+    score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Aggregate evaluation score when applicable.",
+    )
+    risks: list[Risk] = Field(
+        default_factory=list,
+        description="Identified risks with severity and mitigation.",
+    )
+    suggested_next_action: str = Field(
+        description="The single most important next step.",
+    )
+    commands: list[CommandOutput] = Field(
+        default_factory=list,
+        description="Structured commands to dispatch.",
+    )
+    strategy: StrategicDirection = Field(
+        description="Underlying strategic direction that drove the response.",
     )
