@@ -40,7 +40,51 @@ A simple **AI-DAN Command Center** for non-technical users:
 
 ---
 
-## Quickstart
+## One-click local startup (recommended)
+
+### Mac/Linux
+
+Run from the project root:
+
+```bash
+./scripts/start_local.sh
+```
+
+What this does:
+- verifies Python + pip
+- installs dependencies from `requirements.txt`
+- starts backend with Uvicorn (`main:app`)
+- starts frontend with Streamlit (`frontend/command_center.py`)
+
+URLs:
+- Frontend (AI-DAN Command Center): `http://localhost:8501`
+- Backend API: `http://localhost:8000`
+- Backend docs: `http://localhost:8000/docs`
+
+Stop both services: press `Ctrl+C` in the terminal running the script.
+
+### Windows
+
+Run from the project root:
+
+```bat
+scripts\start_local.bat
+```
+
+What this does:
+- verifies Python + pip
+- installs dependencies from `requirements.txt`
+- starts backend with Uvicorn (`main:app`)
+- starts frontend with Streamlit (`frontend/command_center.py`)
+
+URLs:
+- Frontend (AI-DAN Command Center): `http://localhost:8501`
+- Backend API: `http://localhost:8000`
+- Backend docs: `http://localhost:8000/docs`
+
+---
+
+## Manual quickstart
 
 ### 1) Install dependencies
 
@@ -76,6 +120,17 @@ You can override backend URL in either:
 ```bash
 export AIDAN_BACKEND_URL=http://localhost:8000
 ```
+
+If you only want dependency setup without starting services:
+
+- Mac/Linux:
+  ```bash
+  ./scripts/setup_env.sh
+  ```
+- Windows:
+  ```bat
+  scripts\setup_env.bat
+  ```
 
 ---
 
