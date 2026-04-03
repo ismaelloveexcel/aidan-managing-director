@@ -133,6 +133,30 @@ class TestChatRouteFounderFlow:
         assert len(commands) > 0
         assert all("action" in c for c in commands)
 
+    def test_chat_commands_are_machine_readable(self) -> None:
+        resp = client.post("/chat/", json={"message": "Build a new product"})
+        assert resp.status_code == 200
+        body = resp.json()
+        command = body["commands"][0]
+
+        for key in (
+            "command_id",
+            "action",
+            "command_type",
+            "schema_version",
+            "target_system",
+            "parameters",
+            "priority",
+            "requires_approval",
+            "source_plan_id",
+            "source_step_id",
+        ):
+            assert key in command
+
+        assert command["command_type"] == command["action"]
+        assert command["target_system"] == "github_factory"
+        assert command["schema_version"] == "1.0"
+
     def test_chat_build_has_score_object(self) -> None:
         resp = client.post("/chat/", json={"message": "Build a new product"})
         body = resp.json()

@@ -203,6 +203,14 @@ class TestCreateProjectRepoAction:
         assert len(results) == 2
         assert results[0]["action"] == "create_project_repo"
 
+    def test_compile_normalises_create_repo_alias(self) -> None:
+        step = {"action": "create_repo", "description": "Create repo"}
+        result = self.compiler.compile(step, idea_name="Smart Widget")
+        assert result["action"] == "create_project_repo"
+        assert result["command_type"] == "create_project_repo"
+        assert result["target_system"] == "github_factory"
+        assert result["parameters"]["repo_name"] == "smart-widget"
+
 
 # ---------------------------------------------------------------------------
 # build_project_request – end-to-end flow

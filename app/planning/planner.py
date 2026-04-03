@@ -44,13 +44,40 @@ class Plan(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class IdeaPlanInput(BaseModel):
+    """Validated input payload for plan creation."""
+
+    name: str = Field(min_length=1, description="Idea name.")
+    description: str = Field(min_length=1, description="Idea description.")
+    target_user: str | None = Field(
+        default=None,
+        description="Optional target user segment.",
+    )
+    monetization_path: str | None = Field(
+        default=None,
+        description="Optional monetization approach.",
+    )
+    difficulty: str | None = Field(
+        default=None,
+        description="Optional relative difficulty label.",
+    )
+    time_to_launch: str | None = Field(
+        default=None,
+        description="Optional estimated time to launch.",
+    )
+    marketing_strategy: str | None = Field(
+        default=None,
+        description="Optional marketing strategy.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Step-generation helpers (pure logic, no side-effects)
 # ---------------------------------------------------------------------------
 
 _DEFAULT_STEPS: list[dict[str, Any]] = [
     {
-        "action": "create_repo",
+        "action": "create_project_repo",
         "description": "Create the project repository",
         "priority": "high",
         "estimated_effort": "low",
@@ -139,6 +166,48 @@ def _build_steps(idea: dict[str, Any]) -> list[PlanStep]:
 # ---------------------------------------------------------------------------
 
 
+def create_plan_model(idea: IdeaPlanInput | dict[str, Any]) -> Plan:
+    """Convert an idea payload into a validated :class:`Plan` model."""
+    if isinstance(idea, IdeaPlanInput):
+        idea_input = idea
+    else:
+        if not idea.get("name"):
+            raise ValueError("Idea must contain a 'name' field.")
+        if not idea.get("description"):
+            raise ValueError("Idea must contain a 'description' field.")
+        idea_input = IdeaPlanInput(
+            name=str(idea["name"]),
+            description=str(idea["description"]),
+            target_user=str(idea["target_user"]) if idea.get("target_user") else None,
+            monetization_path=(
+                str(idea["monetization_path"]) if idea.get("monetization_path") else None
+            ),
+            difficulty=str(idea["difficulty"]) if idea.get("difficulty") else None,
+            time_to_launch=(
+                str(idea["time_to_launch"]) if idea.get("time_to_launch") else None
+            ),
+            marketing_strategy=(
+                str(idea["marketing_strategy"]) if idea.get("marketing_strategy") else None
+            ),
+        )
+
+    idea_dict = idea_input.model_dump(exclude_none=True)
+    steps = _build_steps(idea_dict)
+
+    metadata: dict[str, Any] = {}
+    for key in ("target_user", "difficulty", "time_to_launch"):
+        value = idea_dict.get(key)
+        if value:
+            metadata[key] = value
+
+    return Plan(
+        idea_name=idea_input.name,
+        idea_summary=idea_input.description,
+        steps=steps,
+        metadata=metadata,
+    )
+
+
 def create_plan(idea: dict[str, Any]) -> dict[str, Any]:
     """Convert an idea dictionary into a structured execution plan.
 
@@ -154,23 +223,4 @@ def create_plan(idea: dict[str, Any]) -> dict[str, Any]:
     Raises:
         ValueError: If required fields are missing from *idea*.
     """
-    if not idea.get("name"):
-        raise ValueError("Idea must contain a 'name' field.")
-    if not idea.get("description"):
-        raise ValueError("Idea must contain a 'description' field.")
-
-    steps = _build_steps(idea)
-
-    metadata: dict[str, Any] = {}
-    for key in ("target_user", "difficulty", "time_to_launch"):
-        if key in idea:
-            metadata[key] = idea[key]
-
-    plan = Plan(
-        idea_name=idea["name"],
-        idea_summary=idea["description"],
-        steps=steps,
-        metadata=metadata,
-    )
-
-    return plan.model_dump()
+    return create_plan_model(idea).model_dump()

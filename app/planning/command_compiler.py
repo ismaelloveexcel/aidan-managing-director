@@ -11,7 +11,9 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.planning.approval_gate import requires_approval
 
 # ---------------------------------------------------------------------------
 # Pydantic schemas
@@ -34,16 +36,33 @@ _KNOWN_ACTIONS = frozenset(
     },
 )
 
+_ACTION_ALIASES: dict[str, str] = {
+    "create_repo": "create_project_repo",
+}
+
 
 class Command(BaseModel):
     """A single structured command ready for dispatch."""
 
     command_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     action: str
+    command_type: str | None = None
+    schema_version: str = "1.0"
+    target_system: str = "github_factory"
     parameters: dict[str, Any] = Field(default_factory=dict)
     priority: str = "medium"
+    requires_approval: bool = False
     source_plan_id: str | None = None
     source_step_id: str | None = None
+
+    @model_validator(mode="after")
+    def _normalise_fields(self) -> Command:
+        self.action = _normalise_action(self.action)
+        if "command_type" not in self.model_fields_set:
+            self.command_type = self.action
+        if "requires_approval" not in self.model_fields_set:
+            self.requires_approval = requires_approval({"action": self.action})
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -55,22 +74,41 @@ def _step_to_command(
     step: dict[str, Any],
     plan_id: str | None = None,
     idea_name: str | None = None,
-) -> dict[str, Any]:
-    """Convert a single plan step into a :class:`Command` dict."""
+) -> Command:
+    """Convert a single plan step into a :class:`Command` model."""
+    action = _normalise_action(step["action"])
     parameters: dict[str, Any] = {
         "description": step.get("description", ""),
+        "step_order": step.get("order"),
+        "estimated_effort": step.get("estimated_effort"),
+        "depends_on": step.get("depends_on", []),
     }
     if idea_name:
         parameters["project_name"] = idea_name
+    if action == "create_project_repo":
+        parameters.setdefault("repo_name", _slugify(idea_name or "project"))
+        parameters.setdefault("owner", "ai-dan")
+        parameters.setdefault("private", True)
 
-    command = Command(
-        action=step["action"],
+    return Command(
+        action=action,
         parameters=parameters,
         priority=step.get("priority", "medium"),
         source_plan_id=plan_id,
         source_step_id=step.get("step_id"),
     )
-    return command.model_dump()
+
+
+def _normalise_action(action: str) -> str:
+    """Return a canonical action name for downstream systems."""
+    return _ACTION_ALIASES.get(action, action)
+
+
+def _slugify(value: str) -> str:
+    """Create a GitHub-safe repo slug from a project name."""
+    slug = value.lower().replace(" ", "-")
+    cleaned = "".join(ch for ch in slug if ch.isalnum() or ch == "-").strip("-")
+    return cleaned or "project"
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +131,12 @@ def compile_commands(plan: dict[str, Any]) -> list[dict[str, Any]]:
     Raises:
         ValueError: If the plan is missing required fields or has invalid types.
     """
+    command_models = compile_command_models(plan)
+    return [command.model_dump() for command in command_models]
+
+
+def compile_command_models(plan: dict[str, Any]) -> list[Command]:
+    """Compile all steps of a plan into typed :class:`Command` models."""
     if "steps" not in plan:
         raise ValueError("Plan must contain a 'steps' field.")
 
@@ -113,6 +157,10 @@ def compile_commands(plan: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(action, str) or not action:
             raise ValueError(
                 f"Each step must contain a non-empty 'action' string (index {index}).",
+            )
+        if _normalise_action(action) not in _KNOWN_ACTIONS:
+            raise ValueError(
+                f"Unknown action '{action}' at index {index}; update planner/compiler mapping.",
             )
 
     idea_name = plan.get("idea_name")
@@ -145,7 +193,11 @@ class CommandCompiler:
         Returns:
             A command dictionary ready for dispatch.
         """
-        return _step_to_command(step, plan_id=plan_id, idea_name=idea_name)
+        return _step_to_command(
+            step,
+            plan_id=plan_id,
+            idea_name=idea_name,
+        ).model_dump()
 
     def compile_batch(
         self,
