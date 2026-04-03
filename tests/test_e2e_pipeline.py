@@ -13,7 +13,7 @@ client = TestClient(app)
 # ---------------------------------------------------------------------------
 # Mandatory response fields
 # ---------------------------------------------------------------------------
-_MANDATORY_KEYS = {"summary", "decision", "score", "risks", "suggested_next_action", "commands"}
+_MANDATORY_KEYS = {"summary", "decision", "score", "risks", "suggested_next_action", "commands", "strategy"}
 _SCORE_KEYS = {"feasibility", "profitability", "speed", "competition", "aggregate"}
 
 
@@ -35,11 +35,12 @@ def _assert_pipeline_response(body: dict) -> None:
         assert "severity" in risk
         assert "mitigation" in risk
 
-    # Commands must be a list of objects with an action field.
+    # Commands must be a list of objects with action, parameters, and priority.
     assert isinstance(body["commands"], list)
     for cmd in body["commands"]:
         assert "action" in cmd
         assert "parameters" in cmd
+        assert "priority" in cmd
 
     # No placeholder strings allowed.
     assert body["summary"] and "..." not in body["summary"]
@@ -57,8 +58,8 @@ class TestEndToEndPipeline:
         body = resp.json()
         _assert_pipeline_response(body)
 
-        # Should detect a BUILD or EXPLORE intent (SaaS → build keyword).
-        assert body["strategy"]["intent"] in ("build", "explore")
+        # SaaS keyword must map to BUILD intent in this mandatory scenario.
+        assert body["strategy"]["intent"] == "build"
         # Score must be present for actionable intents.
         assert body["score"] is not None
         assert len(body["commands"]) > 0
