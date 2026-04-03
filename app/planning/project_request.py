@@ -9,13 +9,18 @@ only payload construction.
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.integrations.github_client import GitHubClient
+from app.core.config import get_settings
+from app.integrations.github_client import (
+    GitHubClient,
+    IssueBundleRequest,
+    RepoRequest,
+)
+from app.planning.command_compiler import Command
 
 
 # ---------------------------------------------------------------------------
@@ -23,30 +28,18 @@ from app.integrations.github_client import GitHubClient
 # ---------------------------------------------------------------------------
 
 
-class ProjectRepoCommand(BaseModel):
-    """A ``create_project_repo`` command ready for dispatch."""
-
-    command_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    action: str = Field(default="create_project_repo")
-    parameters: dict[str, Any] = Field(default_factory=dict)
-    priority: str = "high"
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
-    )
-
-
 class ProjectRequestPayload(BaseModel):
     """Full payload sent to the GitHub Factory for a new project."""
 
     project_name: str = Field(description="Human-readable project name.")
-    repo_request: dict[str, Any] = Field(
-        description="Serialised RepoRequest for the repository.",
+    repo_request: RepoRequest = Field(
+        description="RepoRequest for the repository.",
     )
-    issue_bundle: dict[str, Any] = Field(
-        description="Serialised IssueBundleRequest with initial issues.",
+    issue_bundle: IssueBundleRequest = Field(
+        description="IssueBundleRequest with initial issues.",
     )
-    command: dict[str, Any] = Field(
-        description="Serialised ProjectRepoCommand for downstream dispatch.",
+    command: Command = Field(
+        description="Command for downstream dispatch.",
     )
     created_at: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(),
@@ -120,7 +113,8 @@ def build_project_request(
         owner: Repository owner or organisation.
         private: Whether the new repository should be private.
         github_client: Optional pre-configured :class:`GitHubClient`.
-                       A throwaway instance is created when omitted.
+                       When omitted, a client is created from
+                       :func:`app.core.config.get_settings`.
 
     Returns:
         Serialised :class:`ProjectRequestPayload` dictionary.
@@ -135,15 +129,29 @@ def build_project_request(
     if not description or not isinstance(description, str):
         raise ValueError("Idea must contain a non-empty 'description' string.")
 
-    client = github_client or GitHubClient(token="")
+    if github_client is None:
+        settings = get_settings()
+        client = GitHubClient(
+            token=settings.github_token,
+            base_url=settings.github_api_base_url,
+        )
+    else:
+        client = github_client
+
     repo_name = _repo_name_from_idea(name)
+    if not repo_name:
+        raise ValueError(
+            f"Idea name {name!r} does not produce a valid repository slug.",
+        )
 
     # Collect optional topics from idea metadata.
     topics: list[str] = []
-    if idea.get("target_user"):
-        topics.append(_slugify(idea["target_user"]))
+    target_user = idea.get("target_user")
+    if isinstance(target_user, str) and target_user.strip():
+        topics.append(_slugify(target_user))
     if idea.get("monetization_path"):
         topics.append("monetised")
+    topics = list(dict.fromkeys(topic for topic in topics if topic))
 
     repo_request = client.prepare_repo_request(
         name=repo_name,
@@ -160,7 +168,8 @@ def build_project_request(
         issues=issues,
     )
 
-    command = ProjectRepoCommand(
+    command = Command(
+        action="create_project_repo",
         parameters={
             "project_name": name,
             "repo_name": repo_name,
@@ -168,13 +177,14 @@ def build_project_request(
             "private": private,
             "description": description,
         },
+        priority="high",
     )
 
     payload = ProjectRequestPayload(
         project_name=name,
-        repo_request=repo_request,
-        issue_bundle=issue_bundle,
-        command=command.model_dump(),
+        repo_request=RepoRequest(**repo_request),
+        issue_bundle=IssueBundleRequest(**issue_bundle),
+        command=command,
     )
 
     return payload.model_dump()

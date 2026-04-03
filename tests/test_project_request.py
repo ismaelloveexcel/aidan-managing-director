@@ -11,9 +11,8 @@ from app.integrations.github_client import (
     RepoRequest,
     RepoStatus,
 )
-from app.planning.command_compiler import CommandCompiler
+from app.planning.command_compiler import Command, CommandCompiler
 from app.planning.project_request import (
-    ProjectRepoCommand,
     ProjectRequestPayload,
     build_project_request,
 )
@@ -109,6 +108,30 @@ class TestCreateIssueBundle:
     def test_issue_with_empty_title_raises(self) -> None:
         with pytest.raises(ValueError, match="non-empty 'title'"):
             self.client.create_issue_bundle("org", "repo", [{"title": ""}])
+
+    def test_non_dict_issue_raises(self) -> None:
+        with pytest.raises(ValueError, match="dictionary specification"):
+            self.client.create_issue_bundle("org", "repo", ["not a dict"])
+
+    def test_non_string_body_raises(self) -> None:
+        with pytest.raises(ValueError, match="'body' must be a string"):
+            self.client.create_issue_bundle("org", "repo", [{"title": "X", "body": 123}])
+
+    def test_non_list_labels_raises(self) -> None:
+        with pytest.raises(ValueError, match="'labels' must be a list of strings"):
+            self.client.create_issue_bundle("org", "repo", [{"title": "X", "labels": "bug"}])
+
+    def test_non_string_label_raises(self) -> None:
+        with pytest.raises(ValueError, match="'labels' must be a list of strings"):
+            self.client.create_issue_bundle("org", "repo", [{"title": "X", "labels": [1]}])
+
+    def test_none_body_defaults_to_empty(self) -> None:
+        result = self.client.create_issue_bundle("org", "repo", [{"title": "X", "body": None}])
+        assert result["issues"][0]["body"] == ""
+
+    def test_none_labels_defaults_to_empty(self) -> None:
+        result = self.client.create_issue_bundle("org", "repo", [{"title": "X", "labels": None}])
+        assert result["issues"][0]["labels"] == []
 
     def test_result_validates_as_bundle(self) -> None:
         issues = [{"title": "Setup", "body": "Init project", "labels": ["setup"]}]
@@ -227,6 +250,13 @@ class TestBuildProjectRequest:
         assert cmd["parameters"]["project_name"] == "Smart Widget"
         assert cmd["parameters"]["repo_name"] == "smart-widget"
 
+    def test_command_reuses_compiler_command_model(self) -> None:
+        result = build_project_request(self._valid_idea())
+        cmd = result["command"]
+        model = Command(**cmd)
+        assert model.action == "create_project_repo"
+        assert model.priority == "high"
+
     def test_custom_owner(self) -> None:
         result = build_project_request(self._valid_idea(), owner="my-org")
         assert result["repo_request"]["owner"] == "my-org"
@@ -255,10 +285,21 @@ class TestBuildProjectRequest:
         with pytest.raises(ValueError, match="'name'"):
             build_project_request({"name": "", "description": "x"})
 
+    def test_punctuation_only_name_raises(self) -> None:
+        with pytest.raises(ValueError, match="valid repository slug"):
+            build_project_request({"name": "!!!", "description": "bad slug"})
+
     def test_payload_validates_as_model(self) -> None:
         result = build_project_request(self._valid_idea())
         model = ProjectRequestPayload(**result)
         assert model.project_name == "Smart Widget"
+
+    def test_payload_fields_are_typed(self) -> None:
+        result = build_project_request(self._valid_idea())
+        model = ProjectRequestPayload(**result)
+        assert isinstance(model.repo_request, RepoRequest)
+        assert isinstance(model.issue_bundle, IssueBundleRequest)
+        assert isinstance(model.command, Command)
 
     def test_accepts_custom_github_client(self) -> None:
         custom = GitHubClient(token="custom-token", base_url="https://ghes.example.com/api/v3")
@@ -275,3 +316,28 @@ class TestBuildProjectRequest:
         result = build_project_request(idea)
         assert result["repo_request"]["topics"] == []
         assert result["project_name"] == "Simple Idea"
+
+    def test_non_string_target_user_ignored(self) -> None:
+        idea = self._valid_idea()
+        idea["target_user"] = 42
+        result = build_project_request(idea)
+        assert "42" not in result["repo_request"]["topics"]
+
+    def test_whitespace_target_user_ignored(self) -> None:
+        idea = self._valid_idea()
+        idea["target_user"] = "   "
+        result = build_project_request(idea)
+        assert result["repo_request"]["topics"] == ["monetised"]
+
+    def test_empty_slug_topics_filtered(self) -> None:
+        idea = self._valid_idea()
+        idea["target_user"] = "!!!"
+        result = build_project_request(idea)
+        topics = result["repo_request"]["topics"]
+        assert "" not in topics
+        assert "monetised" in topics
+
+    def test_default_client_uses_settings(self) -> None:
+        """When no client is provided the function should not crash."""
+        result = build_project_request(self._valid_idea())
+        assert result["project_name"] == "Smart Widget"

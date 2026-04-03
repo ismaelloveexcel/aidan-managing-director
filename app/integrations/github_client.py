@@ -375,16 +375,40 @@ class GitHubClient:
 
         specs: list[IssueSpec] = []
         for idx, raw in enumerate(issues):
+            if not isinstance(raw, dict):
+                raise ValueError(
+                    f"Each issue must be a dictionary specification (index {idx}).",
+                )
+
             title = raw.get("title")
             if not title or not isinstance(title, str):
                 raise ValueError(
                     f"Each issue must have a non-empty 'title' string (index {idx}).",
                 )
+
+            body = raw.get("body", "")
+            if body is None:
+                body = ""
+            if not isinstance(body, str):
+                raise ValueError(
+                    f"Each issue 'body' must be a string if provided (index {idx}).",
+                )
+
+            labels = raw.get("labels", [])
+            if labels is None:
+                labels = []
+            if not isinstance(labels, list) or any(
+                not isinstance(label, str) for label in labels
+            ):
+                raise ValueError(
+                    f"Each issue 'labels' must be a list of strings if provided (index {idx}).",
+                )
+
             specs.append(
                 IssueSpec(
                     title=title,
-                    body=raw.get("body", ""),
-                    labels=raw.get("labels", []),
+                    body=body,
+                    labels=labels,
                 ),
             )
 
