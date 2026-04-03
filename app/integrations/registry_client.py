@@ -127,22 +127,15 @@ class RegistryClient:
                 ``"completed"``, ``"archived"``).
 
         Returns:
-            The updated project record.
-
-        Raises:
-            KeyError: If the project_id is not found in stub storage.
+            The updated project record, or ``None`` if not found in
+            stub storage.
         """
         now = datetime.now(tz=timezone.utc).isoformat()
-        if project_id in self._projects:
-            self._projects[project_id]["status"] = status
-            self._projects[project_id]["updated_at"] = now
-            return self._projects[project_id]
-        return {
-            "project_id": project_id,
-            "status": status,
-            "updated_at": now,
-            "stub": True,
-        }
+        if project_id not in self._projects:
+            return None  # type: ignore[return-value]
+        self._projects[project_id]["status"] = status
+        self._projects[project_id]["updated_at"] = now
+        return self._projects[project_id]
 
     def list_projects(self) -> list[dict[str, Any]]:
         """

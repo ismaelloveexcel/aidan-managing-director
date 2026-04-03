@@ -72,11 +72,10 @@ class TestUpdateProjectStatus:
         assert updated["status"] == "paused"
         assert updated["project_id"] == record["project_id"]
 
-    def test_returns_stub_for_unknown_id(self) -> None:
+    def test_returns_none_for_unknown_id(self) -> None:
         client = _make_client()
         result = client.update_project_status("unknown", "archived")
-        assert result["status"] == "archived"
-        assert result["stub"] is True
+        assert result is None
 
 
 class TestCreateIdeaRecord:

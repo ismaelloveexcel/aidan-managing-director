@@ -253,7 +253,7 @@ class IdeaRecord(BaseModel):
     """Persisted idea record returned by the registry."""
 
     record_id: str = Field(description="Registry-assigned record identifier.")
-    idea: Idea = Field(description="The idea payload.")
+    idea: dict[str, Any] = Field(description="Serialised idea payload.")
     project_id: str | None = Field(
         default=None,
         description="Optional project this idea belongs to.",

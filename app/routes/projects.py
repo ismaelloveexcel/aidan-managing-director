@@ -58,7 +58,7 @@ async def create_project(request: ProjectCreateRequest) -> ProjectRecord:
     record = _registry.create_project_record(
         name=request.name,
         description=request.description,
-        metadata=metadata or None,
+        metadata=metadata if metadata else None,
     )
     return ProjectRecord(**record)
 
