@@ -10,7 +10,12 @@ and planning modules.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.reasoning.critic import Critic
+    from app.reasoning.evaluator import Evaluator
+    from app.reasoning.idea_engine import IdeaEngine
 
 from app.reasoning.models import (
     CommandOutput,
@@ -127,7 +132,7 @@ class Strategist:
     def process_founder_input(
         self,
         message: str,
-        context: dict[str, object] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> FounderResponse:
         """Run the full founder-to-command flow for a single message.
 
@@ -184,9 +189,9 @@ class Strategist:
     def _flow_generate(
         message: str,
         direction: StrategicDirection,
-        idea_engine: Any,
-        evaluator: Any,
-        critic: Any,
+        idea_engine: "IdeaEngine",
+        evaluator: "Evaluator",
+        critic: "Critic",
         create_plan: Any,
         compile_commands: Any,
         context: dict[str, Any] | None = None,
