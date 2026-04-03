@@ -11,20 +11,15 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.core.config import get_settings
-from app.integrations.registry_client import RegistryClient
+from app.core.dependencies import get_registry_client
 from app.reasoning.models import CommandRecord
 
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
-# Shared registry client
+# Shared registry client – single instance across all route modules
 # ---------------------------------------------------------------------------
-_settings = get_settings()
-_registry = RegistryClient(
-    registry_url=_settings.registry_url,
-    api_key=_settings.registry_api_key,
-)
+_registry = get_registry_client()
 
 
 # ---------------------------------------------------------------------------

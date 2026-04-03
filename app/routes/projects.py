@@ -8,20 +8,15 @@ Delegates persistence to the registry client.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.core.config import get_settings
-from app.integrations.registry_client import RegistryClient
+from app.core.dependencies import get_registry_client
 from app.reasoning.models import ProjectRecord, ProjectStatus
 
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
-# Shared registry client – lightweight, reused across requests
+# Shared registry client – single instance across all route modules
 # ---------------------------------------------------------------------------
-_settings = get_settings()
-_registry = RegistryClient(
-    registry_url=_settings.registry_url,
-    api_key=_settings.registry_api_key,
-)
+_registry = get_registry_client()
 
 
 # ---------------------------------------------------------------------------
@@ -85,12 +80,10 @@ async def update_project_status(
     request: ProjectStatusUpdateRequest,
 ) -> ProjectRecord:
     """Update the lifecycle status of an existing project."""
-    existing = _registry.get_project(project_id)
-    if existing is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-
     record = _registry.update_project_status(
         project_id=project_id,
         status=request.status.value,
     )
+    if record is None:
+        raise HTTPException(status_code=404, detail="Project not found")
     return ProjectRecord(**record)

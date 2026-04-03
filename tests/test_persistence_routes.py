@@ -1,10 +1,18 @@
 """Tests for registry-backed project, idea, and command routes."""
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.core.dependencies import get_registry_client
 from main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _reset_registry() -> None:
+    """Clear shared registry stub storage between tests."""
+    get_registry_client().reset()
 
 
 class TestProjectRoutes:
@@ -35,12 +43,10 @@ class TestProjectRoutes:
         body = resp.json()
         assert body["metadata"]["repository_url"] == "https://github.com/org/repo"
 
-    def test_list_projects_initially_empty(self) -> None:
-        # Each route module has its own registry instance, so fresh client
-        # may already have items from other tests.  Just check the shape.
+    def test_list_projects_empty(self) -> None:
         resp = client.get("/projects/")
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
+        assert resp.json() == []
 
     def test_get_project_not_found(self) -> None:
         resp = client.get("/projects/nonexistent-id")

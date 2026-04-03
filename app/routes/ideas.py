@@ -10,12 +10,11 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.config import get_settings
-from app.integrations.registry_client import RegistryClient
+from app.core.dependencies import get_registry_client
 from app.reasoning.critic import Critic
 from app.reasoning.evaluator import Evaluator
 from app.reasoning.idea_engine import IdeaEngine
-from app.reasoning.models import CritiqueResult, EvaluationResult, Idea, IdeaRecord
+from app.reasoning.models import CritiqueResult, EvaluationResult, Idea
 
 router = APIRouter()
 
@@ -26,11 +25,7 @@ _idea_engine = IdeaEngine()
 _evaluator = Evaluator()
 _critic = Critic()
 
-_settings = get_settings()
-_registry = RegistryClient(
-    registry_url=_settings.registry_url,
-    api_key=_settings.registry_api_key,
-)
+_registry = get_registry_client()
 
 
 # ---------------------------------------------------------------------------

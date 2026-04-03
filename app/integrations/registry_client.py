@@ -117,7 +117,7 @@ class RegistryClient:
         self,
         project_id: str,
         status: str,
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         """
         Update the status of an existing project in the registry.
 
@@ -127,15 +127,20 @@ class RegistryClient:
                 ``"completed"``, ``"archived"``).
 
         Returns:
-            The updated project record, or ``None`` if not found in
-            stub storage.
+            The updated project record, or ``None`` if not found.
         """
         now = datetime.now(tz=timezone.utc).isoformat()
         if project_id not in self._projects:
-            return None  # type: ignore[return-value]
+            return None
         self._projects[project_id]["status"] = status
         self._projects[project_id]["updated_at"] = now
         return self._projects[project_id]
+
+    def reset(self) -> None:
+        """Clear all in-memory stub storage.  Useful for test isolation."""
+        self._projects.clear()
+        self._ideas.clear()
+        self._commands.clear()
 
     def list_projects(self) -> list[dict[str, Any]]:
         """
