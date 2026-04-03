@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.core.dependencies import get_factory_orchestrator
+from app.core.dependencies import get_factory_orchestrator, get_portfolio_repository
 from app.factory.build_brief_validator import validate_build_brief
 from app.factory.models import (
     BuildBrief,
@@ -18,6 +18,7 @@ from app.factory.models import (
 router = APIRouter()
 
 _orchestrator = get_factory_orchestrator()
+_portfolio = get_portfolio_repository()
 
 
 @router.post("/briefs/validate", response_model=BuildBriefValidationResult)
@@ -32,7 +33,10 @@ async def create_factory_run(request: FactoryBuildRequest) -> FactoryRunResult:
     dry_run = request.dry_run
     if dry_run is None:
         dry_run = request.build_brief.feature_flags.get("dry_run", True)
-    return _orchestrator.run_factory_build(request.build_brief, dry_run=dry_run)
+    run = _orchestrator.run_factory_build(request.build_brief, dry_run=dry_run)
+    if _portfolio.get_project(run.project_id) is not None:
+        _portfolio.save_factory_run(run)
+    return run
 
 
 @router.get("/runs/{run_id}", response_model=FactoryRunResult)

@@ -13,6 +13,7 @@ from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
 from app.integrations.github_client import GitHubClient
 from app.integrations.registry_client import RegistryClient
 from app.integrations.vercel_client import VercelClient
+from app.portfolio.repository import PortfolioRepository
 
 
 @_lru_cache(maxsize=1)
@@ -62,3 +63,10 @@ def get_factory_orchestrator() -> FactoryOrchestrator:
         github_owner=settings.github_factory_owner,
         repo_template=settings.github_factory_template_repo,
     )
+
+
+@_lru_cache(maxsize=1)
+def get_portfolio_repository() -> PortfolioRepository:
+    """Return a cached SQLite-backed portfolio repository."""
+    settings = get_settings()
+    return PortfolioRepository(db_path=settings.portfolio_db_path)

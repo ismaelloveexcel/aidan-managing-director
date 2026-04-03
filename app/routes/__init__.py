@@ -1,6 +1,6 @@
 # app/routes/__init__.py
 
-from app.routes import approvals, chat, commands, factory, ideas, projects
+from app.routes import approvals, chat, commands, factory, ideas, portfolio, projects
 
 __all__ = [
     "approvals",
@@ -8,5 +8,6 @@ __all__ = [
     "commands",
     "factory",
     "ideas",
+    "portfolio",
     "projects",
 ]

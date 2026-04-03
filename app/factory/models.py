@@ -31,7 +31,7 @@ class FactoryRunStatus(str, Enum):
 class BuildBrief(BaseModel):
     """Canonical contract passed from AI-DAN to the GitHub Factory."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     schema_version: Literal["1.0.0"] = "1.0.0"
     project_id: str
@@ -57,6 +57,13 @@ class BuildBrief(BaseModel):
             "live_factory": False,
         },
     )
+    validation_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    risk_flags: list[str] = Field(default_factory=list)
+    monetization_model: str = "unspecified"
+    deployment_plan: dict[str, Any] = Field(default_factory=dict)
+    launch_gate: dict[str, Any] = Field(default_factory=dict)
+    brief_hash_value: str | None = Field(default=None, alias="brief_hash")
+    idempotency_key_value: str | None = Field(default=None, alias="idempotency_key")
 
     @field_validator(
         "project_id",
@@ -103,6 +110,21 @@ class BuildBrief(BaseModel):
                 raise ValueError(f"feature_flags['{key}'] must be boolean.")
         return merged
 
+    @field_validator("risk_flags")
+    @classmethod
+    def _validate_risk_flags(cls, value: list[str]) -> list[str]:
+        if not isinstance(value, list):
+            raise ValueError("risk_flags must be a list of strings.")
+        cleaned = [flag.strip() for flag in value if isinstance(flag, str) and flag.strip()]
+        return cleaned
+
+    @field_validator("deployment_plan", "launch_gate")
+    @classmethod
+    def _validate_object_fields(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(value, dict):
+            raise ValueError("Field must be a dictionary.")
+        return value
+
     @model_validator(mode="after")
     def _validate_cta_present_in_landing_requirements(self) -> "BuildBrief":
         requirement_text = " ".join(self.landing_page_requirements).lower()
@@ -112,10 +134,30 @@ class BuildBrief(BaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def _sync_hash_fields(self) -> "BuildBrief":
+        computed_hash = self.brief_hash()
+        expected_key = f"{self.project_id}:{computed_hash}"
+
+        if self.brief_hash_value is None:
+            self.brief_hash_value = computed_hash
+        elif self.brief_hash_value != computed_hash:
+            raise ValueError("brief_hash does not match computed payload hash.")
+
+        if self.idempotency_key_value is None:
+            self.idempotency_key_value = expected_key
+        elif self.idempotency_key_value != expected_key:
+            raise ValueError("idempotency_key does not match computed project-scoped key.")
+        return self
+
     def canonical_json(self) -> str:
         """Return canonical JSON used for hashing and idempotency."""
+        payload = self.model_dump(
+            mode="json",
+            exclude={"brief_hash_value", "idempotency_key_value"},
+        )
         return json.dumps(
-            self.model_dump(mode="json"),
+            payload,
             sort_keys=True,
             separators=(",", ":"),
         )
@@ -135,6 +177,9 @@ class BuildBrief(BaseModel):
         landing = "\n".join(f"- {item}" for item in self.landing_page_requirements)
         command_bundle = json.dumps(self.command_bundle, indent=2, sort_keys=True)
         feature_flags = json.dumps(self.feature_flags, indent=2, sort_keys=True)
+        deployment_plan = json.dumps(self.deployment_plan, indent=2, sort_keys=True)
+        launch_gate = json.dumps(self.launch_gate, indent=2, sort_keys=True)
+        risk_flags = "\n".join(f"- {item}" for item in self.risk_flags) or "- none"
 
         return (
             f"# PRODUCT BRIEF\n\n"
@@ -142,6 +187,10 @@ class BuildBrief(BaseModel):
             f"- Project ID: `{self.project_id}`\n"
             f"- Idea ID: `{self.idea_id}`\n"
             f"- Deployment Target: `{self.deployment_target}`\n\n"
+            f"- Brief Hash: `{self.brief_hash_value or self.brief_hash()}`\n"
+            f"- Idempotency Key: `{self.idempotency_key_value or self.idempotency_key()}`\n"
+            f"- Validation Score: `{self.validation_score}`\n"
+            f"- Monetization Model: `{self.monetization_model}`\n\n"
             f"## Hypothesis\n{self.hypothesis}\n\n"
             f"## Target User\n{self.target_user}\n\n"
             f"## Problem\n{self.problem}\n\n"
@@ -149,9 +198,12 @@ class BuildBrief(BaseModel):
             f"## MVP Scope\n{mvp_scope}\n\n"
             f"## Acceptance Criteria\n{acceptance}\n\n"
             f"## Landing Page Requirements\n{landing}\n\n"
+            f"## Risk Flags\n{risk_flags}\n\n"
             f"## CTA\n{self.cta}\n\n"
             f"## Pricing Hint\n{self.pricing_hint}\n\n"
             f"## Command Bundle\n```json\n{command_bundle}\n```\n\n"
+            f"## Deployment Plan\n```json\n{deployment_plan}\n```\n\n"
+            f"## Launch Gate\n```json\n{launch_gate}\n```\n\n"
             f"## Feature Flags\n```json\n{feature_flags}\n```\n"
         )
 

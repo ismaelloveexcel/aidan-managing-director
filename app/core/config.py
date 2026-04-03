@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     vercel_token: str = ""
     vercel_team_id: str = ""
 
+    # --- Portfolio Registry ----------------------------------------------------
+    portfolio_db_path: str = "data/portfolio.sqlite3"
+
 
 @_lru_cache(maxsize=1)
 def get_settings() -> Settings:
