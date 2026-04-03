@@ -1,0 +1,38 @@
+name: Factory Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: "Project identifier used in BuildBrief"
+        required: true
+        type: string
+      dry_run:
+        description: "Run without side effects"
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Trigger factory build
+        env:
+          FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL }}
+        run: |
+          python scripts/run_factory_build.py \
+            --project-id "${{ inputs.project_id }}" \
+            --dry-run "${{ inputs.dry_run }}" \
+            --api-base-url "${FACTORY_BASE_URL:-http://127.0.0.1:8000}"

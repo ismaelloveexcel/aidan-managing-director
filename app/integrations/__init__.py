@@ -16,6 +16,7 @@ from app.integrations.github_client import (
 )
 from app.integrations.llm_client import LLMClient
 from app.integrations.registry_client import RegistryClient
+from app.integrations.vercel_client import VercelClient
 
 __all__ = [
     "GitHubClient",
@@ -25,4 +26,5 @@ __all__ = [
     "RegistryClient",
     "RepoRequest",
     "RepoStatus",
+    "VercelClient",
 ]

@@ -34,10 +34,16 @@ class Settings(BaseSettings):
     # --- GitHub Integration ----------------------------------------------------
     github_token: str = ""
     github_api_base_url: str = "https://api.github.com"
+    github_factory_owner: str = "ai-dan"
+    github_factory_template_repo: str = "saas-template"
 
     # --- Service Registry ------------------------------------------------------
     registry_url: str = "https://registry.example.com"
     registry_api_key: str = ""
+
+    # --- Factory / Deployment --------------------------------------------------
+    vercel_token: str = ""
+    vercel_team_id: str = ""
 
 
 @_lru_cache(maxsize=1)

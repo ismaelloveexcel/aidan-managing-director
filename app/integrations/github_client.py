@@ -103,6 +103,18 @@ class RepoStatus(BaseModel):
     )
 
 
+class CommitFileResult(BaseModel):
+    """Result payload for a single file commit operation."""
+
+    commit_sha: str = Field(description="Synthetic or real commit SHA.")
+    html_url: str = Field(description="Commit URL.")
+    path: str = Field(description="Repository file path committed.")
+    stub: bool = Field(
+        default=True,
+        description="True when response comes from stub behavior.",
+    )
+
+
 class GitHubClient:
     """
     Wraps the GitHub REST API for use by the command routing layer.
@@ -307,6 +319,50 @@ class GitHubClient:
             ``True`` if the dispatch was accepted (stub always succeeds).
         """
         return True
+
+    def create_repo_from_template(
+        self,
+        *,
+        owner: str,
+        name: str,
+        template_owner: str,
+        template_repo: str,
+        private: bool = True,
+        description: str = "",
+    ) -> dict[str, Any]:
+        """Create a repository from a template repository.
+
+        Stub implementation returns a realistic repository metadata payload.
+        """
+        repo_meta = self.create_repo(name=name, owner=owner, private=private)
+        repo_meta["description"] = description
+        repo_meta["template_used"] = f"{template_owner}/{template_repo}"
+        repo_meta["stub"] = True
+        return repo_meta
+
+    def upsert_file(
+        self,
+        *,
+        owner: str,
+        repo: str,
+        path: str,
+        content: str,
+        message: str,
+        branch: str = "main",
+    ) -> dict[str, Any]:
+        """Create or update a repository file.
+
+        Stub implementation returns synthetic commit metadata.
+        """
+        html_base = self._html_base()
+        commit_sha = uuid.uuid4().hex[:12]
+        result = CommitFileResult(
+            commit_sha=commit_sha,
+            html_url=f"{html_base}/{owner}/{repo}/commit/{commit_sha}",
+            path=path,
+            stub=True,
+        )
+        return result.model_dump()
 
     # -- GitHub Factory request helpers ----------------------------------------
 
