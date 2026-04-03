@@ -164,6 +164,26 @@ class CritiqueResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class ScoreOutput(BaseModel):
+    """Structured evaluation scores returned in the pipeline response."""
+
+    feasibility: float = Field(
+        ge=0.0, le=1.0, description="Technical feasibility.",
+    )
+    profitability: float = Field(
+        ge=0.0, le=1.0, description="Revenue potential.",
+    )
+    speed: float = Field(
+        ge=0.0, le=1.0, description="Speed to market.",
+    )
+    competition: float = Field(
+        ge=0.0, le=1.0, description="Competitive advantage (higher = less competition).",
+    )
+    aggregate: float = Field(
+        ge=0.0, le=1.0, description="Weighted aggregate score.",
+    )
+
+
 class CommandOutput(BaseModel):
     """A structured command emitted as part of the founder response."""
 
@@ -191,11 +211,9 @@ class FounderResponse(BaseModel):
     decision: str = Field(
         description="The strategic decision or recommendation.",
     )
-    score: float | None = Field(
+    score: ScoreOutput | None = Field(
         default=None,
-        ge=0.0,
-        le=1.0,
-        description="Aggregate evaluation score when applicable.",
+        description="Structured evaluation scores when applicable.",
     )
     risks: list[Risk] = Field(
         default_factory=list,

@@ -16,8 +16,7 @@ from app.reasoning.models import (
     CommandOutput,
     FounderResponse,
     IntentType,
-    Risk,
-    RiskSeverity,
+    ScoreOutput,
     StrategicDirection,
 )
 
@@ -27,7 +26,7 @@ from app.reasoning.models import (
 _INTENT_KEYWORDS: dict[IntentType, list[str]] = {
     IntentType.BUILD: [
         "build", "create", "launch", "ship", "develop", "make", "start",
-        "implement", "deploy", "new project", "new product",
+        "implement", "deploy", "new project", "new product", "saas",
     ],
     IntentType.IMPROVE: [
         "improve", "optimise", "optimize", "refactor", "upgrade", "fix",
@@ -35,7 +34,8 @@ _INTENT_KEYWORDS: dict[IntentType, list[str]] = {
     ],
     IntentType.EXPLORE: [
         "explore", "research", "investigate", "analyse", "analyze",
-        "discover", "study", "look into", "brainstorm", "idea",
+        "discover", "study", "look into", "brainstorm", "idea", "ideas",
+        "evaluate",
     ],
     IntentType.MONETISE: [
         "monetise", "monetize", "revenue", "profit", "sell", "pricing",
@@ -152,21 +152,13 @@ class Strategist:
 
         direction = self.analyse(ctx)
 
-        # Route to the correct reasoning pipeline based on intent.
-        if direction.intent in (IntentType.BUILD, IntentType.EXPLORE):
+        # All non-UNKNOWN intents run through the full pipeline:
+        # idea generation → evaluation → critique → planning → commands.
+        if direction.intent != IntentType.UNKNOWN:
             return self._flow_generate(
                 message, direction, self._idea_engine, self._evaluator,
                 self._critic, create_plan, compile_commands, ctx,
             )
-
-        if direction.intent == IntentType.IMPROVE:
-            return self._flow_improve(message, direction)
-
-        if direction.intent == IntentType.MONETISE:
-            return self._flow_monetise(message, direction)
-
-        if direction.intent == IntentType.PIVOT:
-            return self._flow_pivot(message, direction)
 
         # UNKNOWN – ask for clarification.
         return FounderResponse(
@@ -215,6 +207,14 @@ class Strategist:
             for cmd in raw_commands
         ]
 
+        score = ScoreOutput(
+            feasibility=evaluation.scores.feasibility,
+            profitability=evaluation.scores.profitability,
+            speed=evaluation.scores.speed,
+            competition=evaluation.scores.competition,
+            aggregate=evaluation.aggregate,
+        )
+
         decision = (
             f"Idea '{idea.title}' scored {evaluation.aggregate:.2f}. "
             f"Critic verdict: {critique.verdict}. "
@@ -234,118 +234,10 @@ class Strategist:
                 f"time to launch: {idea.time_to_launch}."
             ),
             decision=decision,
-            score=evaluation.aggregate,
+            score=score,
             risks=critique.risks,
             suggested_next_action=suggested,
             commands=commands,
-            strategy=direction,
-        )
-
-    @staticmethod
-    def _flow_improve(
-        message: str,
-        direction: StrategicDirection,
-    ) -> FounderResponse:
-        """Handle improvement-oriented requests."""
-        suggested = (
-            direction.objectives[0]
-            if direction.objectives
-            else "Audit current performance"
-        )
-
-        return FounderResponse(
-            summary="Analysed improvement request and identified key areas.",
-            decision=(
-                "Focus on targeted enhancements to existing assets. "
-                "Prioritise quality and performance gains."
-            ),
-            risks=[
-                Risk(
-                    description="Scope creep during improvement cycles.",
-                    severity=RiskSeverity.MEDIUM,
-                    mitigation="Define clear acceptance criteria before starting.",
-                ),
-            ],
-            suggested_next_action=suggested,
-            commands=[
-                CommandOutput(
-                    action="setup_project",
-                    parameters={"description": "Audit and improve existing project"},
-                    priority="high",
-                ),
-            ],
-            strategy=direction,
-        )
-
-    @staticmethod
-    def _flow_monetise(
-        message: str,
-        direction: StrategicDirection,
-    ) -> FounderResponse:
-        """Handle monetisation-oriented requests."""
-        suggested = (
-            direction.objectives[0]
-            if direction.objectives
-            else "Identify monetisation levers"
-        )
-
-        return FounderResponse(
-            summary="Analysed monetisation request and identified revenue opportunities.",
-            decision=(
-                "Activate revenue-generating strategies. "
-                "Prioritise quick wins with proven models."
-            ),
-            risks=[
-                Risk(
-                    description="Premature monetisation may alienate early users.",
-                    severity=RiskSeverity.MEDIUM,
-                    mitigation="Validate willingness-to-pay before hard paywalls.",
-                ),
-            ],
-            suggested_next_action=suggested,
-            commands=[
-                CommandOutput(
-                    action="setup_monetization",
-                    parameters={"description": "Integrate revenue model"},
-                    priority="high",
-                ),
-            ],
-            strategy=direction,
-        )
-
-    @staticmethod
-    def _flow_pivot(
-        message: str,
-        direction: StrategicDirection,
-    ) -> FounderResponse:
-        """Handle pivot-oriented requests."""
-        suggested = (
-            direction.objectives[0]
-            if direction.objectives
-            else "Diagnose current blockers"
-        )
-
-        return FounderResponse(
-            summary="Analysed pivot request and evaluated strategic alternatives.",
-            decision=(
-                "Prepare for a strategic direction change. "
-                "Evaluate alternatives before committing resources."
-            ),
-            risks=[
-                Risk(
-                    description="Pivoting too aggressively may waste prior investment.",
-                    severity=RiskSeverity.HIGH,
-                    mitigation="Conduct a structured pivot analysis before acting.",
-                ),
-            ],
-            suggested_next_action=suggested,
-            commands=[
-                CommandOutput(
-                    action="setup_project",
-                    parameters={"description": "Pivot discovery and analysis"},
-                    priority="high",
-                ),
-            ],
             strategy=direction,
         )
 
