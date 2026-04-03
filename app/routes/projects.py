@@ -2,56 +2,95 @@
 projects.py – Routes for project portfolio management.
 
 Handles listing, creating, and updating projects tracked by AI-DAN.
+Delegates persistence to the registry client.
 """
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.core.config import get_settings
+from app.integrations.registry_client import RegistryClient
+from app.reasoning.models import ProjectRecord, ProjectStatus
+
 router = APIRouter()
 
+# ---------------------------------------------------------------------------
+# Shared registry client – lightweight, reused across requests
+# ---------------------------------------------------------------------------
+_settings = get_settings()
+_registry = RegistryClient(
+    registry_url=_settings.registry_url,
+    api_key=_settings.registry_api_key,
+)
 
-class ProjectRequest(BaseModel):
-    """Payload for creating or updating a project."""
+
+# ---------------------------------------------------------------------------
+# Request / response schemas
+# ---------------------------------------------------------------------------
+
+
+class ProjectCreateRequest(BaseModel):
+    """Payload for creating a new project."""
 
     name: str
     description: str
     repository_url: str | None = None
 
 
-class ProjectResponse(BaseModel):
-    """Structured representation of a project."""
+class ProjectStatusUpdateRequest(BaseModel):
+    """Payload for updating a project's status."""
 
-    project_id: str
-    name: str
-    description: str
-    status: str
+    status: ProjectStatus
 
 
-@router.post("/", response_model=ProjectResponse)
-async def create_project(request: ProjectRequest) -> ProjectResponse:
-    """
-    Create a new project entry in the portfolio.
-
-    Business logic to be implemented in a future iteration.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented")
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 
-@router.get("/", response_model=list[ProjectResponse])
-async def list_projects() -> list[ProjectResponse]:
-    """
-    Return all projects in the portfolio.
+@router.post("/", response_model=ProjectRecord)
+async def create_project(request: ProjectCreateRequest) -> ProjectRecord:
+    """Create a new project entry in the portfolio via the registry."""
+    metadata: dict[str, str] = {}
+    if request.repository_url:
+        metadata["repository_url"] = request.repository_url
 
-    Business logic to be implemented in a future iteration.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    record = _registry.create_project_record(
+        name=request.name,
+        description=request.description,
+        metadata=metadata or None,
+    )
+    return ProjectRecord(**record)
 
 
-@router.get("/{project_id}", response_model=ProjectResponse)
-async def get_project(project_id: str) -> ProjectResponse:
-    """
-    Return details for a specific project by ID.
+@router.get("/", response_model=list[ProjectRecord])
+async def list_projects() -> list[ProjectRecord]:
+    """Return all projects in the portfolio."""
+    records = _registry.list_projects()
+    return [ProjectRecord(**r) for r in records]
 
-    Business logic to be implemented in a future iteration.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented")
+
+@router.get("/{project_id}", response_model=ProjectRecord)
+async def get_project(project_id: str) -> ProjectRecord:
+    """Return details for a specific project by ID."""
+    record = _registry.get_project(project_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return ProjectRecord(**record)
+
+
+@router.patch("/{project_id}/status", response_model=ProjectRecord)
+async def update_project_status(
+    project_id: str,
+    request: ProjectStatusUpdateRequest,
+) -> ProjectRecord:
+    """Update the lifecycle status of an existing project."""
+    existing = _registry.get_project(project_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    record = _registry.update_project_status(
+        project_id=project_id,
+        status=request.status.value,
+    )
+    return ProjectRecord(**record)
