@@ -18,21 +18,38 @@ if errorlevel 1 (
     exit /b 1
 )
 
+set "VENV_DIR=.venv"
+set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
+
 echo.
-echo [AI-DAN] Installing dependencies from requirements.txt...
-python -m pip install --upgrade pip
-if errorlevel 1 (
-    echo [AI-DAN][ERROR] Failed to upgrade pip.
+if not exist "%VENV_PYTHON%" (
+    echo [AI-DAN] Creating local virtual environment in %VENV_DIR%...
+    python -m venv "%VENV_DIR%"
+    if errorlevel 1 (
+        echo [AI-DAN][ERROR] Failed to create virtual environment.
+        exit /b 1
+    )
+)
+
+if not exist "%VENV_PYTHON%" (
+    echo [AI-DAN][ERROR] Virtual environment Python executable was not found.
     exit /b 1
 )
 
-python -m pip install -r requirements.txt
+echo.
+echo [AI-DAN] Installing dependencies from requirements.txt into %VENV_DIR%...
+"%VENV_PYTHON%" -m pip install --upgrade pip
 if errorlevel 1 (
-    echo [AI-DAN][ERROR] Failed to install dependencies.
+    echo [AI-DAN][ERROR] Failed to upgrade pip in the virtual environment.
+    exit /b 1
+)
+
+"%VENV_PYTHON%" -m pip install -r requirements.txt
+if errorlevel 1 (
+    echo [AI-DAN][ERROR] Failed to install dependencies in the virtual environment.
     exit /b 1
 )
 
 echo.
 echo [AI-DAN] Environment setup complete.
-echo You can now run scripts\start_local.bat
-echo.
+echo [AI-DAN] Using virtual environment: %VENV_DIR%

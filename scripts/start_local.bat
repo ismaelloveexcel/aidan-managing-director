@@ -44,11 +44,11 @@ echo.
 
 where py >nul 2>nul
 if errorlevel 1 (
-  start "AI-DAN Backend" cmd /k "cd /d ""%REPO_ROOT%"" && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-  start "AI-DAN Frontend" cmd /k "cd /d ""%REPO_ROOT%"" && python -m streamlit run frontend/command_center.py --server.port 8501"
+  start "AI-DAN Backend" cmd /k "cd /d ""%REPO_ROOT%"" && python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload"
+  start "AI-DAN Frontend" cmd /k "cd /d ""%REPO_ROOT%"" && python -m streamlit run frontend/command_center.py --server.port 8501 --server.address 127.0.0.1"
 ) else (
-  start "AI-DAN Backend" cmd /k "cd /d ""%REPO_ROOT%"" && py -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-  start "AI-DAN Frontend" cmd /k "cd /d ""%REPO_ROOT%"" && py -m streamlit run frontend/command_center.py --server.port 8501"
+  start "AI-DAN Backend" cmd /k "cd /d ""%REPO_ROOT%"" && py -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload"
+  start "AI-DAN Frontend" cmd /k "cd /d ""%REPO_ROOT%"" && py -m streamlit run frontend/command_center.py --server.port 8501 --server.address 127.0.0.1"
 )
 
 echo.

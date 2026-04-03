@@ -21,7 +21,8 @@ echo
 
 echo "[2/3] Starting AI-DAN backend (FastAPI)..."
 cd "${REPO_ROOT}"
-python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
+UVICORN_HOST="${UVICORN_HOST:-127.0.0.1}"
+python3 -m uvicorn main:app --host "${UVICORN_HOST}" --port 8000 --reload &
 BACKEND_PID=$!
 echo "Backend started (PID: ${BACKEND_PID})"
 echo "Backend URL: http://localhost:8000"
@@ -48,4 +49,5 @@ trap cleanup EXIT INT TERM
 echo "[3/3] Starting AI-DAN Command Center (Streamlit)..."
 echo "Frontend URL: http://localhost:8501"
 echo
-python3 -m streamlit run frontend/command_center.py --server.port 8501 --server.address 0.0.0.0
+STREAMLIT_SERVER_ADDRESS="${STREAMLIT_SERVER_ADDRESS:-127.0.0.1}"
+python3 -m streamlit run frontend/command_center.py --server.port 8501 --server.address "${STREAMLIT_SERVER_ADDRESS}"

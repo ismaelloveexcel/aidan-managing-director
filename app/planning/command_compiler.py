@@ -58,8 +58,9 @@ class Command(BaseModel):
     @model_validator(mode="after")
     def _normalise_fields(self) -> Command:
         self.action = _normalise_action(self.action)
-        self.command_type = self.action
-        if not self.requires_approval:
+        if "command_type" not in self.model_fields_set:
+            self.command_type = self.action
+        if "requires_approval" not in self.model_fields_set:
             self.requires_approval = requires_approval({"action": self.action})
         return self
 
