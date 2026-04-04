@@ -70,7 +70,7 @@ def build_business_output(
             "not_needed": not_needed,
             "other": other,
         }
-        dominant = max(mapping, key=mapping.get)  # type: ignore[arg-type]
+        dominant = max(mapping, key=lambda k: mapping[k])
 
     summary = FeedbackSummary(
         total_feedback_count=total,
