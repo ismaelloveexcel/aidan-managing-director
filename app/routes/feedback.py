@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.core.dependencies import get_feedback_service
+from app.core.dependencies import get_feedback_service, get_portfolio_repository
 from app.feedback.fast_decision import FastDecision, fast_decide
 from app.feedback.models import (
     DecisionResult,
@@ -17,6 +17,7 @@ from app.feedback.models import (
 router = APIRouter()
 
 _feedback = get_feedback_service()
+_portfolio = get_portfolio_repository()
 
 
 @router.post("/metrics", response_model=MetricsIngestResponse)
@@ -41,6 +42,22 @@ async def get_project_decision(project_id: str) -> DecisionResult:
     return decision
 
 
+def _default_fast_decision(
+    project_id: str,
+    has_distribution: bool,
+    distribution_changed: bool,
+) -> FastDecision:
+    """Return a fast decision with zero metrics (no data available)."""
+    return fast_decide(
+        project_id=project_id,
+        visits=0,
+        signups=0,
+        revenue=0.0,
+        has_distribution=has_distribution,
+        distribution_changed=distribution_changed,
+    )
+
+
 @router.get("/projects/{project_id}/fast-decision", response_model=FastDecision)
 async def get_fast_decision(
     project_id: str,
@@ -51,35 +68,15 @@ async def get_fast_decision(
 
     Uses the latest metrics snapshot; returns MONITOR if no data exists.
     """
-    try:
-        decision = _feedback.get_project_decision(project_id)
-    except LookupError:
-        return fast_decide(
-            project_id=project_id,
-            visits=0,
-            signups=0,
-            revenue=0.0,
-            has_distribution=has_distribution,
-            distribution_changed=distribution_changed,
-        )
+    snapshot = _portfolio.get_latest_metrics_snapshot(project_id)
+    if snapshot is None:
+        return _default_fast_decision(project_id, has_distribution, distribution_changed)
 
-    if decision is None:
-        return fast_decide(
-            project_id=project_id,
-            visits=0,
-            signups=0,
-            revenue=0.0,
-            has_distribution=has_distribution,
-            distribution_changed=distribution_changed,
-        )
-
-    # Extract metrics from the feedback service response to feed fast decision.
-    # The decision policy already ran; now apply fast-decision rules.
     return fast_decide(
         project_id=project_id,
-        visits=0,
-        signups=0,
-        revenue=0.0,
+        visits=snapshot.visits,
+        signups=snapshot.signups,
+        revenue=snapshot.revenue,
         has_distribution=has_distribution,
         distribution_changed=distribution_changed,
     )
