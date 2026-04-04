@@ -58,3 +58,43 @@ def test_get_missing_run_endpoint() -> None:
     response = client.get("/factory/runs/non-existent-run")
     assert response.status_code == 404
 
+
+def test_tracking_endpoint_returns_workflow_metadata() -> None:
+    get_factory_run_store().reset()
+    created = client.post(
+        "/factory/runs",
+        json={"build_brief": _payload(), "dry_run": True},
+    )
+    assert created.status_code == 200
+    run_id = created.json()["run_id"]
+
+    tracking = client.get(f"/factory/runs/{run_id}/tracking")
+    assert tracking.status_code == 200
+    body = tracking.json()
+    assert body["run_id"] == run_id
+    assert body["workflow_dispatched"] is True
+    assert body["workflow_run_id"].startswith("ghrun-")
+    assert body["repo_url"].startswith("dry-run://github/")
+    assert body["deployment_url"].startswith("dry-run://vercel/")
+
+
+def test_execute_idea_flow_triggers_approved_build() -> None:
+    get_factory_run_store().reset()
+    response = client.post(
+        "/factory/ideas/execute",
+        json={
+            "message": "Idea: AI tool that scores CVs and matches jobs",
+            "project_id": "PRJ-E2E-CV",
+            "dry_run": True,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["approved_for_build"] is True
+    assert body["decision"] == "APPROVE_BUILD"
+    assert body["project_id"] == "PRJ-E2E-CV"
+    assert body["status"] == "succeeded"
+    assert body["workflow_dispatched"] is True
+    assert body["repo_url"].startswith("dry-run://github/")
+    assert body["deployment_url"].startswith("dry-run://vercel/")
+

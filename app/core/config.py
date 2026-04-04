@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     github_api_base_url: str = "https://api.github.com"
     github_factory_owner: str = "ai-dan"
     github_factory_template_repo: str = "saas-template"
+    # External factory workflow dispatch target.
+    factory_owner: str = "ai-dan"
+    factory_repo: str = "ai-dan-factory"
+    factory_workflow_id: str = "factory-build.yml"
 
     # --- Service Registry ------------------------------------------------------
     registry_url: str = "https://registry.example.com"

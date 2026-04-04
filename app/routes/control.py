@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.command_center.models import (
+    BuildRunRow,
     CommandCenterEntry,
     CommandCenterState,
     CommandStatusUpdateRequest,
@@ -53,3 +54,9 @@ async def update_command_status(payload: CommandStatusUpdateRequest) -> CommandC
     if entry is None:
         raise HTTPException(status_code=404, detail="Command not found")
     return entry
+
+
+@router.get("/builds", response_model=list[BuildRunRow])
+async def list_recent_builds(limit: int = 25) -> list[BuildRunRow]:
+    """Return recent build status rows with project and deployment links."""
+    return _command_center.recent_builds(limit=limit)

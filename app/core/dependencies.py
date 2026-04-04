@@ -10,6 +10,7 @@ from functools import lru_cache as _lru_cache
 
 from app.command_center.service import CommandCenterService
 from app.core.config import get_settings
+from app.factory.factory_client import FactoryClient
 from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
 from app.memory.store import MemoryStore
 from app.observability.control import ControlPlaneService
@@ -68,6 +69,19 @@ def get_factory_orchestrator() -> FactoryOrchestrator:
         run_store=get_factory_run_store(),
         github_owner=settings.github_factory_owner,
         repo_template=settings.github_factory_template_repo,
+    )
+
+
+@_lru_cache(maxsize=1)
+def get_factory_client() -> FactoryClient:
+    """Return a cached factory workflow client."""
+    settings = get_settings()
+    return FactoryClient(
+        github_client=get_github_client(),
+        orchestrator=get_factory_orchestrator(),
+        factory_owner=settings.factory_owner or settings.github_factory_owner,
+        factory_repo=settings.factory_repo,
+        workflow_id=settings.factory_workflow_id,
     )
 
 

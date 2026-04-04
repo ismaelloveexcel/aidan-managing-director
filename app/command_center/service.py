@@ -5,6 +5,7 @@ Command Center service for operator-oriented command summaries and controls.
 from __future__ import annotations
 
 from app.command_center.models import (
+    BuildRunRow,
     CommandCenterState,
     CommandCenterEntry,
     CommandCenterSummary,
@@ -75,6 +76,11 @@ class CommandCenterService:
         factory_runs = self._factory_run_store.list_runs()
         factory_runs_running = sum(1 for run in factory_runs if run.status.value == "running")
         factory_runs_failed = sum(1 for run in factory_runs if run.status.value == "failed")
+        latest_build = None
+        latest_build_rows = self.recent_builds(limit=1)
+        if latest_build_rows:
+            latest_build = latest_build_rows[0]
+
         return CommandCenterState(
             approvals_pending=len(self._governance.list_pending_approvals()),
             projects_active=projects_active,
@@ -83,7 +89,34 @@ class CommandCenterService:
             commands_failed=summary.failed,
             factory_runs_running=factory_runs_running,
             factory_runs_failed=factory_runs_failed,
+            latest_build=latest_build,
         )
+
+    def overview(self) -> CommandCenterState:
+        """Compatibility alias used by control routes."""
+        return self.get_state()
+
+    def recent_builds(self, limit: int = 25) -> list[BuildRunRow]:
+        """Return recent build runs enriched with project names."""
+        projects = {item.project_id: item for item in self._portfolio.list_projects()}
+        runs = self._portfolio.list_factory_runs(limit=limit)
+        rows: list[BuildRunRow] = []
+        for run in runs:
+            project_name = run.project_id
+            if run.project_id in projects:
+                project_name = projects[run.project_id].name
+            rows.append(
+                BuildRunRow(
+                    run_id=run.run_id,
+                    project_id=run.project_id,
+                    project_name=project_name,
+                    build_status=run.status,
+                    repo_url=run.repo_url,
+                    deployment_url=run.deploy_url,
+                    created_at=run.created_at,
+                ),
+            )
+        return rows
 
     def update_status(self, request: CommandStatusUpdateRequest) -> CommandCenterEntry | None:
         """Update command status via registry and return typed entry."""

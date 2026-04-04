@@ -290,6 +290,32 @@ class PortfolioRepository:
                     "Idempotency key is already associated with a different run_id."
                 )
 
+            project_row = conn.execute(
+                """
+                SELECT metadata_json
+                FROM projects
+                WHERE project_id = ?
+                """,
+                (run.project_id,),
+            ).fetchone()
+            if project_row is not None:
+                metadata = json.loads(project_row["metadata_json"])
+                metadata["build_status"] = (
+                    run.status.value if hasattr(run.status, "value") else str(run.status)
+                )
+                if run.repo_url:
+                    metadata["repo_url"] = run.repo_url
+                if run.deploy_url:
+                    metadata["deployment_url"] = run.deploy_url
+                conn.execute(
+                    """
+                    UPDATE projects
+                    SET metadata_json = ?, updated_at = ?
+                    WHERE project_id = ?
+                    """,
+                    (json.dumps(metadata, sort_keys=True), utcnow_iso(), run.project_id),
+                )
+
         run_status = run.status.value if hasattr(run.status, "value") else str(run.status)
         if run_status == "running":
             event_type = "build_started"
@@ -305,6 +331,23 @@ class PortfolioRepository:
         saved = self.get_factory_run(run.run_id)
         assert saved is not None
         return saved
+
+    def list_factory_runs(self, limit: int = 25) -> list[FactoryRunRecord]:
+        """Return recent factory runs in reverse-chronological order."""
+        safe_limit = max(1, min(limit, 500))
+        with self._db.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    run_id, project_id, idea_id, status, idempotency_key, dry_run,
+                    repo_url, deploy_url, error, events_json, created_at, updated_at
+                FROM factory_runs
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (safe_limit,),
+            ).fetchall()
+        return [self._to_factory_run_record(row) for row in rows]
 
     def get_factory_run(self, run_id: str) -> FactoryRunRecord | None:
         """Fetch a saved factory run by ID."""

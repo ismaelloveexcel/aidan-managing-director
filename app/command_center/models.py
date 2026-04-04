@@ -46,4 +46,17 @@ class CommandCenterState(BaseModel):
     commands_failed: int = Field(ge=0)
     factory_runs_running: int = Field(ge=0)
     factory_runs_failed: int = Field(ge=0)
+    latest_build: BuildRunRow | None = None
+
+
+class BuildRunRow(BaseModel):
+    """Compact build row for command-center lists."""
+
+    run_id: str
+    project_id: str
+    project_name: str
+    build_status: str = Field(serialization_alias="status")
+    repo_url: str | None = None
+    deployment_url: str | None = None
+    created_at: str
 
