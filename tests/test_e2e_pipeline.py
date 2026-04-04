@@ -15,15 +15,10 @@ client = TestClient(app)
 # ---------------------------------------------------------------------------
 _MANDATORY_KEYS = {"summary", "decision", "score", "risks", "suggested_next_action", "commands", "strategy"}
 _SCORE_KEYS = {
-    "demand",
-    "monetization_clarity",
-    "speed_to_mvp",
-    "competition",
-    "execution_simplicity",
-    "scalability",
-    "founder_fit",
-    "risk",
-    "aggregate",
+    "total_score",
+    "breakdown",
+    "decision",
+    "reason",
 }
 
 
@@ -32,11 +27,12 @@ def _assert_pipeline_response(body: dict) -> None:
     for key in _MANDATORY_KEYS:
         assert key in body, f"Missing mandatory key: {key}"
 
-    # Score must be a dict with all sub-keys when present.
+    # Score must be a dict with mandatory keys when present.
     if body["score"] is not None:
         for key in _SCORE_KEYS:
             assert key in body["score"], f"Missing score key: {key}"
-            assert isinstance(body["score"][key], (int, float))
+        assert isinstance(body["score"]["total_score"], (int, float))
+        assert isinstance(body["score"]["breakdown"], dict)
 
     # Risks must be a list of objects with required risk fields.
     assert isinstance(body["risks"], list)

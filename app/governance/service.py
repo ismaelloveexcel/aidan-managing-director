@@ -33,6 +33,15 @@ class GovernanceService:
         lowered_action = action.strip().lower()
         if lowered_action in _BLOCKED_ACTIONS:
             return CommandSafetyClassification.BLOCKED
+        if lowered_action == "dispatch_factory_build":
+            has_market_truth = isinstance(parameters.get("market_truth"), dict)
+            has_business_package = isinstance(parameters.get("business_package"), dict)
+            has_evaluation = isinstance(parameters.get("evaluation"), dict) or isinstance(
+                parameters.get("score"),
+                dict,
+            )
+            if not (has_market_truth and has_business_package and has_evaluation):
+                return CommandSafetyClassification.BLOCKED
         if lowered_action in HIGH_IMPACT_ACTIONS:
             return CommandSafetyClassification.REQUIRES_APPROVAL
         if parameters.get("environment") == "production":

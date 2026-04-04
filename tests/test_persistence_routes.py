@@ -118,7 +118,10 @@ class TestIdeaPersistence:
         idea = gen.json()
         resp = client.post("/ideas/evaluate", json={"idea": idea})
         assert resp.status_code == 200
-        assert "scores" in resp.json()
+        body = resp.json()
+        assert "total_score" in body
+        assert "breakdown" in body
+        assert "decision" in body
 
     def test_critique_unchanged(self) -> None:
         gen = client.post("/ideas/generate", json={"prompt": "fintech"})

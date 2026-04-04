@@ -9,10 +9,13 @@ def test_guardian_approves_clean_input() -> None:
         idea_input={
             "title": "Focused MVP",
             "mvp_scope": ["Landing page", "CTA endpoint"],
-            "pricing_hint": "Free waitlist",
+            "pricing_hint": "Subscription $49/month",
+            "target_user": "freelancer designers",
+            "problem": "manual proposal workflows are slow",
+            "solution": "niche workflow automation for freelancers",
         },
         validation_score=0.9,
-        monetization_model="waitlist",
+        monetization_model="subscription",
     )
     assert result.decision == "APPROVE"
     assert result.risk_flags == []
@@ -22,15 +25,18 @@ def test_guardian_flags_overlap_risk() -> None:
     agent = GuardianAgent()
     result = agent.review(
         idea_input={
-            "title": "Copycat clone product",
+            "title": "AI SaaS assistant dashboard platform",
             "mvp_scope": ["Landing page", "CTA endpoint"],
-            "pricing_hint": "Free waitlist",
+            "pricing_hint": "Subscription $39/month",
+            "target_user": "all users",
+            "problem": "generic productivity tasks",
+            "solution": "generic assistant for everyone",
         },
         validation_score=0.9,
-        monetization_model="waitlist",
+        monetization_model="subscription",
     )
     assert result.decision == "FLAG"
-    assert "possible_duplicate_overlap" in result.risk_flags
+    assert "high_saturation_no_differentiation" in result.risk_flags
 
 
 def test_guardian_blocks_oversized_scope() -> None:

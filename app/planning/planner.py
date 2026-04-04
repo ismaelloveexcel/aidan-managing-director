@@ -44,6 +44,16 @@ class Plan(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class BusinessPackage(BaseModel):
+    """Launch-ready business package generated for approved ideas."""
+
+    offer: str
+    pricing_model: str
+    price_range: str
+    landing_page: dict[str, str]
+    gtm_strategy: list[str] = Field(default_factory=list, min_length=2, max_length=2)
+
+
 # ---------------------------------------------------------------------------
 # Step-generation helpers (pure logic, no side-effects)
 # ---------------------------------------------------------------------------
@@ -174,3 +184,60 @@ def create_plan(idea: dict[str, Any]) -> dict[str, Any]:
     )
 
     return plan.model_dump()
+
+
+def generate_business_package(build_brief: dict[str, Any]) -> dict[str, Any]:
+    """Generate an immediately sellable business package for an approved idea."""
+    title = str(build_brief.get("title", "")).strip()
+    target_user = str(build_brief.get("target_user", "")).strip()
+    problem = str(build_brief.get("problem", "")).strip()
+    solution = str(build_brief.get("solution", "")).strip()
+    pricing_hint = str(build_brief.get("pricing_hint", "")).strip()
+
+    if not title or not target_user or not problem or not solution:
+        raise ValueError("build_brief missing required business package fields.")
+
+    pricing_text = pricing_hint.lower()
+    if "subscription" in pricing_text or "/month" in pricing_text or "monthly" in pricing_text:
+        pricing_model = "subscription"
+        price_range = "$29-$99/month"
+    elif "one-time" in pricing_text or "lifetime" in pricing_text:
+        pricing_model = "one_time"
+        price_range = "$149-$499 one-time"
+    elif "transaction" in pricing_text or "fee" in pricing_text:
+        pricing_model = "transaction_fee"
+        price_range = "8%-15% per transaction"
+    else:
+        pricing_model = "subscription"
+        price_range = "$39-$79/month"
+
+    offer = (
+        f"{title}: a focused solution for {target_user} that solves "
+        f"'{problem}' with '{solution}'."
+    )
+    headline = f"{title} for {target_user}"
+    subheadline = f"Stop {problem.lower()} and launch with {solution.lower()}."
+    cta = "Start paid pilot"
+
+    audience = target_user.lower()
+    if "developer" in audience or "engineer" in audience:
+        gtm_strategy = ["GitHub content marketing", "Developer communities outreach"]
+    elif "freelancer" in audience or "founder" in audience:
+        gtm_strategy = ["LinkedIn outbound", "X/Twitter founder content"]
+    elif "business" in audience or "b2b" in audience:
+        gtm_strategy = ["LinkedIn outbound", "Cold email to ICP list"]
+    else:
+        gtm_strategy = ["SEO landing page", "LinkedIn outbound"]
+
+    package = BusinessPackage(
+        offer=offer,
+        pricing_model=pricing_model,
+        price_range=price_range,
+        landing_page={
+            "headline": headline,
+            "subheadline": subheadline,
+            "cta": cta,
+        },
+        gtm_strategy=gtm_strategy[:2],
+    )
+    return package.model_dump()

@@ -14,14 +14,14 @@ def _idea_input(project_id: str = "PRJ-PIP-1") -> dict:
         "idea_id": "IDEA-PIP-1",
         "title": "ProposalCopilot Lite",
         "hypothesis": "Faster proposals increase freelancer signup intent.",
-        "target_user": "Freelancers",
-        "problem": "Proposal writing is repetitive and slow.",
-        "solution": "Generate proposal drafts from brief prompts.",
+        "target_user": "Freelancers with recurring outbound sales workflows",
+        "problem": "Proposal writing is repetitive, manual, and time-consuming.",
+        "solution": "Generate niche proposal drafts from brief prompts with workflow automation.",
         "mvp_scope": ["Landing page", "CTA endpoint"],
         "acceptance_criteria": ["Landing page loads", "CTA captures email"],
         "landing_page_requirements": ["Primary CTA: Get early access"],
         "cta": "Get early access",
-        "pricing_hint": "Free waitlist",
+        "pricing_hint": "Subscription $49/month",
     }
 
 
@@ -30,6 +30,7 @@ def test_run_pipeline_returns_build_brief() -> None:
     assert brief.project_id == "PRJ-PIP-1"
     assert brief.validation_score > 0
     assert brief.monetization_model in {"waitlist", "subscription", "one_time", "unspecified"}
+    assert brief.command_bundle["market_truth"]["decision"] == "PASS"
 
 
 def test_run_pipeline_blocks_invalid_payload() -> None:

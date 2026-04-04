@@ -34,15 +34,12 @@ class TestProcessFounderInput:
         result = self.strategist.process_founder_input("Build a new product")
         assert result.score is not None
         assert isinstance(result.score, ScoreOutput)
-        assert 0.0 <= result.score.aggregate <= 1.0
-        assert 0.0 <= result.score.demand <= 1.0
-        assert 0.0 <= result.score.monetization_clarity <= 1.0
-        assert 0.0 <= result.score.speed_to_mvp <= 1.0
-        assert 0.0 <= result.score.competition <= 1.0
-        assert 0.0 <= result.score.execution_simplicity <= 1.0
-        assert 0.0 <= result.score.scalability <= 1.0
-        assert 0.0 <= result.score.founder_fit <= 1.0
-        assert 0.0 <= result.score.risk <= 1.0
+        assert 0.0 <= result.score.total_score <= 10.0
+        assert 0.0 <= result.score.breakdown.market_demand <= 2.0
+        assert 0.0 <= result.score.breakdown.competition_saturation <= 2.0
+        assert 0.0 <= result.score.breakdown.monetization_potential <= 2.0
+        assert 0.0 <= result.score.breakdown.build_complexity <= 2.0
+        assert 0.0 <= result.score.breakdown.speed_to_revenue <= 2.0
 
     def test_build_intent_has_risks(self) -> None:
         result = self.strategist.process_founder_input("Build a new product")
@@ -52,7 +49,7 @@ class TestProcessFounderInput:
         result = self.strategist.process_founder_input("Build a new product")
         assert len(result.decision) > 0
         assert result.decision_output is not None
-        assert result.decision_output.decision in ("approve", "reject", "park")
+        assert result.decision_output.decision.value in ("APPROVE", "REJECT", "HOLD")
         assert result.decision_output.recommended_next_move
 
     def test_build_intent_has_summary(self) -> None:
@@ -145,11 +142,10 @@ class TestChatRouteFounderFlow:
         body = resp.json()
         score = body["score"]
         assert isinstance(score, dict)
-        assert "feasibility" in score
-        assert "profitability" in score
-        assert "speed" in score
-        assert "competition" in score
-        assert "aggregate" in score
+        assert "total_score" in score
+        assert "breakdown" in score
+        assert "decision" in score
+        assert "reason" in score
 
     def test_chat_unknown_has_no_score(self) -> None:
         resp = client.post("/chat/", json={"message": "hello"})

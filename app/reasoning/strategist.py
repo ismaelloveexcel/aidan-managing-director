@@ -211,27 +211,23 @@ class Strategist:
         ]
 
         score = ScoreOutput(
-            demand=evaluation.scores.demand,
-            monetization_clarity=evaluation.scores.monetization_clarity,
-            speed_to_mvp=evaluation.scores.speed_to_mvp,
-            competition=evaluation.scores.competition,
-            execution_simplicity=evaluation.scores.execution_simplicity,
-            scalability=evaluation.scores.scalability,
-            founder_fit=evaluation.scores.founder_fit,
-            risk=evaluation.scores.risk,
-            feasibility=evaluation.scores.feasibility,
-            profitability=evaluation.scores.profitability,
-            speed=evaluation.scores.speed,
-            aggregate=evaluation.aggregate,
+            total_score=evaluation.total_score,
+            breakdown=evaluation.breakdown,
+            decision=evaluation.decision,
+            reason=evaluation.reason,
         )
 
         decision_output = DecisionOutput(
-            verdict=evaluation.decision.verdict,
-            why_now=evaluation.decision.why_now,
-            main_risk=evaluation.decision.main_risk,
-            recommended_next_move=evaluation.decision.recommended_next_move,
-            decision=evaluation.decision.action,
-            action=evaluation.decision.action,
+            verdict=evaluation.decision.value,
+            why_now=f"Deterministic AI-DAN total score: {evaluation.total_score}/10.",
+            main_risk="Market/monetization risk still needs active monitoring after launch.",
+            recommended_next_move=(
+                "Proceed to business package generation and strict operator-capacity check."
+                if evaluation.decision.value == "APPROVE"
+                else "Do not build yet; improve weak scoring dimensions first."
+            ),
+            decision=evaluation.decision,
+            action=evaluation.decision,
         )
         decision = (
             f"Decision={decision_output.decision.value}. "

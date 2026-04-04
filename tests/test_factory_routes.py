@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 
-from app.core.dependencies import get_factory_run_store
+from app.core.dependencies import get_factory_run_store, get_portfolio_repository
 from main import app
 
 client = TestClient(app)
@@ -80,10 +80,15 @@ def test_tracking_endpoint_returns_workflow_metadata() -> None:
 
 def test_execute_idea_flow_triggers_approved_build() -> None:
     get_factory_run_store().reset()
+    get_portfolio_repository().reset()
     response = client.post(
         "/factory/ideas/execute",
         json={
-            "message": "Idea: AI tool that scores CVs and matches jobs",
+            "message": (
+                "Create a compliance automation product for small clinics. "
+                "They lose revenue from manual repetitive work and need faster workflow automation. "
+                "Pricing: subscription $79/month."
+            ),
             "project_id": "PRJ-E2E-CV",
             "dry_run": True,
         },
@@ -91,7 +96,7 @@ def test_execute_idea_flow_triggers_approved_build() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["approved_for_build"] is True
-    assert body["decision"] == "APPROVE_BUILD"
+    assert body["decision"] == "APPROVE"
     assert body["project_id"] == "PRJ-E2E-CV"
     assert body["status"] == "succeeded"
     assert body["workflow_dispatched"] is True

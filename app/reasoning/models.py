@@ -86,84 +86,48 @@ class Idea(BaseModel):
 
 
 class EvaluationScores(BaseModel):
-    """Numeric scores assigned to an idea across strategic criteria."""
+    """Mandatory AI-DAN 0-10 scoring breakdown (five dimensions, 0-2 each)."""
 
-    demand: float = Field(ge=0.0, le=1.0, description="Estimated market demand signal.")
-    monetization_clarity: float = Field(
+    market_demand: float = Field(ge=0.0, le=2.0)
+    competition_saturation: float = Field(ge=0.0, le=2.0)
+    monetization_potential: float = Field(ge=0.0, le=2.0)
+    build_complexity: float = Field(
         ge=0.0,
-        le=1.0,
-        description="Clarity and viability of the monetization path.",
+        le=2.0,
+        description="Reverse scoring: lower complexity yields higher score.",
     )
-    speed_to_mvp: float = Field(ge=0.0, le=1.0, description="Expected speed to MVP.")
-    competition: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Competitive advantage (higher = less competition).",
-    )
-    execution_simplicity: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="How simple execution is for a lean team.",
-    )
-    scalability: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Potential to scale distribution and revenue.",
-    )
-    founder_fit: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Estimated fit with builder constraints and capabilities.",
-    )
-    risk: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Inverse risk score (higher means lower risk).",
-    )
-    # Legacy compatibility fields retained for existing API/tests.
-    feasibility: float = Field(ge=0.0, le=1.0, description="Legacy feasibility score.")
-    profitability: float = Field(ge=0.0, le=1.0, description="Legacy profitability score.")
-    speed: float = Field(ge=0.0, le=1.0, description="Legacy speed score.")
+    speed_to_revenue: float = Field(ge=0.0, le=2.0)
 
 
 class DecisionAction(str, Enum):
     """Canonical strategic action classes used across reasoning outputs."""
 
-    APPROVE = "approve"
-    REJECT = "reject"
-    PARK = "park"
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    HOLD = "HOLD"
 
 
 class EvaluationDecision(BaseModel):
-    """Business-oriented decision packet derived from weighted scoring."""
+    """Business-oriented decision packet derived from deterministic 0-10 scoring."""
 
-    verdict: str = Field(description="High-level verdict string.")
-    why_now: str = Field(description="Why this idea should be acted on now.")
-    main_risk: str = Field(description="Primary risk requiring mitigation.")
-    recommended_next_move: str = Field(
-        description="Single most important next move.",
-    )
-    action: DecisionAction = Field(
-        description="Action classification: approve/reject/park.",
-    )
+    action: DecisionAction = Field(description="Action classification.")
+    reason: str = Field(description="Primary deterministic reason for the action.")
 
 
 class EvaluationResult(BaseModel):
     """Full evaluation output for a single idea."""
 
     idea_id: str = Field(description="ID of the evaluated idea.")
-    scores: EvaluationScores = Field(description="Individual criterion scores.")
-    aggregate: float = Field(
+    total_score: float = Field(
         ge=0.0,
-        le=1.0,
-        description="Weighted aggregate score.",
+        le=10.0,
+        description="Mandatory AI-DAN total score.",
     )
-    recommendation: str = Field(
-        description="Short recommendation based on the scores.",
+    breakdown: EvaluationScores = Field(
+        description="Mandatory 0-2 per-axis scoring breakdown.",
     )
-    decision: EvaluationDecision = Field(
-        description="Structured decision packet derived from score profile.",
-    )
+    decision: DecisionAction = Field(description="One of: REJECT, HOLD, APPROVE.")
+    reason: str = Field(description="Reason for decision outcome.")
 
 
 # ---------------------------------------------------------------------------
@@ -232,42 +196,10 @@ class CritiqueResult(BaseModel):
 class ScoreOutput(BaseModel):
     """Structured evaluation scores returned in the pipeline response."""
 
-    demand: float = Field(
-        ge=0.0, le=1.0, description="Estimated market demand signal.",
-    )
-    monetization_clarity: float = Field(
-        ge=0.0, le=1.0, description="Clarity and viability of monetization model.",
-    )
-    speed_to_mvp: float = Field(
-        ge=0.0, le=1.0, description="Expected speed to MVP.",
-    )
-    competition: float = Field(
-        ge=0.0, le=1.0, description="Competitive advantage (higher = less competition).",
-    )
-    execution_simplicity: float = Field(
-        ge=0.0, le=1.0, description="Execution simplicity for a lean builder.",
-    )
-    scalability: float = Field(
-        ge=0.0, le=1.0, description="Potential to scale distribution and revenue.",
-    )
-    founder_fit: float = Field(
-        ge=0.0, le=1.0, description="Fit with founder/operator constraints.",
-    )
-    risk: float = Field(
-        ge=0.0, le=1.0, description="Inverse risk score (higher is safer).",
-    )
-    feasibility: float = Field(
-        ge=0.0, le=1.0, description="Legacy technical feasibility.",
-    )
-    profitability: float = Field(
-        ge=0.0, le=1.0, description="Legacy revenue potential.",
-    )
-    speed: float = Field(
-        ge=0.0, le=1.0, description="Legacy speed to market.",
-    )
-    aggregate: float = Field(
-        ge=0.0, le=1.0, description="Weighted aggregate score.",
-    )
+    total_score: float = Field(ge=0.0, le=10.0)
+    breakdown: EvaluationScores
+    decision: DecisionAction
+    reason: str
 
 
 class CommandOutput(BaseModel):
@@ -291,7 +223,7 @@ class DecisionOutput(BaseModel):
     why_now: str = Field(description="Concise reason this should be acted on now.")
     main_risk: str = Field(description="Primary risk requiring active mitigation.")
     recommended_next_move: str = Field(description="Single highest-impact next move.")
-    decision: DecisionAction = Field(description="One of: approve, reject, or park.")
+    decision: DecisionAction = Field(description="One of: APPROVE, REJECT, or HOLD.")
     action: DecisionAction | None = Field(
         default=None,
         description="Compatibility alias for `decision`.",

@@ -8,7 +8,7 @@ import uuid
 from typing import Any
 
 from app.agents.guardian import GuardianAgent
-from app.core.supervisor import run_ai_reasoning_hooks, run_external_validation_stub
+from app.core.supervisor import run_ai_reasoning_hooks, validate_market_truth
 from app.core.validator import validate_idea_input
 from app.factory.models import BuildBrief
 from app.portfolio.repository import PortfolioRepository
@@ -31,10 +31,10 @@ def run_pipeline(
     *,
     repository: PortfolioRepository | None = None,
 ) -> BuildBrief:
-    """Run deterministic validation -> stubs -> guardian -> BuildBrief generation."""
+    """Run deterministic validation -> market truth -> guardian -> BuildBrief generation."""
     deterministic = validate_idea_input(idea_input)
-    external = run_external_validation_stub(idea_input)
     ai_hooks = run_ai_reasoning_hooks(idea_input)
+    market_truth = validate_market_truth(idea_input)
 
     project_id = str(idea_input.get("project_id") or f"prj-{uuid.uuid4().hex[:8]}")
     idea_id = str(idea_input.get("idea_id") or f"idea-{uuid.uuid4().hex[:8]}")
@@ -62,45 +62,55 @@ def run_pipeline(
         raise PipelineBlockedError(
             "Deterministic validation failed: " + ", ".join(deterministic.issues),
         )
+    if market_truth["decision"] != "PASS":
+        raise PipelineBlockedError(f"Validation Gate 0 failed: {market_truth['reason']}")
 
     guardian = GuardianAgent().review(
         idea_input=idea_input,
         validation_score=deterministic.score,
         monetization_model=ai_hooks["monetization_model"],
+        market_truth=market_truth,
     )
 
     if guardian.decision == "BLOCK":
         raise PipelineBlockedError(f"Guardian blocked pipeline: {guardian.reason}")
 
-    mvp_scope = _clean_list(idea_input.get("mvp_scope"), fallback=["Landing page MVP"])
-    acceptance_criteria = _clean_list(
-        idea_input.get("acceptance_criteria"),
-        fallback=["Landing page is deployed", "CTA captures leads"],
-    )
-    landing_page_requirements = _clean_list(
-        idea_input.get("landing_page_requirements"),
-        fallback=[f"Primary CTA: {cta or 'Get early access'}"],
-    )
-    cta_value = cta or "Get early access"
+    mvp_scope = _clean_list(idea_input.get("mvp_scope"), fallback=[])
+    acceptance_criteria = _clean_list(idea_input.get("acceptance_criteria"), fallback=[])
+    landing_page_requirements = _clean_list(idea_input.get("landing_page_requirements"), fallback=[])
+    cta_value = cta
+    if not hypothesis or not target_user or not problem or not solution or not cta_value:
+        raise PipelineBlockedError(
+            "Missing required BuildBrief fields (hypothesis/target_user/problem/solution/cta).",
+        )
+    if not mvp_scope or not acceptance_criteria or not landing_page_requirements:
+        raise PipelineBlockedError(
+            "Missing required list fields (mvp_scope/acceptance_criteria/landing_page_requirements).",
+        )
     if not any(cta_value.lower() in requirement.lower() for requirement in landing_page_requirements):
         landing_page_requirements.append(f"Primary CTA: {cta_value}")
+
+    incoming_command_bundle = idea_input.get("command_bundle")
+    if not isinstance(incoming_command_bundle, dict):
+        incoming_command_bundle = {}
 
     brief = BuildBrief(
         project_id=project_id,
         idea_id=idea_id,
-        hypothesis=hypothesis or "Validate market demand with a focused MVP.",
-        target_user=target_user or "Early adopters in target niche",
-        problem=problem or "Target users lack a fast, focused solution.",
-        solution=solution or "Deliver a narrow MVP with one clear CTA.",
+        hypothesis=hypothesis,
+        target_user=target_user,
+        problem=problem,
+        solution=solution,
         mvp_scope=mvp_scope,
         acceptance_criteria=acceptance_criteria,
         landing_page_requirements=landing_page_requirements,
         cta=cta_value,
-        pricing_hint=pricing_hint or "Free waitlist",
+        pricing_hint=pricing_hint,
         deployment_target="vercel",
         command_bundle={
+            **incoming_command_bundle,
             "pipeline": "v2",
-            "external_validation": external,
+            "market_truth": market_truth,
             "guardian_decision": guardian.decision,
         },
         feature_flags=idea_input.get("feature_flags", {"dry_run": True, "live_factory": False}),

@@ -1,26 +1,21 @@
 """
-Supervisor layer with deterministic stubs for external and AI checks.
+Supervisor layer with deterministic AI checks and hard validation gate.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from app.core.validator import validate_market_truth as _validate_market_truth
 
-def run_external_validation_stub(idea_input: dict[str, Any]) -> dict[str, Any]:
-    """Return a deterministic placeholder external validation response."""
-    title = str(idea_input.get("title", "")).strip()
-    status = "pass" if title else "warn"
-    findings = [] if title else ["missing_title_for_external_signal"]
-    return {
-        "status": status,
-        "findings": findings,
-        "source": "external_validation_stub",
-    }
+
+def validate_market_truth(build_brief: dict[str, Any]) -> dict[str, Any]:
+    """Run Validation Gate 0 and return a strict PASS/FAIL payload."""
+    return _validate_market_truth(build_brief).model_dump()
 
 
 def run_ai_reasoning_hooks(idea_input: dict[str, Any]) -> dict[str, Any]:
-    """Return deterministic AI-hook placeholders used by the pipeline."""
+    """Return deterministic planning hooks used by the pipeline."""
     pricing_hint = str(idea_input.get("pricing_hint", "")).lower()
     if "subscription" in pricing_hint or "/month" in pricing_hint or "monthly" in pricing_hint:
         monetization_model = "subscription"

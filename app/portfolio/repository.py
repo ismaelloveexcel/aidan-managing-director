@@ -99,6 +99,30 @@ class PortfolioRepository:
             ).fetchall()
         return [self._to_project_record(row) for row in rows]
 
+    def update_project_metadata(
+        self,
+        *,
+        project_id: str,
+        metadata_updates: dict[str, Any],
+    ) -> PortfolioProjectRecord | None:
+        """Merge metadata updates into a project's stored metadata JSON."""
+        project = self.get_project(project_id)
+        if project is None:
+            return None
+        merged = dict(project.metadata)
+        merged.update(metadata_updates)
+        now = utcnow_iso()
+        with self._db.connect() as conn:
+            conn.execute(
+                """
+                UPDATE projects
+                SET metadata_json = ?, updated_at = ?
+                WHERE project_id = ?
+                """,
+                (json.dumps(merged, sort_keys=True), now, project_id),
+            )
+        return self.get_project(project_id)
+
     def transition_project_state(
         self,
         *,
@@ -377,6 +401,60 @@ class PortfolioRepository:
                 (key,),
             ).fetchone()
         return self._to_factory_run_record(row) if row is not None else None
+
+    def count_projects_by_state(self, states: set[LifecycleState] | set[str]) -> int:
+        """Return number of projects in any of the provided lifecycle states."""
+        resolved = [
+            state.value if isinstance(state, LifecycleState) else str(state)
+            for state in states
+        ]
+        if not resolved:
+            return 0
+        placeholders = ", ".join("?" for _ in resolved)
+        with self._db.connect() as conn:
+            row = conn.execute(
+                f"""
+                SELECT COUNT(*) AS total
+                FROM projects
+                WHERE status IN ({placeholders})
+                """,
+                tuple(resolved),
+            ).fetchone()
+        return int(row["total"]) if row is not None else 0
+
+    def count_factory_runs_by_status(
+        self,
+        statuses: set[str],
+    ) -> int:
+        """Return number of persisted factory runs matching given statuses."""
+        resolved = [str(status) for status in statuses]
+        if not resolved:
+            return 0
+        placeholders = ", ".join("?" for _ in resolved)
+        with self._db.connect() as conn:
+            row = conn.execute(
+                f"""
+                SELECT COUNT(*) AS total
+                FROM factory_runs
+                WHERE status IN ({placeholders})
+                """,
+                tuple(resolved),
+            ).fetchone()
+        return int(row["total"]) if row is not None else 0
+
+    def count_events_since(self, *, event_type: str, since_iso: str) -> int:
+        """Return count of project events by type at/after the given timestamp."""
+        with self._db.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM project_events
+                WHERE event_type = ?
+                  AND created_at >= ?
+                """,
+                (event_type, since_iso),
+            ).fetchone()
+        return int(row["total"]) if row is not None else 0
 
     # ------------------------------------------------------------------
     # Metrics and decisions

@@ -15,16 +15,19 @@ def test_execute_idea_build_dry_run_and_tracking() -> None:
     response = client.post(
         "/factory/ideas/execute",
         json={
-            "message": "Idea: AI tool that scores CVs and matches jobs",
+            "message": (
+                "Create a compliance automation product for small clinics. "
+                "They lose revenue from manual repetitive work and need faster workflow automation. "
+                "Pricing: subscription $79/month."
+            ),
             "project_id": "PRJ-E2E-CV-1",
             "dry_run": True,
-            "force_approve_build": True,
         },
     )
     assert response.status_code == 200
     body = response.json()
     assert body["approved_for_build"] is True
-    assert body["decision"] == "APPROVE_BUILD"
+    assert body["decision"] == "APPROVE"
     assert body["status"] == "succeeded"
     assert body["repo_url"].startswith("dry-run://github/")
     assert body["deployment_url"].startswith("dry-run://vercel/")
@@ -45,10 +48,13 @@ def test_command_center_state_reflects_latest_build_links() -> None:
     execute = client.post(
         "/factory/ideas/execute",
         json={
-            "message": "Idea: AI tool that scores CVs and matches jobs",
+            "message": (
+                "Create a compliance automation product for small clinics. "
+                "They lose revenue from manual repetitive work and need faster workflow automation. "
+                "Pricing: subscription $79/month."
+            ),
             "project_id": "PRJ-E2E-CV-2",
             "dry_run": True,
-            "force_approve_build": True,
         },
     )
     assert execute.status_code == 200

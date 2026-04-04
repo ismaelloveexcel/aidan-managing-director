@@ -91,7 +91,7 @@ async def brainstorm_ideas(request: BrainstormRequest) -> list[Idea]:
 
 @router.post("/evaluate", response_model=EvaluationResult)
 async def evaluate_idea(request: IdeaEvaluateRequest) -> EvaluationResult:
-    """Score an idea across feasibility, profitability, speed, and competition."""
+    """Score an idea using mandatory AI-DAN 0-10 deterministic gate."""
     return _evaluator.score(request.idea)
 
 
