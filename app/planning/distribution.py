@@ -96,7 +96,6 @@ def generate_distribution_plan(
     title: str,
     target_user: str,
     problem: str,
-    pricing_model: str = "",
 ) -> dict[str, Any]:
     """Generate a focused distribution plan for first-user acquisition.
 
@@ -104,7 +103,6 @@ def generate_distribution_plan(
         title: Product/idea title.
         target_user: Primary audience.
         problem: Core problem being solved.
-        pricing_model: Pricing approach (used for messaging refinement).
 
     Returns:
         Serialised DistributionPlan as a dictionary.

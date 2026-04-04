@@ -33,6 +33,19 @@ def test_no_distribution_suggests_change() -> None:
         project_id="p1", visits=0, signups=0, revenue=0.0, has_distribution=False,
     )
     assert result.action == "CHANGE_DISTRIBUTION"
+    assert result.iteration_count == 1
+    assert result.can_iterate is False
+
+
+def test_no_distribution_second_call_kills() -> None:
+    """After one CHANGE_DISTRIBUTION, a second call with no distribution should KILL."""
+    fast_decide(
+        project_id="p1", visits=0, signups=0, revenue=0.0, has_distribution=False,
+    )
+    result = fast_decide(
+        project_id="p1", visits=0, signups=0, revenue=0.0, has_distribution=False,
+    )
+    assert result.action == "KILL"
 
 
 def test_distribution_changed_still_no_traffic_kills() -> None:

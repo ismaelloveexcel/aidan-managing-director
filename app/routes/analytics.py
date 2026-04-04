@@ -12,15 +12,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.dependencies import (
-    get_memory_store,
-    get_portfolio_repository,
-)
+from app.core.dependencies import get_memory_store
 
 router = APIRouter()
 
 _memory = get_memory_store()
-_portfolio = get_portfolio_repository()
 
 
 class AnalyticsEvent(BaseModel):

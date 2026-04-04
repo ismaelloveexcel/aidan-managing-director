@@ -1,5 +1,7 @@
 """Tests for the auto-learning system."""
 
+import pytest
+
 from app.memory.auto_learner import AutoLearner, ScoringWeights
 from app.memory.store import MemoryStore
 
@@ -24,6 +26,23 @@ def test_record_outcome_creates_signal_and_event() -> None:
     signals = store.get_project_signals("p1")
     assert len(signals) == 1
     assert signals[0].signal_type == "build_success"
+
+
+def test_record_outcome_rejects_invalid_type() -> None:
+    store = MemoryStore()
+    learner = AutoLearner(memory_store=store)
+    with pytest.raises(ValueError, match="Invalid outcome_type"):
+        learner.record_outcome(
+            project_id="p1", outcome_type="unknown_type", score=0.5,  # type: ignore[arg-type]
+        )
+
+
+def test_record_outcome_clamps_score_in_event() -> None:
+    store = MemoryStore()
+    learner = AutoLearner(memory_store=store)
+    learner.record_outcome(project_id="p1", outcome_type="build_success", score=1.5)
+    events = store.recent_events(limit=10)
+    assert events[0]["score"] == 1.0
 
 
 def test_generate_insight_empty() -> None:

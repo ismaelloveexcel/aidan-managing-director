@@ -66,7 +66,9 @@ async def get_fast_decision(
 ) -> FastDecision:
     """Return fast-decision output with strict iteration limits.
 
-    Uses the latest metrics snapshot; returns MONITOR if no data exists.
+    Uses the latest metrics snapshot to feed the fast-decision engine.
+    When no snapshot exists the engine receives zero metrics and will
+    return CHANGE_DISTRIBUTION or MONITOR depending on distribution state.
     """
     snapshot = _portfolio.get_latest_metrics_snapshot(project_id)
     if snapshot is None:

@@ -7,11 +7,41 @@ Uses these signals to recommend scoring weight adjustments over time.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from app.memory.store import LearningSignal, MemoryStore
+
+# Canonical set of allowed outcome types.
+OutcomeType = Literal[
+    "build_success",
+    "build_failure",
+    "revenue_detected",
+    "no_traction",
+    "conversion_high",
+    "conversion_low",
+    "pricing_validated",
+    "distribution_success",
+    "distribution_failure",
+]
+
+OUTCOME_TYPES: frozenset[str] = frozenset(OutcomeType.__args__)  # type: ignore[attr-defined]
+
+SUCCESS_TYPES: frozenset[str] = frozenset({
+    "build_success",
+    "revenue_detected",
+    "conversion_high",
+    "pricing_validated",
+    "distribution_success",
+})
+
+FAILURE_TYPES: frozenset[str] = frozenset({
+    "build_failure",
+    "no_traction",
+    "conversion_low",
+    "distribution_failure",
+})
 
 
 class ScoringWeights(BaseModel):
@@ -53,7 +83,7 @@ class AutoLearner:
         self,
         *,
         project_id: str,
-        outcome_type: str,
+        outcome_type: OutcomeType,
         score: float,
         metadata: dict[str, Any] | None = None,
     ) -> None:
@@ -61,12 +91,20 @@ class AutoLearner:
 
         Args:
             project_id: The project that produced this outcome.
-            outcome_type: One of 'build_success', 'build_failure', 'revenue_detected',
-                          'no_traction', 'conversion_high', 'conversion_low',
-                          'pricing_validated', 'distribution_success', 'distribution_failure'.
+            outcome_type: Must be one of the canonical OutcomeType values.
             score: Normalized score 0.0–1.0 representing outcome quality.
             metadata: Optional details (pricing_model, channel, etc.).
+
+        Raises:
+            ValueError: If *outcome_type* is not a recognised outcome.
         """
+        if outcome_type not in OUTCOME_TYPES:
+            raise ValueError(
+                f"Invalid outcome_type '{outcome_type}'. "
+                f"Must be one of: {', '.join(sorted(OUTCOME_TYPES))}",
+            )
+
+        clamped_score = min(1.0, max(0.0, score))
         notes_parts = [f"outcome={outcome_type}"]
         if metadata:
             for key, value in sorted(metadata.items()):
@@ -76,7 +114,7 @@ class AutoLearner:
             LearningSignal(
                 project_id=project_id,
                 signal_type=outcome_type,
-                score=min(1.0, max(0.0, score)),
+                score=clamped_score,
                 notes="; ".join(notes_parts),
             ),
         )
@@ -85,7 +123,7 @@ class AutoLearner:
                 "event_type": "auto_learning",
                 "project_id": project_id,
                 "outcome_type": outcome_type,
-                "score": score,
+                "score": clamped_score,
                 "metadata": metadata or {},
             },
         )
@@ -98,8 +136,8 @@ class AutoLearner:
         if not learning_events:
             return LearningInsight(recommended_weights=self._weights.model_copy())
 
-        success_types = {"build_success", "revenue_detected", "conversion_high", "pricing_validated", "distribution_success"}
-        failure_types = {"build_failure", "no_traction", "conversion_low", "distribution_failure"}
+        success_types = SUCCESS_TYPES
+        failure_types = FAILURE_TYPES
 
         success_count = 0
         failure_count = 0

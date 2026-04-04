@@ -120,7 +120,7 @@ Copy `.env.example` to `.env` and fill in your values:
 | `FACTORY_OWNER` | No | Factory workflow owner (default: `ai-dan`) |
 | `FACTORY_REPO` | No | Factory workflow repo (default: `ai-dan-factory`) |
 | `FACTORY_WORKFLOW_ID` | No | Workflow filename (default: `factory-build.yml`) |
-| `FACTORY_BASE_URL` | No | Factory API base URL |
+| `FACTORY_BASE_URL` | No | Base URL of the AI-DAN API for factory-related endpoints (e.g. this service's `/factory/runs` route) |
 | `VERCEL_TOKEN` | Yes* | Vercel deployment token |
 | `VERCEL_TEAM_ID` | No | Vercel team ID |
 | `REGISTRY_URL` | No | Service registry URL |

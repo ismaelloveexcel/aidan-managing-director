@@ -10,7 +10,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.core.dependencies import get_auto_learner, get_memory_store
-from app.memory.auto_learner import LearningInsight
+from app.memory.auto_learner import OUTCOME_TYPES, LearningInsight, OutcomeType
 from app.memory.store import LearningSignal
 
 router = APIRouter()
@@ -39,7 +39,7 @@ class LearningOutcomeRequest(BaseModel):
     """Request payload for recording a project outcome for auto-learning."""
 
     project_id: str
-    outcome_type: str
+    outcome_type: OutcomeType
     score: float = Field(ge=0.0, le=1.0)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
