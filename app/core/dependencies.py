@@ -8,8 +8,13 @@ storage while the registry is still stubbed).
 
 from functools import lru_cache as _lru_cache
 
+from app.command_center.service import CommandCenterService
 from app.core.config import get_settings
 from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+from app.memory.store import MemoryStore
+from app.observability.control import ControlPlaneService
+from app.portfolio.intelligence import PortfolioIntelligenceService
+from app.governance.service import GovernanceService
 from app.integrations.github_client import GitHubClient
 from app.integrations.registry_client import RegistryClient
 from app.integrations.vercel_client import VercelClient
@@ -77,3 +82,42 @@ def get_portfolio_repository() -> PortfolioRepository:
 def get_feedback_service() -> FeedbackService:
     """Return a cached feedback service using the portfolio repository."""
     return FeedbackService(repository=get_portfolio_repository())
+
+
+@_lru_cache(maxsize=1)
+def get_governance_service() -> GovernanceService:
+    """Return a cached governance service."""
+    return GovernanceService()
+
+
+@_lru_cache(maxsize=1)
+def get_memory_store() -> MemoryStore:
+    """Return a cached in-memory memory/learning store."""
+    settings = get_settings()
+    return MemoryStore(max_events=settings.memory_max_events)
+
+
+@_lru_cache(maxsize=1)
+def get_portfolio_intelligence_service() -> PortfolioIntelligenceService:
+    """Return portfolio-intelligence service bound to shared repository."""
+    return PortfolioIntelligenceService(repository=get_portfolio_repository())
+
+
+@_lru_cache(maxsize=1)
+def get_control_plane() -> ControlPlaneService:
+    """Return control-plane observability service."""
+    return ControlPlaneService(
+        repository=get_portfolio_repository(),
+        pending_approvals_provider=get_governance_service().list_pending_approvals,
+    )
+
+
+@_lru_cache(maxsize=1)
+def get_command_center_service() -> CommandCenterService:
+    """Return command-center service for operator state snapshots."""
+    return CommandCenterService(
+        registry=get_registry_client(),
+        portfolio=get_portfolio_repository(),
+        governance=get_governance_service(),
+        factory_run_store=get_factory_run_store(),
+    )

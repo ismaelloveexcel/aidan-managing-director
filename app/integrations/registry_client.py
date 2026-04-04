@@ -216,6 +216,7 @@ class RegistryClient:
             "project_id": project_id,
             "status": "pending",
             "created_at": now,
+            "updated_at": now,
             "stub": True,
         }
         self._commands[record_id] = record
@@ -224,6 +225,10 @@ class RegistryClient:
     def get_command_record(self, record_id: str) -> dict[str, Any] | None:
         """Retrieve a persisted command record by ID."""
         return self._commands.get(record_id)
+
+    def list_command_records(self) -> list[dict[str, Any]]:
+        """Return all persisted command records in creation order."""
+        return list(self._commands.values())
 
     def update_command_status(
         self,

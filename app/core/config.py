@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # --- Portfolio Registry ----------------------------------------------------
     portfolio_db_path: str = "data/portfolio.sqlite3"
 
+    # --- Memory / Learning -----------------------------------------------------
+    memory_max_events: int = 2000
+
 
 @_lru_cache(maxsize=1)
 def get_settings() -> Settings:

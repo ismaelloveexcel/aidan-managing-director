@@ -55,6 +55,10 @@ class FactoryRunStore:
         self._runs_by_id[run.run_id] = run.model_copy(deep=True)
         self._runs_by_idempotency_key[run.idempotency_key] = run.run_id
 
+    def list_runs(self) -> list[FactoryRunResult]:
+        """Return a defensive copy of all runs in the store."""
+        return [run.model_copy(deep=True) for run in self._runs_by_id.values()]
+
 
 class FactoryOrchestrator:
     """Coordinates BuildBrief validation, repo creation, and deployment."""
@@ -283,6 +287,12 @@ class FactoryOrchestrator:
             )
             self._store.upsert(run)
             return run
+
+    def list_runs(self) -> list[FactoryRunResult]:
+        """Return all tracked factory runs, newest first."""
+        runs = self._store.list_runs()
+        runs.sort(key=lambda item: item.created_at, reverse=True)
+        return runs
 
     @staticmethod
     def _repo_name_for_brief(build_brief: BuildBrief) -> str:
