@@ -9,12 +9,14 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from app.core.dependencies import get_memory_store
+from app.core.dependencies import get_auto_learner, get_memory_store
+from app.memory.auto_learner import LearningInsight
 from app.memory.store import LearningSignal
 
 router = APIRouter()
 
 _memory = get_memory_store()
+_learner = get_auto_learner()
 
 
 class MemoryEventRequest(BaseModel):
@@ -31,6 +33,15 @@ class LearningSignalRequest(BaseModel):
     signal_type: str
     score: float = Field(ge=0.0, le=1.0)
     notes: str = ""
+
+
+class LearningOutcomeRequest(BaseModel):
+    """Request payload for recording a project outcome for auto-learning."""
+
+    project_id: str
+    outcome_type: str
+    score: float = Field(ge=0.0, le=1.0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 @router.post("/events")
@@ -57,6 +68,24 @@ async def record_learning_signal(request: LearningSignalRequest) -> dict[str, st
         ),
     )
     return {"status": "ok"}
+
+
+@router.post("/outcomes")
+async def record_learning_outcome(request: LearningOutcomeRequest) -> dict[str, str]:
+    """Record a project outcome for the auto-learning system."""
+    _learner.record_outcome(
+        project_id=request.project_id,
+        outcome_type=request.outcome_type,
+        score=request.score,
+        metadata=request.metadata,
+    )
+    return {"status": "ok"}
+
+
+@router.get("/learning/insight", response_model=LearningInsight)
+async def get_learning_insight() -> LearningInsight:
+    """Return aggregated auto-learning insight and recommended weight adjustments."""
+    return _learner.generate_insight()
 
 
 @router.get("/events")

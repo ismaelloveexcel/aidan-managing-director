@@ -7,6 +7,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.core.dependencies import get_feedback_service
+from app.feedback.fast_decision import FastDecision, fast_decide
 from app.feedback.models import (
     DecisionResult,
     MetricsIngestRequest,
@@ -38,3 +39,47 @@ async def get_project_decision(project_id: str) -> DecisionResult:
     if decision is None:
         raise HTTPException(status_code=404, detail="No metrics found for project")
     return decision
+
+
+@router.get("/projects/{project_id}/fast-decision", response_model=FastDecision)
+async def get_fast_decision(
+    project_id: str,
+    has_distribution: bool = True,
+    distribution_changed: bool = False,
+) -> FastDecision:
+    """Return fast-decision output with strict iteration limits.
+
+    Uses the latest metrics snapshot; returns MONITOR if no data exists.
+    """
+    try:
+        decision = _feedback.get_project_decision(project_id)
+    except LookupError:
+        return fast_decide(
+            project_id=project_id,
+            visits=0,
+            signups=0,
+            revenue=0.0,
+            has_distribution=has_distribution,
+            distribution_changed=distribution_changed,
+        )
+
+    if decision is None:
+        return fast_decide(
+            project_id=project_id,
+            visits=0,
+            signups=0,
+            revenue=0.0,
+            has_distribution=has_distribution,
+            distribution_changed=distribution_changed,
+        )
+
+    # Extract metrics from the feedback service response to feed fast decision.
+    # The decision policy already ran; now apply fast-decision rules.
+    return fast_decide(
+        project_id=project_id,
+        visits=0,
+        signups=0,
+        revenue=0.0,
+        has_distribution=has_distribution,
+        distribution_changed=distribution_changed,
+    )

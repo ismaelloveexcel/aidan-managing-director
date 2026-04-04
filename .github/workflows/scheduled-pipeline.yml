@@ -1,0 +1,69 @@
+name: Scheduled Pipeline
+
+on:
+  schedule:
+    # Run every 6 hours to check project health and trigger decisions.
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run without side effects"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scheduled pipeline check
+        env:
+          FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL }}
+          APP_ENV: ${{ vars.APP_ENV || 'production' }}
+        run: |
+          python -c "
+          import json
+          from app.core.dependencies import get_portfolio_intelligence_service, get_feedback_service
+
+          intel = get_portfolio_intelligence_service()
+          capacity = intel.operator_capacity()
+          digest = intel.generate_daily_digest()
+          ranked = intel.ranked_projects()
+
+          print('=== OPERATOR CAPACITY ===')
+          print(json.dumps({
+              'active_projects': capacity.active_projects,
+              'builds_in_parallel': capacity.builds_in_parallel,
+              'launches_this_week': capacity.launches_this_week,
+              'should_hold': capacity.should_hold_new_projects,
+              'reason': capacity.reason,
+          }, indent=2))
+
+          print()
+          print('=== DAILY DIGEST ===')
+          for action in digest:
+              print(f'  {action}')
+
+          print()
+          print('=== RANKED PROJECTS ===')
+          for p in ranked[:5]:
+              print(f'  {p.project_id}: health={p.health_score}, rec={p.recommendation}')
+
+          if not ranked:
+              print('  (no projects)')
+          "

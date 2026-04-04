@@ -8,8 +8,15 @@ from app.feedback.models import DecisionResult
 
 
 def decide(*, visits: int, conversion_rate: float, revenue: float) -> DecisionResult:
-    """Apply deterministic decision rules from the Phase 3 specification."""
-    if visits >= 200 and conversion_rate < 0.01 and revenue == 0:
+    """Apply deterministic decision rules from the Phase 3 specification.
+
+    Thresholds:
+    - Kill: visits >= 100, conversion < 1%, revenue = 0
+    - Scale: revenue > 0, conversion >= 3%
+    - Revise: visits >= 100, conversion < 3%
+    - Monitor: default fallback
+    """
+    if visits >= 100 and conversion_rate < 0.01 and revenue == 0:
         return DecisionResult(
             decision="kill_candidate",
             reason="Traffic is sufficient but conversion is below 1% with no revenue.",
@@ -27,7 +34,7 @@ def decide(*, visits: int, conversion_rate: float, revenue: float) -> DecisionRe
             suggested_next_state="scaled",
             suggested_next_action="scale project",
         )
-    if visits >= 200 and conversion_rate < 0.03:
+    if visits >= 100 and conversion_rate < 0.03:
         return DecisionResult(
             decision="revise_candidate",
             reason="Traffic exists but conversion is below 3%.",

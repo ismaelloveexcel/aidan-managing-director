@@ -12,6 +12,7 @@ from app.command_center.service import CommandCenterService
 from app.core.config import get_settings
 from app.factory.factory_client import FactoryClient
 from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+from app.memory.auto_learner import AutoLearner
 from app.memory.store import MemoryStore
 from app.observability.control import ControlPlaneService
 from app.portfolio.intelligence import PortfolioIntelligenceService
@@ -135,3 +136,9 @@ def get_command_center_service() -> CommandCenterService:
         governance=get_governance_service(),
         factory_run_store=get_factory_run_store(),
     )
+
+
+@_lru_cache(maxsize=1)
+def get_auto_learner() -> AutoLearner:
+    """Return a cached auto-learner service bound to the memory store."""
+    return AutoLearner(memory_store=get_memory_store())
