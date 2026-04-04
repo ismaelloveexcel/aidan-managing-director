@@ -205,7 +205,23 @@ class ScoreOutput(BaseModel):
 class CommandOutput(BaseModel):
     """A structured command emitted as part of the founder response."""
 
+    command_id: str | None = Field(
+        default=None,
+        description="Stable command identifier for downstream tracking.",
+    )
     action: str = Field(description="The action to execute.")
+    command_type: str | None = Field(
+        default=None,
+        description="Canonical command type (defaults to action).",
+    )
+    schema_version: str = Field(
+        default="1.0",
+        description="Command schema version for machine consumers.",
+    )
+    target_system: str = Field(
+        default="github_factory",
+        description="Primary system the command targets.",
+    )
     parameters: dict[str, Any] = Field(
         default_factory=dict,
         description="Action-specific parameters.",
@@ -213,6 +229,18 @@ class CommandOutput(BaseModel):
     priority: str = Field(
         default="medium",
         description="Execution priority (low, medium, high).",
+    )
+    requires_approval: bool = Field(
+        default=False,
+        description="Whether the command must pass human approval before execution.",
+    )
+    source_plan_id: str | None = Field(
+        default=None,
+        description="Origin plan identifier for provenance.",
+    )
+    source_step_id: str | None = Field(
+        default=None,
+        description="Origin plan step identifier for provenance.",
     )
 
 

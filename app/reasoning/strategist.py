@@ -13,11 +13,15 @@ import re
 from typing import Any
 
 from app.reasoning.models import (
-    DecisionOutput,
+    CritiqueResult,
     CommandOutput,
+    DecisionOutput,
+    EvaluationResult,
     FounderResponse,
+    Idea,
     IntentType,
     PortfolioComparison,
+    RiskSeverity,
     ScoreOutput,
     StrategicDirection,
 )
@@ -65,6 +69,13 @@ _INTENT_DIRECTIONS: dict[IntentType, str] = {
     IntentType.MONETISE: "Identify and activate revenue-generating strategies.",
     IntentType.PIVOT: "Re-evaluate current direction and prepare for a strategic shift.",
     IntentType.UNKNOWN: "Gather more information before deciding on a direction.",
+}
+
+_RISK_SEVERITY_RANK: dict[RiskSeverity, int] = {
+    RiskSeverity.LOW: 1,
+    RiskSeverity.MEDIUM: 2,
+    RiskSeverity.HIGH: 3,
+    RiskSeverity.CRITICAL: 4,
 }
 
 
@@ -146,69 +157,46 @@ class Strategist:
         Returns:
             A fully populated :class:`FounderResponse`.
         """
-        from app.planning.command_compiler import compile_commands
-        from app.planning.planner import create_plan
-
         ctx: dict[str, Any] = dict(context) if context else {}
         ctx["message"] = message
 
         direction = self.analyse(ctx)
-
-        # All non-UNKNOWN intents run through the full pipeline:
-        # idea generation → evaluation → critique → planning → commands.
-        if direction.intent != IntentType.UNKNOWN:
-            return self._flow_generate(
-                message, direction, self._idea_engine, self._evaluator,
-                self._critic, create_plan, compile_commands, ctx,
-            )
-
-        # UNKNOWN – ask for clarification.
-        return FounderResponse(
-            summary="Unable to determine intent from the provided message.",
-            decision="Request clarification before proceeding.",
-            suggested_next_action="Rephrase your request with more detail.",
-            strategy=direction,
-        )
+        if direction.intent == IntentType.UNKNOWN:
+            return self._build_clarification_response(direction)
+        return self._run_actionable_pipeline(message, direction, ctx)
 
     # ------------------------------------------------------------------
     # Flow implementations (private)
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _flow_generate(
+    def _run_actionable_pipeline(
+        self,
         message: str,
         direction: StrategicDirection,
-        idea_engine: Any,
-        evaluator: Any,
-        critic: Any,
-        create_plan: Any,
-        compile_commands: Any,
-        context: dict[str, Any] | None = None,
+        context: dict[str, Any],
     ) -> FounderResponse:
-        """Generate an idea, evaluate, critique, plan, and compile commands."""
-        idea = idea_engine.generate(message, context=context)
-        evaluation = evaluator.score(idea)
-        critique = critic.critique(idea)
-        comparison = Strategist._compare_against_portfolio(idea, context)
+        """Run the actionable founder flow with explicit stage orchestration."""
+        from app.planning.command_compiler import compile_command_models
+        from app.planning.planner import IdeaPlanInput, create_plan_model
 
-        plan = create_plan({
-            "name": idea.title,
-            "description": idea.summary,
-            "target_user": idea.target_user,
-            "monetization_path": idea.monetization_path,
-            "difficulty": idea.difficulty.value,
-            "time_to_launch": idea.time_to_launch,
-        })
+        idea, evaluation, critique = self._run_reasoning_sequence(
+            message=message,
+            context=context,
+        )
 
-        raw_commands = compile_commands(plan)
-        commands = [
-            CommandOutput(
-                action=cmd["action"],
-                parameters=cmd.get("parameters", {}),
-                priority=cmd.get("priority", "medium"),
-            )
-            for cmd in raw_commands
-        ]
+        plan = create_plan_model(
+            IdeaPlanInput(
+                name=idea.title,
+                description=idea.summary,
+                target_user=idea.target_user,
+                monetization_path=idea.monetization_path,
+                difficulty=idea.difficulty.value,
+                time_to_launch=idea.time_to_launch,
+            ),
+        )
+
+        command_models = compile_command_models(plan.model_dump())
+        commands = [CommandOutput(**cmd.model_dump()) for cmd in command_models]
 
         score = ScoreOutput(
             total_score=evaluation.total_score,
@@ -216,6 +204,8 @@ class Strategist:
             decision=evaluation.decision,
             reason=evaluation.reason,
         )
+
+        comparison = self._compare_against_portfolio(idea, context)
 
         decision_output = DecisionOutput(
             verdict=evaluation.decision.value,
@@ -229,32 +219,98 @@ class Strategist:
             decision=evaluation.decision,
             action=evaluation.decision,
         )
-        decision = (
-            f"Decision={decision_output.decision.value}. "
-            f"Verdict={decision_output.verdict}. "
-            f"Why now: {decision_output.why_now} "
-            f"Main risk: {decision_output.main_risk}"
-        )
-
-        suggested = (
-            direction.objectives[0]
-            if direction.objectives
-            else "Define MVP scope"
-        )
 
         return FounderResponse(
-            summary=(
-                f"Generated and evaluated idea: {idea.title}. "
-                f"Difficulty: {idea.difficulty.value}, "
-                f"time to launch: {idea.time_to_launch}."
-            ),
-            decision=decision,
+            summary=self._build_summary(idea, evaluation, direction),
+            decision=self._build_decision(evaluation, critique, decision_output),
             decision_output=decision_output,
             score=score,
             risks=critique.risks,
-            suggested_next_action=suggested,
+            suggested_next_action=self._build_suggested_action(
+                direction=direction,
+                critique=critique,
+                commands=commands,
+            ),
             commands=commands,
             portfolio_comparison=comparison,
+            strategy=direction,
+        )
+
+    def _run_reasoning_sequence(
+        self,
+        *,
+        message: str,
+        context: dict[str, Any],
+    ) -> tuple[Idea, EvaluationResult, CritiqueResult]:
+        """Run reasoning modules in strict sequence: idea → evaluation → critique."""
+        idea = self._idea_engine.generate(message, context=context)
+        evaluation = self._evaluator.score(idea)
+        critique = self._critic.critique(idea)
+        return idea, evaluation, critique
+
+    @staticmethod
+    def _build_summary(
+        idea: Idea,
+        evaluation: EvaluationResult,
+        direction: StrategicDirection,
+    ) -> str:
+        """Render a concise founder-friendly summary."""
+        return (
+            f"AI-DAN generated '{idea.title}' for {idea.target_user}. "
+            f"Intent '{direction.intent.value}' scored {evaluation.total_score}/10."
+        )
+
+    @staticmethod
+    def _build_decision(
+        evaluation: EvaluationResult,
+        critique: CritiqueResult,
+        decision_output: DecisionOutput,
+    ) -> str:
+        """Render a clear decision statement from evaluator + critic + decision outputs."""
+        if critique.verdict == "reject":
+            prefix = "Do not execute yet."
+        elif critique.verdict == "revise":
+            prefix = "Proceed only after targeted revisions."
+        else:
+            prefix = "Proceed with scoped execution."
+        return (
+            f"{prefix} Critic verdict: {critique.verdict}. "
+            f"Decision: {decision_output.verdict}. "
+            f"Why now: {decision_output.why_now}"
+        )
+
+    @staticmethod
+    def _build_suggested_action(
+        *,
+        direction: StrategicDirection,
+        critique: CritiqueResult,
+        commands: list[CommandOutput],
+    ) -> str:
+        """Pick the highest-value single next action for the founder."""
+        if critique.verdict in {"reject", "revise"} and critique.risks:
+            highest_risk = max(
+                critique.risks,
+                key=lambda risk: _RISK_SEVERITY_RANK[risk.severity],
+            )
+            return highest_risk.mitigation
+
+        if direction.objectives:
+            return direction.objectives[0]
+
+        if commands:
+            return f"Queue command '{commands[0].action}' for execution."
+
+        return "Define MVP scope and run a quick demand test."
+
+    @staticmethod
+    def _build_clarification_response(direction: StrategicDirection) -> FounderResponse:
+        """Return a deterministic response when intent cannot be classified."""
+        return FounderResponse(
+            summary="AI-DAN could not classify the request with enough confidence.",
+            decision="Pause execution and request clarification.",
+            suggested_next_action=(
+                "Rephrase your request with a clear goal, target user, and desired outcome."
+            ),
             strategy=direction,
         )
 
