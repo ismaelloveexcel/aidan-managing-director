@@ -7,6 +7,7 @@ Registers all route modules and configures the application.
 from fastapi import FastAPI
 
 from app.routes import (
+    analytics,
     approvals,
     chat,
     commands,
@@ -37,6 +38,7 @@ app.include_router(ideas.router, prefix="/ideas", tags=["Ideas"])
 app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
 app.include_router(feedback.router, prefix="/feedback", tags=["Feedback"])
+app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(approvals.router, prefix="/approvals", tags=["Approvals"])
 app.include_router(commands.router, prefix="/commands", tags=["Commands"])
 app.include_router(factory.router, prefix="/factory", tags=["Factory"])

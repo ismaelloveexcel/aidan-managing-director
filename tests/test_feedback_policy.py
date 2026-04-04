@@ -21,5 +21,5 @@ def test_policy_revise_candidate() -> None:
 
 
 def test_policy_monitor() -> None:
-    result = decide(visits=100, conversion_rate=0.02, revenue=0.0)
+    result = decide(visits=50, conversion_rate=0.02, revenue=0.0)
     assert result.decision == "monitor"
