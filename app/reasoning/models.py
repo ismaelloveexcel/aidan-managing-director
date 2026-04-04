@@ -86,16 +86,44 @@ class Idea(BaseModel):
 
 
 class EvaluationScores(BaseModel):
-    """Numeric scores assigned to an idea across standard criteria."""
+    """Numeric scores assigned to an idea across strategic criteria."""
 
-    feasibility: float = Field(ge=0.0, le=1.0, description="Technical feasibility.")
-    profitability: float = Field(ge=0.0, le=1.0, description="Revenue potential.")
-    speed: float = Field(ge=0.0, le=1.0, description="Speed to market.")
+    demand: float = Field(ge=0.0, le=1.0, description="Estimated market demand signal.")
+    monetization_clarity: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Clarity and viability of the monetization path.",
+    )
+    speed_to_mvp: float = Field(ge=0.0, le=1.0, description="Expected speed to MVP.")
     competition: float = Field(
         ge=0.0,
         le=1.0,
         description="Competitive advantage (higher = less competition).",
     )
+    execution_simplicity: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="How simple execution is for a lean team.",
+    )
+    scalability: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Potential to scale distribution and revenue.",
+    )
+    founder_fit: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Estimated fit with builder constraints and capabilities.",
+    )
+    risk: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Inverse risk score (higher means lower risk).",
+    )
+    # Legacy compatibility fields retained for existing API/tests.
+    feasibility: float = Field(ge=0.0, le=1.0, description="Legacy feasibility score.")
+    profitability: float = Field(ge=0.0, le=1.0, description="Legacy profitability score.")
+    speed: float = Field(ge=0.0, le=1.0, description="Legacy speed score.")
 
 
 class EvaluationResult(BaseModel):
@@ -157,6 +185,18 @@ class CritiqueResult(BaseModel):
     verdict: str = Field(
         description="Overall verdict: proceed, revise, or reject.",
     )
+    weak_monetization: bool = Field(
+        default=False,
+        description="True when monetization logic appears weak or underspecified.",
+    )
+    complexity_alert: bool = Field(
+        default=False,
+        description="True when execution complexity is likely too high.",
+    )
+    pivot_direction: str | None = Field(
+        default=None,
+        description="Suggested pivot direction when the current framing is weak.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -167,17 +207,38 @@ class CritiqueResult(BaseModel):
 class ScoreOutput(BaseModel):
     """Structured evaluation scores returned in the pipeline response."""
 
-    feasibility: float = Field(
-        ge=0.0, le=1.0, description="Technical feasibility.",
+    demand: float = Field(
+        ge=0.0, le=1.0, description="Estimated market demand signal.",
     )
-    profitability: float = Field(
-        ge=0.0, le=1.0, description="Revenue potential.",
+    monetization_clarity: float = Field(
+        ge=0.0, le=1.0, description="Clarity and viability of monetization model.",
     )
-    speed: float = Field(
-        ge=0.0, le=1.0, description="Speed to market.",
+    speed_to_mvp: float = Field(
+        ge=0.0, le=1.0, description="Expected speed to MVP.",
     )
     competition: float = Field(
         ge=0.0, le=1.0, description="Competitive advantage (higher = less competition).",
+    )
+    execution_simplicity: float = Field(
+        ge=0.0, le=1.0, description="Execution simplicity for a lean builder.",
+    )
+    scalability: float = Field(
+        ge=0.0, le=1.0, description="Potential to scale distribution and revenue.",
+    )
+    founder_fit: float = Field(
+        ge=0.0, le=1.0, description="Fit with founder/operator constraints.",
+    )
+    risk: float = Field(
+        ge=0.0, le=1.0, description="Inverse risk score (higher is safer).",
+    )
+    feasibility: float = Field(
+        ge=0.0, le=1.0, description="Legacy technical feasibility.",
+    )
+    profitability: float = Field(
+        ge=0.0, le=1.0, description="Legacy revenue potential.",
+    )
+    speed: float = Field(
+        ge=0.0, le=1.0, description="Legacy speed to market.",
     )
     aggregate: float = Field(
         ge=0.0, le=1.0, description="Weighted aggregate score.",
@@ -195,6 +256,41 @@ class CommandOutput(BaseModel):
     priority: str = Field(
         default="medium",
         description="Execution priority (low, medium, high).",
+    )
+
+
+class DecisionOutput(BaseModel):
+    """Structured business decision packet for UI-friendly display."""
+
+    verdict: str = Field(description="Immediate strategic verdict for this idea.")
+    why_now: str = Field(description="Concise reason this should be acted on now.")
+    main_risk: str = Field(description="Primary risk requiring active mitigation.")
+    recommended_next_move: str = Field(description="Single highest-impact next move.")
+    action: str = Field(description="One of: approve, reject, or park.")
+
+
+class PortfolioComparison(BaseModel):
+    """Comparison of a candidate idea against current portfolio projects."""
+
+    compared_projects: int = Field(description="Number of projects compared.")
+    closest_project_id: str | None = Field(
+        default=None,
+        description="Project ID with highest overlap, if any.",
+    )
+    closest_project_name: str | None = Field(
+        default=None,
+        description="Project name with highest overlap, if any.",
+    )
+    overlap_score: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Semantic-lite overlap score with closest project.",
+    )
+    differentiation_summary: str = Field(
+        description="Human-readable summary of overlap and differentiation.",
+    )
+    recommendation: str = Field(
+        description="Portfolio-level recommendation based on overlap.",
     )
 
 
@@ -228,6 +324,14 @@ class FounderResponse(BaseModel):
     )
     strategy: StrategicDirection = Field(
         description="Underlying strategic direction that drove the response.",
+    )
+    decision_output: DecisionOutput | None = Field(
+        default=None,
+        description="Structured decision packet for UI and automation surfaces.",
+    )
+    portfolio_comparison: PortfolioComparison | None = Field(
+        default=None,
+        description="Candidate-vs-portfolio comparison data.",
     )
 
 

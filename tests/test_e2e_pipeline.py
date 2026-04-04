@@ -14,7 +14,17 @@ client = TestClient(app)
 # Mandatory response fields
 # ---------------------------------------------------------------------------
 _MANDATORY_KEYS = {"summary", "decision", "score", "risks", "suggested_next_action", "commands", "strategy"}
-_SCORE_KEYS = {"feasibility", "profitability", "speed", "competition", "aggregate"}
+_SCORE_KEYS = {
+    "demand",
+    "monetization_clarity",
+    "speed_to_mvp",
+    "competition",
+    "execution_simplicity",
+    "scalability",
+    "founder_fit",
+    "risk",
+    "aggregate",
+}
 
 
 def _assert_pipeline_response(body: dict) -> None:

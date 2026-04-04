@@ -35,10 +35,14 @@ class TestProcessFounderInput:
         assert result.score is not None
         assert isinstance(result.score, ScoreOutput)
         assert 0.0 <= result.score.aggregate <= 1.0
-        assert 0.0 <= result.score.feasibility <= 1.0
-        assert 0.0 <= result.score.profitability <= 1.0
-        assert 0.0 <= result.score.speed <= 1.0
+        assert 0.0 <= result.score.demand <= 1.0
+        assert 0.0 <= result.score.monetization_clarity <= 1.0
+        assert 0.0 <= result.score.speed_to_mvp <= 1.0
         assert 0.0 <= result.score.competition <= 1.0
+        assert 0.0 <= result.score.execution_simplicity <= 1.0
+        assert 0.0 <= result.score.scalability <= 1.0
+        assert 0.0 <= result.score.founder_fit <= 1.0
+        assert 0.0 <= result.score.risk <= 1.0
 
     def test_build_intent_has_risks(self) -> None:
         result = self.strategist.process_founder_input("Build a new product")
@@ -47,6 +51,9 @@ class TestProcessFounderInput:
     def test_build_intent_has_decision(self) -> None:
         result = self.strategist.process_founder_input("Build a new product")
         assert len(result.decision) > 0
+        assert result.decision_output is not None
+        assert result.decision_output.decision in ("approve", "reject", "park")
+        assert result.decision_output.recommended_next_move
 
     def test_build_intent_has_summary(self) -> None:
         result = self.strategist.process_founder_input("Build a new product")

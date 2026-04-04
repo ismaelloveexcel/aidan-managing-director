@@ -32,6 +32,7 @@ class Critic:
         assumptions = self._challenge_assumptions(idea)
         risks = self._identify_risks(idea)
         improvements = self._suggest_improvements(idea)
+        pivot_direction = self._suggest_pivot_direction(idea, weaknesses, risks)
         verdict = self._render_verdict(weaknesses, risks)
 
         return CritiqueResult(
@@ -39,6 +40,7 @@ class Critic:
             assumptions_challenged=assumptions,
             risks=risks,
             improvements=improvements,
+            pivot_direction=pivot_direction,
             verdict=verdict,
         )
 
@@ -60,6 +62,13 @@ class Critic:
             weaknesses.append(
                 "Freemium models often struggle with low conversion rates.",
             )
+        if not any(
+            token in idea.monetization_path.lower()
+            for token in ("subscription", "fee", "transaction", "preorder", "support")
+        ):
+            weaknesses.append(
+                "Monetization logic is weak or unspecified.",
+            )
 
         if len(idea.problem) < 20:
             weaknesses.append(
@@ -69,6 +78,13 @@ class Critic:
         if "niche" not in idea.target_user.lower() and len(idea.target_user) < 20:
             weaknesses.append(
                 "The target audience is broad — consider narrowing focus.",
+            )
+        if idea.difficulty == Difficulty.HIGH and any(
+            token in idea.title.lower()
+            for token in ("platform", "marketplace", "suite")
+        ):
+            weaknesses.append(
+                "Complexity risk: broad product ambition combined with high implementation difficulty.",
             )
 
         return weaknesses
@@ -127,6 +143,25 @@ class Critic:
                     mitigation="Validate minimum viable volume before committing.",
                 ),
             )
+        if not any(
+            token in idea.monetization_path.lower()
+            for token in ("subscription", "fee", "transaction", "preorder", "support")
+        ):
+            risks.append(
+                Risk(
+                    description="Monetization path is unclear and may block sustainable growth.",
+                    severity=RiskSeverity.HIGH,
+                    mitigation="Define a single primary revenue mechanism before build commitment.",
+                ),
+            )
+        if idea.difficulty == Difficulty.HIGH:
+            risks.append(
+                Risk(
+                    description="Execution complexity may exceed one-founder bandwidth.",
+                    severity=RiskSeverity.HIGH,
+                    mitigation="Cut to a one-screen MVP and defer non-essential features.",
+                ),
+            )
 
         # Generic risk present for all ideas.
         risks.append(
@@ -163,6 +198,25 @@ class Critic:
         )
 
         return improvements
+
+    @staticmethod
+    def _suggest_pivot_direction(
+        idea: Idea,
+        weaknesses: list[str],
+        risks: list[Risk],
+    ) -> str:
+        """Suggest a deterministic pivot direction when weaknesses are high."""
+        severe_risk_count = sum(
+            1 for risk in risks if risk.severity in (RiskSeverity.HIGH, RiskSeverity.CRITICAL)
+        )
+        if severe_risk_count >= 2 or len(weaknesses) >= 3:
+            return (
+                "Pivot to a narrower, single-workflow MVP with one monetization path "
+                "and one target user segment."
+            )
+        if idea.difficulty == Difficulty.HIGH:
+            return "Pivot toward operational simplicity: reduce scope and shorten time-to-launch."
+        return "No pivot required; iterate current concept with tighter positioning."
 
     @staticmethod
     def _render_verdict(weaknesses: list[str], risks: list[Risk]) -> str:

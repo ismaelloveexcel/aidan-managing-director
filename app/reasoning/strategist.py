@@ -13,9 +13,11 @@ import re
 from typing import Any
 
 from app.reasoning.models import (
+    DecisionOutput,
     CommandOutput,
     FounderResponse,
     IntentType,
+    PortfolioComparison,
     ScoreOutput,
     StrategicDirection,
 )
@@ -187,6 +189,7 @@ class Strategist:
         idea = idea_engine.generate(message, context=context)
         evaluation = evaluator.score(idea)
         critique = critic.critique(idea)
+        comparison = Strategist._compare_against_portfolio(idea, context)
 
         plan = create_plan({
             "name": idea.title,
@@ -208,17 +211,35 @@ class Strategist:
         ]
 
         score = ScoreOutput(
-            feasibility=evaluation.scores.feasibility,
-            profitability=evaluation.scores.profitability,
-            speed=evaluation.scores.speed,
+            demand=evaluation.scores.demand,
+            monetization_clarity=evaluation.scores.monetization_clarity,
+            speed_to_mvp=evaluation.scores.speed_to_mvp,
             competition=evaluation.scores.competition,
+            execution_simplicity=evaluation.scores.execution_simplicity,
+            scalability=evaluation.scores.scalability,
+            founder_fit=evaluation.scores.founder_fit,
+            risk=evaluation.scores.risk,
             aggregate=evaluation.aggregate,
         )
 
+        decision_output = DecisionOutput(
+            verdict=critique.verdict,
+            why_now=(
+                f"Market opportunity is actionable for '{idea.title}' with "
+                f"time-to-launch {idea.time_to_launch}."
+            ),
+            main_risk=(
+                critique.risks[0].description if critique.risks
+                else "Execution uncertainty in early market validation."
+            ),
+            recommended_next_move=evaluation.recommendation,
+            action=evaluation.action,
+        )
         decision = (
-            f"Idea '{idea.title}' scored {evaluation.aggregate:.2f}. "
-            f"Critic verdict: {critique.verdict}. "
-            f"Recommendation: {evaluation.recommendation}"
+            f"Decision={decision_output.action}. "
+            f"Verdict={decision_output.verdict}. "
+            f"Why now: {decision_output.why_now} "
+            f"Main risk: {decision_output.main_risk}"
         )
 
         suggested = (
@@ -234,10 +255,12 @@ class Strategist:
                 f"time to launch: {idea.time_to_launch}."
             ),
             decision=decision,
+            decision_output=decision_output,
             score=score,
             risks=critique.risks,
             suggested_next_action=suggested,
             commands=commands,
+            portfolio_comparison=comparison,
             strategy=direction,
         )
 
@@ -323,3 +346,37 @@ class Strategist:
                 objectives.append(obj)
 
         return objectives
+
+    @staticmethod
+    def _compare_against_portfolio(
+        idea: Any,
+        context: dict[str, Any] | None,
+    ) -> PortfolioComparison:
+        """Compare current idea against simple portfolio context heuristics."""
+        portfolio = []
+        if context and isinstance(context.get("portfolio"), list):
+            portfolio = [item for item in context["portfolio"] if isinstance(item, dict)]
+
+        overlapping_projects: list[str] = []
+        for project in portfolio:
+            name = str(project.get("name", "")).strip()
+            text = f"{project.get('name', '')} {project.get('description', '')}".lower()
+            if any(token in text for token in idea.title.lower().split()):
+                if name:
+                    overlapping_projects.append(name)
+
+        relative_rank = "top_candidate"
+        if overlapping_projects:
+            relative_rank = "differentiation_required"
+        elif len(portfolio) >= 3:
+            relative_rank = "competitive_with_portfolio"
+
+        return PortfolioComparison(
+            overlapping_projects=overlapping_projects,
+            relative_rank=relative_rank,
+            summary=(
+                "No direct overlap detected."
+                if not overlapping_projects
+                else "Overlap detected with existing portfolio items; sharpen positioning."
+            ),
+        )
