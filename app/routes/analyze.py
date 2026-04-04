@@ -119,9 +119,10 @@ async def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
             ai_analysis = {}
 
     # Merge AI output with deterministic pipeline output
-    score = pipeline_dict.get("score", {})
-    breakdown = score.get("breakdown", {})
-    total = float(score.get("total_score", 0))
+    score = pipeline_dict.get("score") or {}
+    breakdown = score.get("breakdown") or {}
+    total = float(score.get("total_score", 0) or 0)
+    decision_output = pipeline_dict.get("decision_output") or {}
 
     # Build meaningful scores even when pipeline gate rejects
     # (use heuristic scores from idea attributes as baseline)
@@ -147,8 +148,8 @@ async def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
         speed_score=float(ai_analysis.get("speed_score", breakdown.get("speed_to_revenue", 0) * 5 or base_speed)),
         competition_score=float(ai_analysis.get("competition_score", breakdown.get("competition_saturation", 0) * 5 or base_competition)),
         verdict=ai_analysis.get("verdict", score.get("decision", "HOLD") if total > 0 else "HOLD"),
-        why_now=ai_analysis.get("why_now", pipeline_dict.get("decision_output", {}).get("why_now", "Evaluate timing based on market conditions.")),
-        main_risk=ai_analysis.get("main_risk", pipeline_dict.get("decision_output", {}).get("main_risk", "Market validation needed before scaling.")),
+        why_now=ai_analysis.get("why_now", decision_output.get("why_now", "Evaluate timing based on market conditions.")),
+        main_risk=ai_analysis.get("main_risk", decision_output.get("main_risk", "Market validation needed before scaling.")),
         recommended_next_move=ai_analysis.get("recommended_next_move", pipeline_dict.get("suggested_next_action", "Validate with 5 potential customers.")),
         market_research=research_context,
         ai_powered=ai.ai_enabled,
