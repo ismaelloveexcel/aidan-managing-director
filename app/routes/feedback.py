@@ -1,5 +1,5 @@
 """
-feedback.py - Routes for metrics ingestion and deterministic decision output.
+feedback.py - Routes for metrics ingestion, user feedback, and deterministic decision output.
 """
 
 from __future__ import annotations
@@ -11,6 +11,8 @@ from app.feedback.models import (
     DecisionResult,
     MetricsIngestRequest,
     MetricsIngestResponse,
+    UserFeedbackRequest,
+    UserFeedbackResponse,
 )
 
 router = APIRouter()
@@ -38,3 +40,12 @@ async def get_project_decision(project_id: str) -> DecisionResult:
     if decision is None:
         raise HTTPException(status_code=404, detail="No metrics found for project")
     return decision
+
+
+@router.post("/user-feedback", response_model=UserFeedbackResponse)
+async def submit_user_feedback(payload: UserFeedbackRequest) -> UserFeedbackResponse:
+    """Process user rejection / objection feedback and map to action."""
+    try:
+        return _feedback.process_user_feedback(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -18,6 +18,7 @@ from app.routes import (
     memory,
     portfolio,
     projects,
+    revenue,
 )
 
 app = FastAPI(
@@ -42,6 +43,7 @@ app.include_router(commands.router, prefix="/commands", tags=["Commands"])
 app.include_router(factory.router, prefix="/factory", tags=["Factory"])
 app.include_router(memory.router, prefix="/memory", tags=["Memory"])
 app.include_router(intelligence.router, prefix="/intelligence", tags=["Intelligence"])
+app.include_router(revenue.router, prefix="/revenue", tags=["Revenue Intelligence"])
 app.include_router(control.router, prefix="/control", tags=["Control"])
 
 

@@ -12,6 +12,7 @@ from app.command_center.service import CommandCenterService
 from app.core.config import get_settings
 from app.factory.factory_client import FactoryClient
 from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+from app.memory.auto_learner import AutoLearner
 from app.memory.store import MemoryStore
 from app.observability.control import ControlPlaneService
 from app.portfolio.intelligence import PortfolioIntelligenceService
@@ -95,7 +96,10 @@ def get_portfolio_repository() -> PortfolioRepository:
 @_lru_cache(maxsize=1)
 def get_feedback_service() -> FeedbackService:
     """Return a cached feedback service using the portfolio repository."""
-    return FeedbackService(repository=get_portfolio_repository())
+    return FeedbackService(
+        repository=get_portfolio_repository(),
+        memory_store=get_memory_store(),
+    )
 
 
 @_lru_cache(maxsize=1)
@@ -109,6 +113,12 @@ def get_memory_store() -> MemoryStore:
     """Return a cached in-memory memory/learning store."""
     settings = get_settings()
     return MemoryStore(max_events=settings.memory_max_events)
+
+
+@_lru_cache(maxsize=1)
+def get_auto_learner() -> AutoLearner:
+    """Return a cached auto-learner bound to the shared memory store."""
+    return AutoLearner(memory_store=get_memory_store())
 
 
 @_lru_cache(maxsize=1)
