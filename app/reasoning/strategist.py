@@ -399,7 +399,7 @@ class Strategist:
 
     @staticmethod
     def _compare_against_portfolio(
-        idea: Any,
+        idea: Idea,
         context: dict[str, Any] | None,
     ) -> PortfolioComparison:
         """Compare current idea against simple portfolio context heuristics."""

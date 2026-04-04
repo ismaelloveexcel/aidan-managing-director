@@ -175,7 +175,7 @@ class PortfolioRepository:
         payload = brief.model_dump(mode="json", by_alias=True)
 
         with self._db.connect() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT OR IGNORE INTO build_briefs (
                     brief_id,
@@ -207,18 +207,21 @@ class PortfolioRepository:
                     now,
                 ),
             )
+            inserted = cursor.rowcount > 0
 
-        self.log_event(
-            project_id=project_id,
-            event_type="validated",
-            payload={
-                "brief_id": brief_id,
-                "brief_hash": brief.brief_hash(),
-                "idempotency_key": brief.idempotency_key(),
-            },
-        )
         result = self.get_latest_build_brief(project_id)
         assert result is not None
+
+        if inserted:
+            self.log_event(
+                project_id=project_id,
+                event_type="validated",
+                payload={
+                    "brief_id": brief_id,
+                    "brief_hash": brief.brief_hash(),
+                    "idempotency_key": brief.idempotency_key(),
+                },
+            )
         return result
 
     def get_latest_build_brief(self, project_id: str) -> BuildBriefRecord | None:

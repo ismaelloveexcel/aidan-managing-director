@@ -51,7 +51,7 @@ class BusinessPackage(BaseModel):
     pricing_model: str
     price_range: str
     landing_page: dict[str, str]
-    gtm_strategy: list[str] = Field(default_factory=list, min_length=2, max_length=2)
+    gtm_strategy: list[str] = Field(min_length=2, max_length=2)
 
 
 class IdeaPlanInput(BaseModel):

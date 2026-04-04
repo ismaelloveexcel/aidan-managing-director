@@ -32,14 +32,12 @@ from app.planning.planner import generate_business_package
 from app.reasoning.evaluator import Evaluator
 from app.reasoning.idea_engine import IdeaEngine
 from app.reasoning.models import DecisionAction
-from app.reasoning.strategist import Strategist
 
 router = APIRouter()
 
 _orchestrator = get_factory_orchestrator()
 _factory_client = get_factory_client()
 _portfolio = get_portfolio_repository()
-_strategist = Strategist()
 _idea_engine = IdeaEngine()
 _evaluator = Evaluator()
 _intelligence = get_portfolio_intelligence_service()
@@ -118,7 +116,6 @@ async def execute_idea_build(request: IdeaExecutionRequest) -> IdeaExecutionResu
     """Execute strict flow: validation -> scoring -> business package -> build."""
     context = dict(request.context or {})
     idea = _idea_engine.generate(request.message, context=context)
-    founder_response = _strategist.process_founder_input(request.message, context=context)
     project_id = request.project_id or f"prj-{uuid.uuid4().hex[:8]}"
 
     # 1) Validation Gate 0: must pass before scoring.

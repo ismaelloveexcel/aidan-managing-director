@@ -5,6 +5,7 @@ Handles queuing, reviewing, and resolving approval requests before
 AI-DAN dispatches high-impact commands.
 """
 
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -81,7 +82,7 @@ async def request_approval(request: ApprovalRequest) -> ApprovalResponse:
         "external_action_id": request.action_id,
     }
     if not _approval_gate.requires_approval(command):
-        resolved_id = request.action_id or "auto-approved"
+        resolved_id = request.action_id or f"auto-{uuid.uuid4().hex[:12]}"
         _governance.request_approval(
             action_id=resolved_id,
             action_type=request.action_type,
