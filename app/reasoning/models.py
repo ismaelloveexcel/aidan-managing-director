@@ -141,6 +141,18 @@ class EvaluationResult(BaseModel):
     )
 
 
+class EvaluationDecision(BaseModel):
+    """Business-oriented decision packet derived from weighted scoring."""
+
+    verdict: str = Field(description="High-level verdict string.")
+    why_now: str = Field(description="Why this idea should be acted on now.")
+    main_risk: str = Field(description="Primary risk requiring mitigation.")
+    recommended_next_move: str = Field(
+        description="Single most important next move.",
+    )
+    action: str = Field(description="Action classification: approve/reject/park.")
+
+
 # ---------------------------------------------------------------------------
 # Critique models
 # ---------------------------------------------------------------------------
@@ -291,6 +303,22 @@ class PortfolioComparison(BaseModel):
     )
     recommendation: str = Field(
         description="Portfolio-level recommendation based on overlap.",
+    )
+
+
+class PortfolioComparisonEntry(BaseModel):
+    """Single portfolio project overlap entry used for ranking comparisons."""
+
+    project_id: str = Field(description="Compared project identifier.")
+    project_name: str = Field(description="Compared project name.")
+    overlap_score: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Estimated overlap score between idea and project.",
+    )
+    overlap_reasons: list[str] = Field(
+        default_factory=list,
+        description="Short reasons explaining overlap score.",
     )
 
 
