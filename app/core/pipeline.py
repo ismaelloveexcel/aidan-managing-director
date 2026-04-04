@@ -46,6 +46,12 @@ def run_pipeline(
     pricing_hint = str(idea_input.get("pricing_hint", "")).strip()
 
     if repository is not None:
+        if repository.get_project(project_id) is None:
+            repository.create_project(
+                project_id=project_id,
+                name=str(idea_input.get("name", project_id)),
+                description=str(idea_input.get("problem", "Pipeline-initiated project")),
+            )
         repository.log_event(
             project_id=project_id,
             event_type="idea_scored",

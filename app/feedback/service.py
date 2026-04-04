@@ -20,7 +20,7 @@ class FeedbackService:
         self._repository = repository
 
     def ingest_metrics(self, payload: MetricsIngestRequest) -> MetricsIngestResponse:
-        """Normalize and persist metrics snapshot."""
+        """Normalize, persist metrics snapshot, and record deterministic decision audit event."""
         project = self._repository.get_project(payload.project_id)
         if project is None:
             raise LookupError(f"Project not found: {payload.project_id}")
@@ -33,6 +33,17 @@ class FeedbackService:
             currency=payload.currency,
             timestamp=payload.timestamp,
             raw_payload=payload.model_dump(mode="json"),
+        )
+        # Evaluate and record the decision once per ingestion so that the GET
+        # endpoint remains a pure read without audit side-effects.
+        decision = decide(
+            visits=snapshot.visits,
+            conversion_rate=snapshot.conversion_rate,
+            revenue=snapshot.revenue,
+        )
+        self._repository.record_decision_applied(
+            project_id=payload.project_id,
+            decision={**decision.model_dump(mode="json"), "snapshot_id": snapshot.snapshot_id},
         )
         return MetricsIngestResponse(
             snapshot_id=snapshot.snapshot_id,
@@ -47,7 +58,7 @@ class FeedbackService:
         )
 
     def get_project_decision(self, project_id: str) -> DecisionResult | None:
-        """Load latest metrics and compute deterministic decision."""
+        """Load latest metrics and compute deterministic decision (read-only)."""
         snapshot = self._repository.get_latest_metrics_snapshot(project_id)
         if snapshot is None:
             return None
@@ -56,11 +67,6 @@ class FeedbackService:
             visits=snapshot.visits,
             conversion_rate=snapshot.conversion_rate,
             revenue=snapshot.revenue,
-        )
-        # Record audit-only decision event (no lifecycle mutation yet).
-        self._repository.record_decision_applied(
-            project_id=project_id,
-            decision=result.model_dump(mode="json"),
         )
         return result
 

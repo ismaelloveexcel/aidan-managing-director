@@ -53,8 +53,10 @@ def validate_idea_input(idea_input: dict[str, Any]) -> DeterministicValidationRe
         issues.append("missing_or_empty_acceptance_criteria")
 
     # Penalise scope explosion for one-person operation mode.
+    scope_penalty = 0
     if isinstance(mvp_scope, list) and len(mvp_scope) > 8:
         issues.append("scope_too_large")
+        scope_penalty = 1
 
-    score = round(max(0.0, min(1.0, checks_passed / checks_total)), 2)
+    score = round(max(0.0, min(1.0, (checks_passed - scope_penalty) / checks_total)), 2)
     return DeterministicValidationResult(valid=len(issues) == 0, score=score, issues=issues)

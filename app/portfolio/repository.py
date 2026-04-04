@@ -153,7 +153,7 @@ class PortfolioRepository:
         with self._db.connect() as conn:
             conn.execute(
                 """
-                INSERT INTO build_briefs (
+                INSERT OR IGNORE INTO build_briefs (
                     brief_id,
                     project_id,
                     schema_version,
@@ -268,14 +268,27 @@ class PortfolioRepository:
                     run.updated_at,
                 ),
             )
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO idempotency_keys (
-                    idempotency_key, run_id, project_id, created_at
-                ) VALUES (?, ?, ?, ?)
-                """,
-                (run.idempotency_key, run.run_id, run.project_id, utcnow_iso()),
-            )
+            existing_mapping = conn.execute(
+                    """
+                    SELECT run_id
+                    FROM idempotency_keys
+                    WHERE idempotency_key = ?
+                    """,
+                    (run.idempotency_key,),
+                ).fetchone()
+            if existing_mapping is None:
+                conn.execute(
+                    """
+                    INSERT INTO idempotency_keys (
+                        idempotency_key, run_id, project_id, created_at
+                    ) VALUES (?, ?, ?, ?)
+                    """,
+                    (run.idempotency_key, run.run_id, run.project_id, utcnow_iso()),
+                )
+            elif existing_mapping["run_id"] != run.run_id:
+                raise ValueError(
+                    "Idempotency key is already associated with a different run_id."
+                )
 
         run_status = run.status.value if hasattr(run.status, "value") else str(run.status)
         if run_status == "running":

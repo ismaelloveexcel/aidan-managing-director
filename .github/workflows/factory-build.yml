@@ -32,7 +32,12 @@ jobs:
         env:
           FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL }}
         run: |
+          if [ -z "${FACTORY_BASE_URL}" ]; then
+            echo "FACTORY_BASE_URL is not set. Configure repository or organization variable FACTORY_BASE_URL to point to a running factory API deployment." >&2
+            exit 1
+          fi
+
           python scripts/run_factory_build.py \
             --project-id "${{ inputs.project_id }}" \
             --dry-run "${{ inputs.dry_run }}" \
-            --api-base-url "${FACTORY_BASE_URL:-http://127.0.0.1:8000}"
+            --api-base-url "${FACTORY_BASE_URL}"
