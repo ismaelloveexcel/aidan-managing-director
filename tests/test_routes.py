@@ -52,9 +52,9 @@ class TestIdeasRoutes:
         resp = client.post("/ideas/evaluate", json={"idea": idea})
         assert resp.status_code == 200
         body = resp.json()
-        assert "scores" in body
-        assert "aggregate" in body
-        assert "recommendation" in body
+        assert "total_score" in body
+        assert "breakdown" in body
+        assert "decision" in body
 
     def test_critique_idea(self) -> None:
         gen_resp = client.post("/ideas/generate", json={"prompt": "fintech"})

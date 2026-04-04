@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -86,31 +86,48 @@ class Idea(BaseModel):
 
 
 class EvaluationScores(BaseModel):
-    """Numeric scores assigned to an idea across standard criteria."""
+    """Mandatory AI-DAN 0-10 scoring breakdown (five dimensions, 0-2 each)."""
 
-    feasibility: float = Field(ge=0.0, le=1.0, description="Technical feasibility.")
-    profitability: float = Field(ge=0.0, le=1.0, description="Revenue potential.")
-    speed: float = Field(ge=0.0, le=1.0, description="Speed to market.")
-    competition: float = Field(
+    market_demand: float = Field(ge=0.0, le=2.0)
+    competition_saturation: float = Field(ge=0.0, le=2.0)
+    monetization_potential: float = Field(ge=0.0, le=2.0)
+    build_complexity: float = Field(
         ge=0.0,
-        le=1.0,
-        description="Competitive advantage (higher = less competition).",
+        le=2.0,
+        description="Reverse scoring: lower complexity yields higher score.",
     )
+    speed_to_revenue: float = Field(ge=0.0, le=2.0)
+
+
+class DecisionAction(str, Enum):
+    """Canonical strategic action classes used across reasoning outputs."""
+
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    HOLD = "HOLD"
+
+
+class EvaluationDecision(BaseModel):
+    """Business-oriented decision packet derived from deterministic 0-10 scoring."""
+
+    action: DecisionAction = Field(description="Action classification.")
+    reason: str = Field(description="Primary deterministic reason for the action.")
 
 
 class EvaluationResult(BaseModel):
     """Full evaluation output for a single idea."""
 
     idea_id: str = Field(description="ID of the evaluated idea.")
-    scores: EvaluationScores = Field(description="Individual criterion scores.")
-    aggregate: float = Field(
+    total_score: float = Field(
         ge=0.0,
-        le=1.0,
-        description="Weighted aggregate score.",
+        le=10.0,
+        description="Mandatory AI-DAN total score.",
     )
-    recommendation: str = Field(
-        description="Short recommendation based on the scores.",
+    breakdown: EvaluationScores = Field(
+        description="Mandatory 0-2 per-axis scoring breakdown.",
     )
+    decision: DecisionAction = Field(description="One of: REJECT, HOLD, APPROVE.")
+    reason: str = Field(description="Reason for decision outcome.")
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +174,18 @@ class CritiqueResult(BaseModel):
     verdict: str = Field(
         description="Overall verdict: proceed, revise, or reject.",
     )
+    weak_monetization: bool = Field(
+        default=False,
+        description="True when monetization logic appears weak or underspecified.",
+    )
+    complexity_alert: bool = Field(
+        default=False,
+        description="True when execution complexity is likely too high.",
+    )
+    pivot_direction: str | None = Field(
+        default=None,
+        description="Suggested pivot direction when the current framing is weak.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -167,21 +196,10 @@ class CritiqueResult(BaseModel):
 class ScoreOutput(BaseModel):
     """Structured evaluation scores returned in the pipeline response."""
 
-    feasibility: float = Field(
-        ge=0.0, le=1.0, description="Technical feasibility.",
-    )
-    profitability: float = Field(
-        ge=0.0, le=1.0, description="Revenue potential.",
-    )
-    speed: float = Field(
-        ge=0.0, le=1.0, description="Speed to market.",
-    )
-    competition: float = Field(
-        ge=0.0, le=1.0, description="Competitive advantage (higher = less competition).",
-    )
-    aggregate: float = Field(
-        ge=0.0, le=1.0, description="Weighted aggregate score.",
-    )
+    total_score: float = Field(ge=0.0, le=10.0)
+    breakdown: EvaluationScores
+    decision: DecisionAction
+    reason: str
 
 
 class CommandOutput(BaseModel):
@@ -226,6 +244,88 @@ class CommandOutput(BaseModel):
     )
 
 
+class DecisionOutput(BaseModel):
+    """Structured business decision packet for UI-friendly display."""
+
+    verdict: str = Field(description="Immediate strategic verdict for this idea.")
+    why_now: str = Field(description="Concise reason this should be acted on now.")
+    main_risk: str = Field(description="Primary risk requiring active mitigation.")
+    recommended_next_move: str = Field(description="Single highest-impact next move.")
+    decision: DecisionAction = Field(description="One of: APPROVE, REJECT, or HOLD.")
+    action: DecisionAction | None = Field(
+        default=None,
+        description="Compatibility alias for `decision`.",
+    )
+
+    @model_validator(mode="after")
+    def _sync_action_alias(self) -> "DecisionOutput":
+        """Keep `action` in sync with canonical `decision`."""
+        if self.action is None:
+            self.action = self.decision
+        return self
+
+
+class PortfolioComparison(BaseModel):
+    """Comparison of a candidate idea against current portfolio projects."""
+
+    compared_projects: int = Field(description="Number of projects compared.")
+    closest_project_id: str | None = Field(
+        default=None,
+        description="Project ID with highest overlap, if any.",
+    )
+    closest_project_name: str | None = Field(
+        default=None,
+        description="Project name with highest overlap, if any.",
+    )
+    overlap_score: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Semantic-lite overlap score with closest project.",
+    )
+    differentiation_summary: str = Field(
+        description="Human-readable summary of overlap and differentiation.",
+    )
+    recommendation: str = Field(
+        description="Portfolio-level recommendation based on overlap.",
+    )
+    # Legacy compatibility fields for callers/tests created before schema upgrade.
+    overlapping_projects: list[str] = Field(
+        default_factory=list,
+        description="Names of projects with notable overlap.",
+    )
+    relative_rank: str = Field(
+        default="top_candidate",
+        description="Legacy rank classification used by older route consumers.",
+    )
+    summary: str = Field(
+        default="No direct overlap detected.",
+        description="Legacy short summary kept for backward compatibility.",
+    )
+
+
+class PortfolioComparisonEntry(BaseModel):
+    """Single portfolio project overlap entry used for ranking comparisons."""
+
+    project_id: str = Field(description="Compared project identifier.")
+    project_name: str = Field(description="Compared project name.")
+    overlap_score: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Estimated overlap score between idea and project.",
+    )
+    overlap_reasons: list[str] = Field(
+        default_factory=list,
+        description="Short reasons explaining overlap score.",
+    )
+    # Compatibility fields for previous compare API shape.
+    candidate_idea_id: str | None = None
+    existing_idea_id: str | None = None
+    candidate_score: float | None = None
+    existing_score: float | None = None
+    score_delta: float | None = None
+    recommendation: str | None = None
+
+
 class FounderResponse(BaseModel):
     """Full structured response for a founder-to-command flow turn.
 
@@ -256,6 +356,14 @@ class FounderResponse(BaseModel):
     )
     strategy: StrategicDirection = Field(
         description="Underlying strategic direction that drove the response.",
+    )
+    decision_output: DecisionOutput | None = Field(
+        default=None,
+        description="Structured decision packet for UI and automation surfaces.",
+    )
+    portfolio_comparison: PortfolioComparison | None = Field(
+        default=None,
+        description="Candidate-vs-portfolio comparison data.",
     )
 
 

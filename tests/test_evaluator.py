@@ -1,7 +1,5 @@
 """Tests for app.reasoning.evaluator."""
 
-import pytest
-
 from app.reasoning.evaluator import Evaluator
 from app.reasoning.idea_engine import IdeaEngine
 from app.reasoning.models import EvaluationResult
@@ -22,35 +20,31 @@ class TestEvaluatorScore:
     def test_scores_in_range(self) -> None:
         idea = self.engine.generate("healthcare platform")
         result = self.evaluator.score(idea)
-        for field in ("feasibility", "profitability", "speed", "competition"):
-            val = getattr(result.scores, field)
-            assert 0.0 <= val <= 1.0
+        for field in (
+            "market_demand",
+            "competition_saturation",
+            "monetization_potential",
+            "build_complexity",
+            "speed_to_revenue",
+        ):
+            val = getattr(result.breakdown, field)
+            assert 0.0 <= val <= 2.0
+        assert 0.0 <= result.total_score <= 10.0
 
-    def test_aggregate_in_range(self) -> None:
+    def test_decision_in_mandatory_set(self) -> None:
         idea = self.engine.generate("healthcare platform")
         result = self.evaluator.score(idea)
-        assert 0.0 <= result.aggregate <= 1.0
+        assert result.decision.value in {"REJECT", "HOLD", "APPROVE"}
 
-    def test_recommendation_populated(self) -> None:
+    def test_reason_populated(self) -> None:
         idea = self.engine.generate("healthcare platform")
         result = self.evaluator.score(idea)
-        assert len(result.recommendation) > 0
+        assert len(result.reason) > 0
 
     def test_idea_id_matches(self) -> None:
         idea = self.engine.generate("healthcare platform")
         result = self.evaluator.score(idea)
         assert result.idea_id == idea.idea_id
-
-    def test_custom_weights(self) -> None:
-        evaluator = Evaluator(weights={
-            "feasibility": 1.0,
-            "profitability": 0.0,
-            "speed": 0.0,
-            "competition": 0.0,
-        })
-        idea = self.engine.generate("healthcare platform")
-        result = evaluator.score(idea)
-        assert result.aggregate == result.scores.feasibility
 
 
 class TestEvaluatorRank:
@@ -63,27 +57,10 @@ class TestEvaluatorRank:
     def test_rank_returns_sorted(self) -> None:
         ideas = self.engine.brainstorm("marketing tools", count=5)
         ranked = self.evaluator.rank(ideas)
-        aggregates = [r.aggregate for r in ranked]
-        assert aggregates == sorted(aggregates, reverse=True)
+        totals = [r.total_score for r in ranked]
+        assert totals == sorted(totals, reverse=True)
 
     def test_rank_count_matches(self) -> None:
         ideas = self.engine.brainstorm("marketing tools", count=3)
         ranked = self.evaluator.rank(ideas)
         assert len(ranked) == 3
-
-
-class TestEvaluatorWeightsValidation:
-    """Weight validation tests."""
-
-    def test_missing_key_raises(self) -> None:
-        with pytest.raises(ValueError, match="Missing"):
-            Evaluator(weights={"feasibility": 1.0})
-
-    def test_negative_weight_raises(self) -> None:
-        with pytest.raises(ValueError, match="non-negative"):
-            Evaluator(weights={
-                "feasibility": -0.1,
-                "profitability": 0.3,
-                "speed": 0.2,
-                "competition": 0.2,
-            })

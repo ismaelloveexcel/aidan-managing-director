@@ -126,3 +126,35 @@ class TestCreateCommandRecord:
         client = _make_client()
         record = client.create_command_record("deploy", {}, project_id="proj-abc")
         assert record["project_id"] == "proj-abc"
+
+    def test_get_command_record(self) -> None:
+        client = _make_client()
+        created = client.create_command_record("deploy", {})
+        fetched = client.get_command_record(created["record_id"])
+        assert fetched is not None
+        assert fetched["record_id"] == created["record_id"]
+
+    def test_get_command_record_unknown(self) -> None:
+        client = _make_client()
+        assert client.get_command_record("cmd-missing") is None
+
+    def test_update_command_status(self) -> None:
+        client = _make_client()
+        created = client.create_command_record("deploy", {})
+        updated = client.update_command_status(
+            record_id=created["record_id"],
+            status="completed",
+            message="done",
+        )
+        assert updated is not None
+        assert updated["status"] == "completed"
+        assert updated["message"] == "done"
+        assert "updated_at" in updated
+
+    def test_update_command_status_unknown(self) -> None:
+        client = _make_client()
+        updated = client.update_command_status(
+            record_id="cmd-missing",
+            status="failed",
+        )
+        assert updated is None

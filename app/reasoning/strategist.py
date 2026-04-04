@@ -15,10 +15,12 @@ from typing import Any
 from app.reasoning.models import (
     CritiqueResult,
     CommandOutput,
+    DecisionOutput,
     EvaluationResult,
     FounderResponse,
     Idea,
     IntentType,
+    PortfolioComparison,
     RiskSeverity,
     ScoreOutput,
     StrategicDirection,
@@ -197,16 +199,31 @@ class Strategist:
         commands = [CommandOutput(**cmd.model_dump()) for cmd in command_models]
 
         score = ScoreOutput(
-            feasibility=evaluation.scores.feasibility,
-            profitability=evaluation.scores.profitability,
-            speed=evaluation.scores.speed,
-            competition=evaluation.scores.competition,
-            aggregate=evaluation.aggregate,
+            total_score=evaluation.total_score,
+            breakdown=evaluation.breakdown,
+            decision=evaluation.decision,
+            reason=evaluation.reason,
+        )
+
+        comparison = self._compare_against_portfolio(idea, context)
+
+        decision_output = DecisionOutput(
+            verdict=evaluation.decision.value,
+            why_now=f"Deterministic AI-DAN total score: {evaluation.total_score}/10.",
+            main_risk="Market/monetization risk still needs active monitoring after launch.",
+            recommended_next_move=(
+                "Proceed to business package generation and strict operator-capacity check."
+                if evaluation.decision.value == "APPROVE"
+                else "Do not build yet; improve weak scoring dimensions first."
+            ),
+            decision=evaluation.decision,
+            action=evaluation.decision,
         )
 
         return FounderResponse(
             summary=self._build_summary(idea, evaluation, direction),
-            decision=self._build_decision(evaluation, critique),
+            decision=self._build_decision(evaluation, critique, decision_output),
+            decision_output=decision_output,
             score=score,
             risks=critique.risks,
             suggested_next_action=self._build_suggested_action(
@@ -215,6 +232,7 @@ class Strategist:
                 commands=commands,
             ),
             commands=commands,
+            portfolio_comparison=comparison,
             strategy=direction,
         )
 
@@ -239,15 +257,16 @@ class Strategist:
         """Render a concise founder-friendly summary."""
         return (
             f"AI-DAN generated '{idea.title}' for {idea.target_user}. "
-            f"Intent '{direction.intent.value}' scored {evaluation.aggregate:.2f}/1.00."
+            f"Intent '{direction.intent.value}' scored {evaluation.total_score}/10."
         )
 
     @staticmethod
     def _build_decision(
         evaluation: EvaluationResult,
         critique: CritiqueResult,
+        decision_output: DecisionOutput,
     ) -> str:
-        """Render a clear decision statement from evaluator + critic outputs."""
+        """Render a clear decision statement from evaluator + critic + decision outputs."""
         if critique.verdict == "reject":
             prefix = "Do not execute yet."
         elif critique.verdict == "revise":
@@ -256,7 +275,8 @@ class Strategist:
             prefix = "Proceed with scoped execution."
         return (
             f"{prefix} Critic verdict: {critique.verdict}. "
-            f"Evaluator recommendation: {evaluation.recommendation}"
+            f"Decision: {decision_output.verdict}. "
+            f"Why now: {decision_output.why_now}"
         )
 
     @staticmethod
@@ -376,3 +396,77 @@ class Strategist:
                 objectives.append(obj)
 
         return objectives
+
+    @staticmethod
+    def _compare_against_portfolio(
+        idea: Idea,
+        context: dict[str, Any] | None,
+    ) -> PortfolioComparison:
+        """Compare current idea against simple portfolio context heuristics."""
+        portfolio = []
+        if context and isinstance(context.get("portfolio"), list):
+            portfolio = [item for item in context["portfolio"] if isinstance(item, dict)]
+
+        candidate_tokens = {
+            token
+            for token in f"{getattr(idea, 'title', '')} {getattr(idea, 'target_user', '')}".lower().split()
+            if len(token) > 2
+        }
+
+        closest_project: dict[str, Any] | None = None
+        highest_overlap = 0.0
+        overlapping_projects: list[str] = []
+        for project in portfolio:
+            name = str(project.get("name", "")).strip()
+            text = f"{project.get('name', '')} {project.get('description', '')}".lower()
+            project_tokens = {token for token in text.split() if len(token) > 2}
+            overlap = 0.0
+            if candidate_tokens:
+                overlap = round(
+                    len(candidate_tokens.intersection(project_tokens)) / len(candidate_tokens),
+                    2,
+                )
+
+            if overlap >= 0.35 and name:
+                overlapping_projects.append(name)
+            if overlap > highest_overlap:
+                highest_overlap = overlap
+                closest_project = project
+
+        if highest_overlap >= 0.55:
+            recommendation = "High overlap detected; prefer differentiation before build."
+            relative_rank = "differentiation_required"
+        elif highest_overlap >= 0.30:
+            recommendation = "Moderate overlap; sharpen positioning and segment focus."
+            relative_rank = "competitive_with_portfolio"
+        else:
+            recommendation = "Low overlap; candidate appears additive to current portfolio."
+            relative_rank = "top_candidate"
+
+        closest_name = None
+        closest_id = None
+        if closest_project:
+            closest_name = str(closest_project.get("name", "")).strip() or None
+            closest_id = str(
+                closest_project.get("project_id")
+                or closest_project.get("id")
+                or "",
+            ).strip() or None
+
+        summary = (
+            "No direct overlap detected."
+            if not overlapping_projects
+            else "Overlap detected with existing portfolio items; sharpen positioning."
+        )
+
+        return PortfolioComparison(
+            compared_projects=len(portfolio),
+            closest_project_id=closest_id,
+            closest_project_name=closest_name,
+            overlap_score=highest_overlap,
+            differentiation_summary=summary,
+            recommendation=recommendation,
+            overlapping_projects=overlapping_projects,
+            relative_rank=relative_rank,
+            summary=summary,
+        )

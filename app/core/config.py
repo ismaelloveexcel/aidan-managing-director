@@ -34,10 +34,26 @@ class Settings(BaseSettings):
     # --- GitHub Integration ----------------------------------------------------
     github_token: str = ""
     github_api_base_url: str = "https://api.github.com"
+    github_factory_owner: str = "ai-dan"
+    github_factory_template_repo: str = "saas-template"
+    # External factory workflow dispatch target.
+    factory_owner: str = "ai-dan"
+    factory_repo: str = "ai-dan-factory"
+    factory_workflow_id: str = "factory-build.yml"
 
     # --- Service Registry ------------------------------------------------------
     registry_url: str = "https://registry.example.com"
     registry_api_key: str = ""
+
+    # --- Factory / Deployment --------------------------------------------------
+    vercel_token: str = ""
+    vercel_team_id: str = ""
+
+    # --- Portfolio Registry ----------------------------------------------------
+    portfolio_db_path: str = "data/portfolio.sqlite3"
+
+    # --- Memory / Learning -----------------------------------------------------
+    memory_max_events: int = 2000
 
 
 @_lru_cache(maxsize=1)

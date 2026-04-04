@@ -216,9 +216,35 @@ class RegistryClient:
             "project_id": project_id,
             "status": "pending",
             "created_at": now,
+            "updated_at": now,
             "stub": True,
         }
         self._commands[record_id] = record
+        return record
+
+    def get_command_record(self, record_id: str) -> dict[str, Any] | None:
+        """Retrieve a persisted command record by ID."""
+        return self._commands.get(record_id)
+
+    def list_command_records(self) -> list[dict[str, Any]]:
+        """Return all persisted command records in creation order."""
+        return list(self._commands.values())
+
+    def update_command_status(
+        self,
+        *,
+        record_id: str,
+        status: str,
+        message: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Update status metadata for an existing command record."""
+        record = self._commands.get(record_id)
+        if record is None:
+            return None
+        record["status"] = status
+        if message is not None:
+            record["message"] = message
+        record["updated_at"] = datetime.now(tz=timezone.utc).isoformat()
         return record
 
     def register_service(self, name: str, metadata: dict[str, Any]) -> str:

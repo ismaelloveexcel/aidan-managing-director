@@ -118,7 +118,10 @@ class TestIdeaPersistence:
         idea = gen.json()
         resp = client.post("/ideas/evaluate", json={"idea": idea})
         assert resp.status_code == 200
-        assert "scores" in resp.json()
+        body = resp.json()
+        assert "total_score" in body
+        assert "breakdown" in body
+        assert "decision" in body
 
     def test_critique_unchanged(self) -> None:
         gen = client.post("/ideas/generate", json={"prompt": "fintech"})
@@ -154,6 +157,20 @@ class TestCommandRoutes:
         assert resp.status_code == 200
         assert resp.json()["project_id"] == "proj-xyz"
 
-    def test_get_command_status_not_implemented(self) -> None:
+    def test_get_command_status_not_found(self) -> None:
         resp = client.get("/commands/some-id")
-        assert resp.status_code == 501
+        assert resp.status_code == 404
+
+    def test_get_command_status_for_dispatched_command(self) -> None:
+        dispatch = client.post(
+            "/commands/dispatch",
+            json={"command_type": "deploy", "parameters": {"env": "prod"}},
+        )
+        assert dispatch.status_code == 200
+        command_id = dispatch.json()["record_id"]
+
+        resp = client.get(f"/commands/{command_id}")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["command_id"] == command_id
+        assert body["status"] == "pending"

@@ -1,150 +1,239 @@
 """
-evaluator.py – Objective scoring and evaluation of ideas and plans.
-
-Scores :class:`Idea` instances against feasibility, profitability, speed,
-and competition criteria using deterministic heuristics.
+evaluator.py – Deterministic AI-DAN 0–10 scoring engine.
 """
 
 from __future__ import annotations
 
+import re
+from typing import Any
+
+from app.core.supervisor import validate_market_truth
 from app.reasoning.models import (
+    DecisionAction,
     Difficulty,
     EvaluationResult,
     EvaluationScores,
     Idea,
+    PortfolioComparisonEntry,
 )
-
-# ---------------------------------------------------------------------------
-# Scoring constants
-# ---------------------------------------------------------------------------
-
-_DIFFICULTY_FEASIBILITY: dict[Difficulty, float] = {
-    Difficulty.LOW: 0.9,
-    Difficulty.MEDIUM: 0.6,
-    Difficulty.HIGH: 0.3,
-}
-
-_DIFFICULTY_SPEED: dict[Difficulty, float] = {
-    Difficulty.LOW: 0.9,
-    Difficulty.MEDIUM: 0.5,
-    Difficulty.HIGH: 0.2,
-}
-
-_DEFAULT_WEIGHTS: dict[str, float] = {
-    "feasibility": 0.30,
-    "profitability": 0.30,
-    "speed": 0.20,
-    "competition": 0.20,
-}
 
 
 class Evaluator:
-    """Scores and ranks :class:`Idea` instances using deterministic heuristics.
-
-    No external API calls are made.
-    """
+    """Scores and ranks :class:`Idea` instances using mandatory 0–10 rules."""
 
     def __init__(self, weights: dict[str, float] | None = None) -> None:
-        self._weights = weights or dict(_DEFAULT_WEIGHTS)
-        _required_keys = set(_DEFAULT_WEIGHTS)
-        missing = _required_keys - set(self._weights)
-        if missing:
-            raise ValueError(
-                f"Weights must include all scoring criteria. Missing: {sorted(missing)}"
-            )
-        for key, value in self._weights.items():
-            if value < 0:
-                raise ValueError(
-                    f"Weight for '{key}' must be non-negative, got {value}"
-                )
+        # Legacy/custom weights are intentionally ignored in the mandatory model.
+        _ = weights
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def score(self, idea: Idea) -> EvaluationResult:
-        """Score a single *idea* and return an :class:`EvaluationResult`."""
-        scores = EvaluationScores(
-            feasibility=self._score_feasibility(idea),
-            profitability=self._score_profitability(idea),
-            speed=self._score_speed(idea),
-            competition=self._score_competition(idea),
+    def score(
+        self,
+        idea: Idea,
+        market_truth: dict[str, Any] | None = None,
+    ) -> EvaluationResult:
+        """Score a single *idea* with the mandatory deterministic model."""
+        truth = market_truth or validate_market_truth(self._idea_validation_payload(idea))
+        gate_decision = str(truth.get("decision", "FAIL")).upper()
+        gate_reason = str(truth.get("reason", "Market truth validation failed."))
+        if gate_decision != "PASS":
+            zero = EvaluationScores(
+                market_demand=0.0,
+                competition_saturation=0.0,
+                monetization_potential=0.0,
+                build_complexity=0.0,
+                speed_to_revenue=0.0,
+            )
+            return EvaluationResult(
+                idea_id=idea.idea_id,
+                total_score=0.0,
+                breakdown=zero,
+                decision=DecisionAction.REJECT,
+                reason=f"Validation Gate 0 failed: {gate_reason}",
+            )
+
+        breakdown = EvaluationScores(
+            market_demand=self._score_market_demand(str(truth.get("demand_level", "LOW"))),
+            competition_saturation=self._score_competition_saturation(
+                market_saturation=str(truth.get("market_saturation", "HIGH")),
+                differentiation_detected=bool(truth.get("differentiation_detected", False)),
+            ),
+            monetization_potential=self._score_monetization_potential(
+                idea=idea,
+                monetization_proof=bool(truth.get("monetization_proof", False)),
+            ),
+            build_complexity=self._score_build_complexity(idea.difficulty),
+            speed_to_revenue=self._score_speed_to_revenue(idea.time_to_launch),
         )
-        aggregate = self._aggregate(scores)
-        recommendation = self._recommend(aggregate)
+        total_score = round(
+            breakdown.market_demand
+            + breakdown.competition_saturation
+            + breakdown.monetization_potential
+            + breakdown.build_complexity
+            + breakdown.speed_to_revenue,
+            2,
+        )
+        decision = self._decision(total_score)
         return EvaluationResult(
             idea_id=idea.idea_id,
-            scores=scores,
-            aggregate=aggregate,
-            recommendation=recommendation,
+            decision=decision,
+            reason=self._decision_reason(total_score, breakdown),
+            total_score=total_score,
+            breakdown=breakdown,
         )
 
     def rank(self, ideas: list[Idea]) -> list[EvaluationResult]:
-        """Score and rank a list of ideas from highest to lowest aggregate."""
+        """Score and rank a list of ideas from highest to lowest total score."""
         results = [self.score(idea) for idea in ideas]
-        results.sort(key=lambda r: r.aggregate, reverse=True)
+        results.sort(key=lambda r: r.total_score, reverse=True)
         return results
 
+    def compare_against_portfolio(
+        self,
+        candidate: Idea,
+        portfolio_ideas: list[Idea],
+    ) -> list[PortfolioComparisonEntry]:
+        """Compare candidate idea to existing portfolio ideas by total score."""
+        candidate_score = self.score(candidate).total_score
+        comparisons: list[PortfolioComparisonEntry] = []
+        for existing in portfolio_ideas:
+            existing_score = self.score(existing).total_score
+            score_delta = round(candidate_score - existing_score, 2)
+            comparisons.append(
+                PortfolioComparisonEntry(
+                    project_id=existing.idea_id,
+                    project_name=existing.title,
+                    overlap_score=0.0,
+                    overlap_reasons=["Deterministic score-only comparison."],
+                    candidate_idea_id=candidate.idea_id,
+                    existing_idea_id=existing.idea_id,
+                    candidate_score=candidate_score,
+                    existing_score=existing_score,
+                    score_delta=score_delta,
+                    recommendation=(
+                        "prioritize_candidate"
+                        if candidate_score >= existing_score
+                        else "keep_existing_priority"
+                    ),
+                ),
+            )
+        comparisons.sort(key=lambda item: item.score_delta or 0.0, reverse=True)
+        return comparisons
+
     # ------------------------------------------------------------------
-    # Scoring heuristics
+    # Scoring rules (mandatory)
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _score_feasibility(idea: Idea) -> float:
-        return _DIFFICULTY_FEASIBILITY.get(idea.difficulty, 0.5)
+    def _idea_validation_payload(idea: Idea) -> dict[str, Any]:
+        return {
+            "title": idea.title,
+            "hypothesis": idea.summary,
+            "target_user": idea.target_user,
+            "problem": idea.problem,
+            "solution": idea.summary,
+            "pricing_hint": idea.monetization_path,
+            "monetization_path": idea.monetization_path,
+        }
 
     @staticmethod
-    def _score_profitability(idea: Idea) -> float:
-        """Estimate profitability from the monetization path description."""
+    def _score_market_demand(demand_level: str) -> float:
+        level = demand_level.upper()
+        if level == "HIGH":
+            return 2.0
+        if level == "MEDIUM":
+            return 1.0
+        return 0.0
+
+    @staticmethod
+    def _score_competition_saturation(
+        *,
+        market_saturation: str,
+        differentiation_detected: bool,
+    ) -> float:
+        saturation = market_saturation.upper()
+        if saturation == "LOW":
+            return 2.0
+        if saturation == "MEDIUM":
+            return 1.5 if differentiation_detected else 0.5
+        return 1.0 if differentiation_detected else 0.0
+
+    @staticmethod
+    def _score_monetization_potential(*, idea: Idea, monetization_proof: bool) -> float:
+        if not monetization_proof:
+            return 0.0
         path = idea.monetization_path.lower()
-        if "subscription" in path or "saas" in path:
-            return 0.8
-        if "fee" in path or "transaction" in path:
-            return 0.7
-        if "freemium" in path or "premium" in path:
-            return 0.6
-        if "course" in path or "certification" in path:
+        if "subscription" in path or "saas" in path or "retainer" in path:
+            return 2.0
+        if "transaction" in path or "license" in path or "per seat" in path:
+            return 1.5
+        if "enterprise" in path or "premium" in path or "one-time" in path:
+            return 1.5
+        # When validation confirms monetization proof, retain minimum viability.
+        return 1.5
+
+    @staticmethod
+    def _score_build_complexity(difficulty: Difficulty) -> float:
+        if difficulty == Difficulty.LOW:
+            return 2.0
+        if difficulty == Difficulty.MEDIUM:
+            return 1.0
+        return 0.0
+
+    @staticmethod
+    def _score_speed_to_revenue(time_to_launch: str) -> float:
+        text = time_to_launch.lower()
+        week_match = re.search(r"(\d+)\s*week", text)
+        month_match = re.search(r"(\d+)\s*month", text)
+        if week_match:
+            weeks = int(week_match.group(1))
+            if weeks <= 4:
+                return 2.0
+            if weeks <= 8:
+                return 1.5
+            return 1.0
+        if month_match:
+            months = int(month_match.group(1))
+            if months <= 1:
+                return 1.5
+            if months <= 3:
+                return 1.0
             return 0.5
-        if "support" in path or "enterprise" in path:
-            return 0.55
-        return 0.4
+        # Unknown duration defaults to cautious medium.
+        return 1.0
 
     @staticmethod
-    def _score_speed(idea: Idea) -> float:
-        return _DIFFICULTY_SPEED.get(idea.difficulty, 0.5)
+    def _decision(total_score: float) -> DecisionAction:
+        if total_score < 6.0:
+            return DecisionAction.REJECT
+        if total_score < 8.0:
+            return DecisionAction.HOLD
+        return DecisionAction.APPROVE
 
     @staticmethod
-    def _score_competition(idea: Idea) -> float:
-        """Estimate competitive advantage from idea attributes.
-
-        Ideas targeting niche users or featuring lower difficulty are assumed
-        to face less competition.
-        """
-        score = 0.5
-        if idea.difficulty == Difficulty.LOW:
-            score += 0.15
-        if len(idea.target_user) > 30:
-            # Longer target-user description implies narrower niche.
-            score += 0.1
-        return min(score, 1.0)
-
-    def _aggregate(self, scores: EvaluationScores) -> float:
-        """Compute the weighted aggregate of *scores*."""
-        total = (
-            scores.feasibility * self._weights["feasibility"]
-            + scores.profitability * self._weights["profitability"]
-            + scores.speed * self._weights["speed"]
-            + scores.competition * self._weights["competition"]
-        )
-        return round(total, 2)
-
-    @staticmethod
-    def _recommend(aggregate: float) -> str:
-        """Return a short recommendation string based on *aggregate*."""
-        if aggregate >= 0.75:
-            return "Strong candidate — prioritise for execution."
-        if aggregate >= 0.55:
-            return "Viable option — worth further exploration."
-        if aggregate >= 0.35:
-            return "Marginal — needs significant de-risking."
-        return "Weak — consider discarding or pivoting."
+    def _decision_reason(total_score: float, breakdown: EvaluationScores) -> str:
+        if total_score < 6.0:
+            return (
+                "Score below 6.0: reject and rework market demand/monetization before build."
+            )
+        if total_score < 8.0:
+            weakest = min(
+                {
+                    "market_demand": breakdown.market_demand,
+                    "competition_saturation": breakdown.competition_saturation,
+                    "monetization_potential": breakdown.monetization_potential,
+                    "build_complexity": breakdown.build_complexity,
+                    "speed_to_revenue": breakdown.speed_to_revenue,
+                },
+                key=lambda key: {
+                    "market_demand": breakdown.market_demand,
+                    "competition_saturation": breakdown.competition_saturation,
+                    "monetization_potential": breakdown.monetization_potential,
+                    "build_complexity": breakdown.build_complexity,
+                    "speed_to_revenue": breakdown.speed_to_revenue,
+                }[key],
+            )
+            return f"Score in HOLD band (6-7). Improve weakest axis: {weakest}."
+        return "Score is 8+ with acceptable risk profile: approved for business packaging."
