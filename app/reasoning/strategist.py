@@ -219,24 +219,22 @@ class Strategist:
             scalability=evaluation.scores.scalability,
             founder_fit=evaluation.scores.founder_fit,
             risk=evaluation.scores.risk,
+            feasibility=evaluation.scores.feasibility,
+            profitability=evaluation.scores.profitability,
+            speed=evaluation.scores.speed,
             aggregate=evaluation.aggregate,
         )
 
         decision_output = DecisionOutput(
-            verdict=critique.verdict,
-            why_now=(
-                f"Market opportunity is actionable for '{idea.title}' with "
-                f"time-to-launch {idea.time_to_launch}."
-            ),
-            main_risk=(
-                critique.risks[0].description if critique.risks
-                else "Execution uncertainty in early market validation."
-            ),
-            recommended_next_move=evaluation.recommendation,
-            action=evaluation.action,
+            verdict=evaluation.decision.verdict,
+            why_now=evaluation.decision.why_now,
+            main_risk=evaluation.decision.main_risk,
+            recommended_next_move=evaluation.decision.recommended_next_move,
+            decision=evaluation.decision.action,
+            action=evaluation.decision.action,
         )
         decision = (
-            f"Decision={decision_output.action}. "
+            f"Decision={decision_output.decision.value}. "
             f"Verdict={decision_output.verdict}. "
             f"Why now: {decision_output.why_now} "
             f"Main risk: {decision_output.main_risk}"
@@ -357,26 +355,66 @@ class Strategist:
         if context and isinstance(context.get("portfolio"), list):
             portfolio = [item for item in context["portfolio"] if isinstance(item, dict)]
 
+        candidate_tokens = {
+            token
+            for token in f"{getattr(idea, 'title', '')} {getattr(idea, 'target_user', '')}".lower().split()
+            if len(token) > 2
+        }
+
+        closest_project: dict[str, Any] | None = None
+        highest_overlap = 0.0
         overlapping_projects: list[str] = []
         for project in portfolio:
             name = str(project.get("name", "")).strip()
             text = f"{project.get('name', '')} {project.get('description', '')}".lower()
-            if any(token in text for token in idea.title.lower().split()):
-                if name:
-                    overlapping_projects.append(name)
+            project_tokens = {token for token in text.split() if len(token) > 2}
+            overlap = 0.0
+            if candidate_tokens:
+                overlap = round(
+                    len(candidate_tokens.intersection(project_tokens)) / len(candidate_tokens),
+                    2,
+                )
 
-        relative_rank = "top_candidate"
-        if overlapping_projects:
+            if overlap >= 0.35 and name:
+                overlapping_projects.append(name)
+            if overlap > highest_overlap:
+                highest_overlap = overlap
+                closest_project = project
+
+        if highest_overlap >= 0.55:
+            recommendation = "High overlap detected; prefer differentiation before build."
             relative_rank = "differentiation_required"
-        elif len(portfolio) >= 3:
+        elif highest_overlap >= 0.30:
+            recommendation = "Moderate overlap; sharpen positioning and segment focus."
             relative_rank = "competitive_with_portfolio"
+        else:
+            recommendation = "Low overlap; candidate appears additive to current portfolio."
+            relative_rank = "top_candidate"
+
+        closest_name = None
+        closest_id = None
+        if closest_project:
+            closest_name = str(closest_project.get("name", "")).strip() or None
+            closest_id = str(
+                closest_project.get("project_id")
+                or closest_project.get("id")
+                or "",
+            ).strip() or None
+
+        summary = (
+            "No direct overlap detected."
+            if not overlapping_projects
+            else "Overlap detected with existing portfolio items; sharpen positioning."
+        )
 
         return PortfolioComparison(
+            compared_projects=len(portfolio),
+            closest_project_id=closest_id,
+            closest_project_name=closest_name,
+            overlap_score=highest_overlap,
+            differentiation_summary=summary,
+            recommendation=recommendation,
             overlapping_projects=overlapping_projects,
             relative_rank=relative_rank,
-            summary=(
-                "No direct overlap detected."
-                if not overlapping_projects
-                else "Overlap detected with existing portfolio items; sharpen positioning."
-            ),
+            summary=summary,
         )

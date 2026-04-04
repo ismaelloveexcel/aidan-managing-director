@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +126,28 @@ class EvaluationScores(BaseModel):
     speed: float = Field(ge=0.0, le=1.0, description="Legacy speed score.")
 
 
+class DecisionAction(str, Enum):
+    """Canonical strategic action classes used across reasoning outputs."""
+
+    APPROVE = "approve"
+    REJECT = "reject"
+    PARK = "park"
+
+
+class EvaluationDecision(BaseModel):
+    """Business-oriented decision packet derived from weighted scoring."""
+
+    verdict: str = Field(description="High-level verdict string.")
+    why_now: str = Field(description="Why this idea should be acted on now.")
+    main_risk: str = Field(description="Primary risk requiring mitigation.")
+    recommended_next_move: str = Field(
+        description="Single most important next move.",
+    )
+    action: DecisionAction = Field(
+        description="Action classification: approve/reject/park.",
+    )
+
+
 class EvaluationResult(BaseModel):
     """Full evaluation output for a single idea."""
 
@@ -139,18 +161,9 @@ class EvaluationResult(BaseModel):
     recommendation: str = Field(
         description="Short recommendation based on the scores.",
     )
-
-
-class EvaluationDecision(BaseModel):
-    """Business-oriented decision packet derived from weighted scoring."""
-
-    verdict: str = Field(description="High-level verdict string.")
-    why_now: str = Field(description="Why this idea should be acted on now.")
-    main_risk: str = Field(description="Primary risk requiring mitigation.")
-    recommended_next_move: str = Field(
-        description="Single most important next move.",
+    decision: EvaluationDecision = Field(
+        description="Structured decision packet derived from score profile.",
     )
-    action: str = Field(description="Action classification: approve/reject/park.")
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +291,18 @@ class DecisionOutput(BaseModel):
     why_now: str = Field(description="Concise reason this should be acted on now.")
     main_risk: str = Field(description="Primary risk requiring active mitigation.")
     recommended_next_move: str = Field(description="Single highest-impact next move.")
-    action: str = Field(description="One of: approve, reject, or park.")
+    decision: DecisionAction = Field(description="One of: approve, reject, or park.")
+    action: DecisionAction | None = Field(
+        default=None,
+        description="Compatibility alias for `decision`.",
+    )
+
+    @model_validator(mode="after")
+    def _sync_action_alias(self) -> "DecisionOutput":
+        """Keep `action` in sync with canonical `decision`."""
+        if self.action is None:
+            self.action = self.decision
+        return self
 
 
 class PortfolioComparison(BaseModel):
@@ -304,6 +328,19 @@ class PortfolioComparison(BaseModel):
     recommendation: str = Field(
         description="Portfolio-level recommendation based on overlap.",
     )
+    # Legacy compatibility fields for callers/tests created before schema upgrade.
+    overlapping_projects: list[str] = Field(
+        default_factory=list,
+        description="Names of projects with notable overlap.",
+    )
+    relative_rank: str = Field(
+        default="top_candidate",
+        description="Legacy rank classification used by older route consumers.",
+    )
+    summary: str = Field(
+        default="No direct overlap detected.",
+        description="Legacy short summary kept for backward compatibility.",
+    )
 
 
 class PortfolioComparisonEntry(BaseModel):
@@ -320,6 +357,13 @@ class PortfolioComparisonEntry(BaseModel):
         default_factory=list,
         description="Short reasons explaining overlap score.",
     )
+    # Compatibility fields for previous compare API shape.
+    candidate_idea_id: str | None = None
+    existing_idea_id: str | None = None
+    candidate_score: float | None = None
+    existing_score: float | None = None
+    score_delta: float | None = None
+    recommendation: str | None = None
 
 
 class FounderResponse(BaseModel):

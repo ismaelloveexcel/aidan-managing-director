@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from app.reasoning.models import (
+    DecisionAction,
     Difficulty,
     EvaluationDecision,
     EvaluationResult,
@@ -44,6 +45,9 @@ _DEFAULT_WEIGHTS: dict[str, float] = {
     "risk": 0.12,
 }
 
+_LEGACY_REQUIRED_WEIGHTS: set[str] = {"feasibility", "profitability", "speed", "competition"}
+_NEW_REQUIRED_WEIGHTS: set[str] = set(_DEFAULT_WEIGHTS)
+
 
 class Evaluator:
     """Scores and ranks :class:`Idea` instances using deterministic heuristics.
@@ -52,18 +56,31 @@ class Evaluator:
     """
 
     def __init__(self, weights: dict[str, float] | None = None) -> None:
-        self._weights = weights or dict(_DEFAULT_WEIGHTS)
-        _required_keys = set(_DEFAULT_WEIGHTS)
-        missing = _required_keys - set(self._weights)
-        if missing:
+        self._legacy_weight_mode = False
+        self._weights = dict(_DEFAULT_WEIGHTS)
+        self._legacy_weights: dict[str, float] | None = None
+
+        if weights is None:
+            return
+
+        provided_keys = set(weights)
+        if provided_keys == _NEW_REQUIRED_WEIGHTS:
+            self._weights = dict(weights)
+        elif provided_keys == _LEGACY_REQUIRED_WEIGHTS:
+            self._legacy_weight_mode = True
+            self._legacy_weights = dict(weights)
+        else:
+            missing_new = sorted(_NEW_REQUIRED_WEIGHTS - provided_keys)
+            missing_legacy = sorted(_LEGACY_REQUIRED_WEIGHTS - provided_keys)
             raise ValueError(
-                f"Weights must include all scoring criteria. Missing: {sorted(missing)}"
+                "Weights must include all scoring criteria. "
+                f"Missing (new schema): {missing_new}; "
+                f"Missing (legacy schema): {missing_legacy}"
             )
-        for key, value in self._weights.items():
+
+        for key, value in weights.items():
             if value < 0:
-                raise ValueError(
-                    f"Weight for '{key}' must be non-negative, got {value}"
-                )
+                raise ValueError(f"Weight for '{key}' must be non-negative, got {value}")
 
     # ------------------------------------------------------------------
     # Public API
@@ -100,8 +117,11 @@ class Evaluator:
             scalability=scalability,
             founder_fit=founder_fit,
             risk=risk,
+            feasibility=execution_simplicity,
+            profitability=monetization,
+            speed=speed_to_mvp,
         )
-        aggregate = self._aggregate(axis_scores)
+        aggregate = self._aggregate(axis_scores, scores)
         recommendation = self._recommend(aggregate)
         decision = self._decision_payload(idea=idea, aggregate=aggregate, axis_scores=axis_scores)
         return EvaluationResult(
@@ -231,11 +251,18 @@ class Evaluator:
             return 0.6
         return 0.35
 
-    def _aggregate(self, scores: dict[str, float]) -> float:
+    def _aggregate(self, axis_scores: dict[str, float], scores: EvaluationScores) -> float:
         """Compute the weighted aggregate of axis scores."""
         total = 0.0
+        if self._legacy_weight_mode and self._legacy_weights is not None:
+            total += scores.feasibility * self._legacy_weights["feasibility"]
+            total += scores.profitability * self._legacy_weights["profitability"]
+            total += scores.speed * self._legacy_weights["speed"]
+            total += scores.competition * self._legacy_weights["competition"]
+            return round(total, 2)
+
         for key, weight in self._weights.items():
-            total += scores[key] * weight
+            total += axis_scores[key] * weight
         return round(total, 2)
 
     @staticmethod
@@ -258,13 +285,13 @@ class Evaluator:
     ) -> EvaluationDecision:
         """Build UI-friendly strategic decision payload."""
         if aggregate >= 0.75:
-            disposition = "approve"
+            action = DecisionAction.APPROVE
             recommended = "Queue for build with strict MVP scope."
         elif aggregate >= 0.55:
-            disposition = "park"
+            action = DecisionAction.PARK
             recommended = "Run faster demand validation before build."
         else:
-            disposition = "reject"
+            action = DecisionAction.REJECT
             recommended = "Do not allocate build capacity to this idea."
 
         weakest_axis = min(axis_scores, key=lambda key: axis_scores[key])
@@ -283,9 +310,9 @@ class Evaluator:
             f"signals in {max(axis_scores, key=lambda key: axis_scores[key]).replace('_', ' ')}."
         )
         return EvaluationDecision(
-            verdict=disposition,
+            verdict=action.value,
             why_now=why_now,
             main_risk=risk_map[weakest_axis],
             recommended_next_move=recommended,
-            disposition=disposition,
+            action=action,
         )
