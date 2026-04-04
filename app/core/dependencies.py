@@ -13,6 +13,7 @@ from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
 from app.integrations.github_client import GitHubClient
 from app.integrations.registry_client import RegistryClient
 from app.integrations.vercel_client import VercelClient
+from app.feedback.service import FeedbackService
 from app.portfolio.repository import PortfolioRepository
 
 
@@ -70,3 +71,9 @@ def get_portfolio_repository() -> PortfolioRepository:
     """Return a cached SQLite-backed portfolio repository."""
     settings = get_settings()
     return PortfolioRepository(db_path=settings.portfolio_db_path)
+
+
+@_lru_cache(maxsize=1)
+def get_feedback_service() -> FeedbackService:
+    """Return a cached feedback service using the portfolio repository."""
+    return FeedbackService(repository=get_portfolio_repository())

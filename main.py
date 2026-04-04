@@ -6,7 +6,7 @@ Registers all route modules and configures the application.
 
 from fastapi import FastAPI
 
-from app.routes import approvals, chat, commands, factory, ideas, portfolio, projects
+from app.routes import approvals, chat, commands, factory, feedback, ideas, portfolio, projects
 
 app = FastAPI(
     title="AI-DAN Managing Director",
@@ -24,6 +24,7 @@ app.include_router(chat.router, prefix="/chat", tags=["Chat"])
 app.include_router(ideas.router, prefix="/ideas", tags=["Ideas"])
 app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
+app.include_router(feedback.router, prefix="/feedback", tags=["Feedback"])
 app.include_router(approvals.router, prefix="/approvals", tags=["Approvals"])
 app.include_router(commands.router, prefix="/commands", tags=["Commands"])
 app.include_router(factory.router, prefix="/factory", tags=["Factory"])
