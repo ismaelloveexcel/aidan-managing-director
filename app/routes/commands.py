@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.core.telemetry import emit_event
 from app.core.dependencies import get_registry_client
 from app.reasoning.models import CommandRecord
 
@@ -56,14 +57,25 @@ async def dispatch_command(request: CommandRequest) -> CommandRecord:
         parameters=request.parameters,
         project_id=request.project_id,
     )
+    emit_event(
+        "command_dispatched",
+        {
+            "command_id": record["record_id"],
+            "command_type": request.command_type,
+            "project_id": request.project_id,
+        },
+    )
     return CommandRecord(**record)
 
 
 @router.get("/{command_id}", response_model=CommandResponse)
 async def get_command_status(command_id: str) -> CommandResponse:
-    """
-    Return the current status of a previously dispatched command.
-
-    Business logic to be implemented in a future iteration.
-    """
-    raise HTTPException(status_code=501, detail="Not implemented")
+    """Return the current status of a previously dispatched command."""
+    record = _registry.get_command_record(command_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Command not found")
+    return CommandResponse(
+        command_id=record["record_id"],
+        status=record["status"],
+        message=record.get("message"),
+    )

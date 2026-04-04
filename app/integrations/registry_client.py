@@ -221,6 +221,27 @@ class RegistryClient:
         self._commands[record_id] = record
         return record
 
+    def get_command_record(self, record_id: str) -> dict[str, Any] | None:
+        """Retrieve a persisted command record by ID."""
+        return self._commands.get(record_id)
+
+    def update_command_status(
+        self,
+        *,
+        record_id: str,
+        status: str,
+        message: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Update status metadata for an existing command record."""
+        record = self._commands.get(record_id)
+        if record is None:
+            return None
+        record["status"] = status
+        if message is not None:
+            record["message"] = message
+        record["updated_at"] = datetime.now(tz=timezone.utc).isoformat()
+        return record
+
     def register_service(self, name: str, metadata: dict[str, Any]) -> str:
         """
         Register a new service or agent with the registry.
