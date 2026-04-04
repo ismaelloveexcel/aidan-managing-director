@@ -1,6 +1,8 @@
 # app/routes/__init__.py
 
 from app.routes import (
+    analytics,
+    analyze,
     approvals,
     chat,
     commands,
@@ -15,6 +17,8 @@ from app.routes import (
 )
 
 __all__ = [
+    "analytics",
+    "analyze",
     "approvals",
     "chat",
     "commands",

@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o"
     llm_base_url: str | None = None
 
+    # --- OpenAI ----------------------------------------------------------------
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o"
+
+    # --- Perplexity (Research) -------------------------------------------------
+    perplexity_api_key: str = ""
+    perplexity_model: str = "sonar"
+    research_provider: str = "perplexity"
+
     # --- GitHub Integration ----------------------------------------------------
     github_token: str = ""
     github_api_base_url: str = "https://api.github.com"
