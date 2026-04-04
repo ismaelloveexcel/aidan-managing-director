@@ -16,6 +16,10 @@ from app.integrations.perplexity_client import PerplexityClient
 
 logger = logging.getLogger(__name__)
 
+# Scoring thresholds for verdict determination
+APPROVE_THRESHOLD = 8
+HOLD_THRESHOLD = 6
+
 # System prompt for AI-DAN's reasoning engine
 _AIDAN_SYSTEM = (
     "You are AI-DAN, an AI Managing Director that evaluates business ideas.\n"
@@ -170,10 +174,15 @@ class AIProvider:
         result = self.openai.chat_json(prompt=prompt, system=_AIDAN_SYSTEM)
 
         if result.get("stub"):
-            verdict = "APPROVE" if score >= 8 else ("HOLD" if score >= 6 else "REJECT")
+            if score >= APPROVE_THRESHOLD:
+                verdict = "APPROVE"
+            elif score >= HOLD_THRESHOLD:
+                verdict = "HOLD"
+            else:
+                verdict = "REJECT"
             return {
                 "verdict": verdict,
-                "why_now": f"Score {score}/10 — {'strong enough to proceed' if score >= 8 else 'needs improvement'}.",
+                "why_now": f"Score {score}/10 — {'strong enough to proceed' if score >= APPROVE_THRESHOLD else 'needs improvement'}.",
                 "main_risk": "Market validation still required.",
                 "recommended_next_move": "Validate with 5 potential customers before building.",
                 "monetization_method": "SaaS subscription",

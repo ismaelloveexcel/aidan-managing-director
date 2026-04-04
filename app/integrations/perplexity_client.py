@@ -17,6 +17,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _PERPLEXITY_BASE_URL = "https://api.perplexity.ai"
+_PLACEHOLDER_KEYS = {"", "your-perplexity-api-key-here"}
 
 
 class PerplexityClient:
@@ -53,7 +54,7 @@ class PerplexityClient:
     @property
     def is_configured(self) -> bool:
         """Return True when a real API key is available."""
-        return bool(self.api_key and self.api_key != "your-perplexity-api-key-here")
+        return bool(self.api_key) and self.api_key not in _PLACEHOLDER_KEYS
 
     # -- public API ----------------------------------------------------------
 

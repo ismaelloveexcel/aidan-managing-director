@@ -20,6 +20,18 @@ router = APIRouter()
 
 _strategist = Strategist()
 
+# Baseline scores by difficulty / attribute (0-10 scale)
+_SCORE_LOW_DIFFICULTY = 7.0
+_SCORE_MED_DIFFICULTY = 5.0
+_SCORE_HIGH_DIFFICULTY = 3.0
+_SCORE_FAST_LAUNCH = 8.0
+_SCORE_SLOW_LAUNCH = 5.0
+_SCORE_SUBSCRIPTION = 7.0
+_SCORE_OTHER_MONETIZATION = 5.0
+_SCORE_COMPETITION_DEFAULT = 6.0
+# Pipeline breakdown scores are 0-2; multiply to convert to 0-10 scale.
+_BREAKDOWN_SCALE = 5
+
 
 class AnalyzeRequest(BaseModel):
     """Input payload for idea analysis."""
@@ -124,13 +136,29 @@ async def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
     total = float(score.get("total_score", 0) or 0)
     decision_output = pipeline_dict.get("decision_output") or {}
 
-    # Build meaningful scores even when pipeline gate rejects
-    # (use heuristic scores from idea attributes as baseline)
+    # Heuristic baseline scores from idea attributes (used when
+    # the deterministic pipeline rejects at gate 0 with all-zero scores).
     from app.reasoning.models import Difficulty
-    base_feasibility = 7.0 if idea.difficulty == Difficulty.LOW else (5.0 if idea.difficulty == Difficulty.MEDIUM else 3.0)
-    base_speed = 8.0 if "week" in idea.time_to_launch.lower() else 5.0
-    base_profitability = 7.0 if "subscription" in idea.monetization_path.lower() else 5.0
-    base_competition = 6.0
+
+    difficulty_scores = {
+        Difficulty.LOW: _SCORE_LOW_DIFFICULTY,
+        Difficulty.MEDIUM: _SCORE_MED_DIFFICULTY,
+        Difficulty.HIGH: _SCORE_HIGH_DIFFICULTY,
+    }
+    base_feasibility = difficulty_scores.get(idea.difficulty, _SCORE_MED_DIFFICULTY)
+    base_speed = _SCORE_FAST_LAUNCH if "week" in idea.time_to_launch.lower() else _SCORE_SLOW_LAUNCH
+    base_profitability = _SCORE_SUBSCRIPTION if "subscription" in idea.monetization_path.lower() else _SCORE_OTHER_MONETIZATION
+    base_competition = _SCORE_COMPETITION_DEFAULT
+
+    def _scaled_or_base(breakdown_key: str, base: float) -> float:
+        """Scale a 0-2 pipeline breakdown value to 0-10, or fall back to base."""
+        raw = breakdown.get(breakdown_key, 0) or 0
+        scaled = raw * _BREAKDOWN_SCALE
+        return scaled if scaled > 0 else base
+
+    overall_fallback = round(
+        (base_feasibility + base_speed + base_profitability + base_competition) / 4, 1,
+    )
 
     analysis = MonetizationOutput(
         title=ai_analysis.get("title", idea.title),
@@ -139,18 +167,40 @@ async def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
         solution=ai_analysis.get("solution", idea.summary),
         monetization_method=ai_analysis.get("monetization_method", idea.monetization_path),
         pricing_suggestion=ai_analysis.get("pricing_suggestion", idea.monetization_path),
-        distribution_plan=ai_analysis.get("distribution_plan", dist_dict.get("primary_channel", "Direct outreach")),
-        first_10_users=ai_analysis.get("first_10_users", dist_dict.get("first_10_users_plan", "Manual outreach to target communities")),
+        distribution_plan=ai_analysis.get(
+            "distribution_plan", dist_dict.get("primary_channel", "Direct outreach"),
+        ),
+        first_10_users=ai_analysis.get(
+            "first_10_users",
+            dist_dict.get("first_10_users_plan", "Manual outreach to target communities"),
+        ),
         competitive_edge=ai_analysis.get("competitive_edge", "Speed to market and focused feature set"),
-        overall_score=float(ai_analysis.get("overall_score", total if total > 0 else round((base_feasibility + base_speed + base_profitability + base_competition) / 4, 1))),
-        feasibility_score=float(ai_analysis.get("feasibility_score", breakdown.get("build_complexity", 0) * 5 or base_feasibility)),
-        profitability_score=float(ai_analysis.get("profitability_score", breakdown.get("monetization_potential", 0) * 5 or base_profitability)),
-        speed_score=float(ai_analysis.get("speed_score", breakdown.get("speed_to_revenue", 0) * 5 or base_speed)),
-        competition_score=float(ai_analysis.get("competition_score", breakdown.get("competition_saturation", 0) * 5 or base_competition)),
+        overall_score=float(ai_analysis.get(
+            "overall_score", total if total > 0 else overall_fallback,
+        )),
+        feasibility_score=float(ai_analysis.get(
+            "feasibility_score", _scaled_or_base("build_complexity", base_feasibility),
+        )),
+        profitability_score=float(ai_analysis.get(
+            "profitability_score", _scaled_or_base("monetization_potential", base_profitability),
+        )),
+        speed_score=float(ai_analysis.get(
+            "speed_score", _scaled_or_base("speed_to_revenue", base_speed),
+        )),
+        competition_score=float(ai_analysis.get(
+            "competition_score", _scaled_or_base("competition_saturation", base_competition),
+        )),
         verdict=ai_analysis.get("verdict", score.get("decision", "HOLD") if total > 0 else "HOLD"),
-        why_now=ai_analysis.get("why_now", decision_output.get("why_now", "Evaluate timing based on market conditions.")),
-        main_risk=ai_analysis.get("main_risk", decision_output.get("main_risk", "Market validation needed before scaling.")),
-        recommended_next_move=ai_analysis.get("recommended_next_move", pipeline_dict.get("suggested_next_action", "Validate with 5 potential customers.")),
+        why_now=ai_analysis.get(
+            "why_now", decision_output.get("why_now", "Evaluate timing based on market conditions."),
+        ),
+        main_risk=ai_analysis.get(
+            "main_risk", decision_output.get("main_risk", "Market validation needed before scaling."),
+        ),
+        recommended_next_move=ai_analysis.get(
+            "recommended_next_move",
+            pipeline_dict.get("suggested_next_action", "Validate with 5 potential customers."),
+        ),
         market_research=research_context,
         ai_powered=ai.ai_enabled,
     )

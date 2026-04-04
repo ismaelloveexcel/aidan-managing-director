@@ -24,13 +24,15 @@ from app.routes import (
     projects,
 )
 
+_VERSION = "0.2.0"
+
 app = FastAPI(
     title="AI-DAN Managing Director",
     description=(
         "Core managing director layer for strategy, idea generation, "
         "portfolio control, approvals, and command routing to the GitHub Factory."
     ),
-    version="0.2.0",
+    version=_VERSION,
 )
 
 # ---------------------------------------------------------------------------
@@ -178,7 +180,7 @@ footer{text-align:center;padding:24px;color:#6b7280;font-size:.85rem}
 </div>
 </div>
 
-<footer>AI-DAN Managing Director &middot; Strategic Decision Engine &middot; v0.2.0</footer>
+<footer>AI-DAN Managing Director &middot; Strategic Decision Engine &middot; v{version}</footer>
 
 <script>
 async function analyzeIdea(){
@@ -294,4 +296,5 @@ document.getElementById('idea-input').addEventListener('keydown',function(e){
 @app.get("/", response_class=HTMLResponse, tags=["UI"])
 async def root_ui() -> HTMLResponse:
     """Serve the AI-DAN Managing Director web interface."""
-    return HTMLResponse(content=_UI_HTML)
+    html = _UI_HTML.replace("{version}", _VERSION)
+    return HTMLResponse(content=html)

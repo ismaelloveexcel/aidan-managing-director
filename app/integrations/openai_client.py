@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 _OPENAI_BASE_URL = "https://api.openai.com/v1"
 
 
+_PLACEHOLDER_KEYS = {"", "your-openai-api-key-here"}
+
+
 class OpenAIClient:
     """Wraps the OpenAI Chat Completions API for AI-DAN reasoning tasks."""
 
@@ -55,7 +58,7 @@ class OpenAIClient:
     @property
     def is_configured(self) -> bool:
         """Return True when a real API key is available."""
-        return bool(self.api_key and self.api_key != "your-openai-api-key-here")
+        return bool(self.api_key) and self.api_key not in _PLACEHOLDER_KEYS
 
     # -- public API ----------------------------------------------------------
 
