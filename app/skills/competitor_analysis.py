@@ -105,6 +105,10 @@ def analyze_competitors(
     baseline competitor count and saturation assessment, then enriches the
     result with category-specific competitor names and positioning.
 
+    ``competition_level`` adjusts the final competitor count upward when the
+    caller explicitly signals high competition (e.g. "high", "very high"), or
+    downward for "low"/"none" markets, on top of the heuristic baseline.
+
     Args:
         idea_text: Full description of the idea.
         target_user: Description of the target user.
@@ -121,6 +125,15 @@ def analyze_competitors(
         "target_user": target_user,
     }
     heuristic = _GUARDIAN.assess_competition(build_brief=build_brief)
+
+    # Adjust competitor_count based on explicit competition_level hint
+    _level = competition_level.lower().strip()
+    if _level in {"high", "very high", "extreme"}:
+        adjusted_count = max(heuristic.competitor_count, 15)
+    elif _level in {"low", "none", "very low"}:
+        adjusted_count = min(heuristic.competitor_count, 5)
+    else:
+        adjusted_count = heuristic.competitor_count
 
     # Pick the first matched category to enrich with named competitors
     primary_category = heuristic.matched_categories[0] if heuristic.matched_categories else None
@@ -148,7 +161,7 @@ def analyze_competitors(
     differentiation_score = round(1.0 - heuristic.similarity_score, 2)
 
     return CompetitorAnalysis(
-        competitor_count=heuristic.competitor_count,
+        competitor_count=adjusted_count,
         top_competitors=list(top_competitors),
         market_gap=market_gap,
         differentiation_score=differentiation_score,

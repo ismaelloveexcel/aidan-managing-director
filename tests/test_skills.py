@@ -148,6 +148,35 @@ class TestCompetitorAnalysis:
         assert isinstance(result, CompetitorAnalysis)
         assert result.recommended_positioning
 
+    def test_high_competition_level_increases_count(self) -> None:
+        low = analyze_competitors(
+            idea_text="unique niche tool",
+            target_user="specialists",
+            competition_level="low",
+        )
+        high = analyze_competitors(
+            idea_text="unique niche tool",
+            target_user="specialists",
+            competition_level="high",
+        )
+        assert high.competitor_count >= low.competitor_count
+
+    def test_low_competition_level_caps_count(self) -> None:
+        result = analyze_competitors(
+            idea_text="generic platform tool",
+            target_user="everyone",
+            competition_level="low",
+        )
+        assert result.competitor_count <= 5
+
+    def test_high_competition_level_floors_count(self) -> None:
+        result = analyze_competitors(
+            idea_text="basic generic app",
+            target_user="anyone",
+            competition_level="high",
+        )
+        assert result.competitor_count >= 15
+
 
 # ---------------------------------------------------------------------------
 # Trend Detection

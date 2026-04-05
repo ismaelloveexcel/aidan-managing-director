@@ -3,8 +3,8 @@ llm_scoring.py – LLM-augmented scoring path for ambiguous ideas.
 
 When the keyword-based score lands in the 4.0–7.0 "ambiguous" range this
 module calls the AIProvider's OpenAI reasoning client to evaluate each of the
-five revenue dimensions with a structured prompt, then returns a ``ScoringResult``
-that is a drop-in replacement for the standard ``RevenueScore``.
+five revenue dimensions with a structured prompt, then returns a ``RevenueScore``
+that is a drop-in replacement for the standard keyword-based result.
 
 Falls back gracefully to the keyword-based scores when:
 - The total keyword score is outside the ambiguous range.

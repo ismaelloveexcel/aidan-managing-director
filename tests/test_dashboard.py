@@ -117,3 +117,21 @@ class TestDashboardHealthLogic:
         _, summary = _compute_health(total=1, approved=0, revenue_total=0.0, blocked=0)
         assert isinstance(summary, str)
         assert len(summary) > 0
+
+
+class TestApprovedStates:
+    """Verify _APPROVED_STATES includes post-build lifecycle states."""
+
+    def test_launched_and_monitoring_in_approved_states(self) -> None:
+        from app.portfolio.models import LifecycleState
+        from app.routes.dashboard import _APPROVED_STATES
+
+        assert LifecycleState.LAUNCHED in _APPROVED_STATES
+        assert LifecycleState.MONITORING in _APPROVED_STATES
+        assert LifecycleState.SCALED in _APPROVED_STATES
+
+    def test_killed_not_in_approved_states(self) -> None:
+        from app.portfolio.models import LifecycleState
+        from app.routes.dashboard import _APPROVED_STATES
+
+        assert LifecycleState.KILLED not in _APPROVED_STATES

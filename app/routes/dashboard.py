@@ -81,8 +81,14 @@ _DESIGN_TOKENS = DesignTokens(
 # Helpers
 # ---------------------------------------------------------------------------
 
-_APPROVED_STATES = {LifecycleState.APPROVED, LifecycleState.QUEUED, LifecycleState.BUILDING}
-_LAUNCHED_STATES = {LifecycleState.LAUNCHED, LifecycleState.MONITORING, LifecycleState.SCALED}
+_APPROVED_STATES = {
+    LifecycleState.APPROVED,
+    LifecycleState.QUEUED,
+    LifecycleState.BUILDING,
+    LifecycleState.LAUNCHED,
+    LifecycleState.MONITORING,
+    LifecycleState.SCALED,
+}
 _BLOCKED_STATES = {LifecycleState.KILLED}
 
 

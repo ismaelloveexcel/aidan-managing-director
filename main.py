@@ -241,25 +241,29 @@ footer{margin-top:2rem;color:#555;font-size:.8rem;text-align:center}
 <footer>AI-DAN Managing Director v{version} &mdash; Monetization-first decision engine</footer>
 
 <script>
+function applyHealthStatus(status,summary){
+  const header=document.getElementById("siteHeader");
+  const dot=document.getElementById("healthDot");
+  const txt=document.getElementById("healthSummary");
+  const gradients={
+    GREEN:"linear-gradient(135deg,#0a2a0a,#1a1a2e)",
+    AMBER:"linear-gradient(135deg,#2a2a0a,#1a1a2e)",
+    RED:"linear-gradient(135deg,#2a0a0a,#1a1a2e)"
+  };
+  const dotColors={GREEN:"#16a34a",AMBER:"#d97706",RED:"#dc2626"};
+  const resolvedStatus=status||"RED";
+  if(header)header.style.background=gradients[resolvedStatus]||gradients.RED;
+  if(dot)dot.style.background=dotColors[resolvedStatus]||dotColors.RED;
+  if(txt)txt.textContent=summary||resolvedStatus;
+}
+
 async function loadHealth(){
   try{
     const r=await fetch("/api/dashboard/health");
-    if(!r.ok)return;
+    if(!r.ok){applyHealthStatus("RED","Portfolio health unavailable");return;}
     const h=await r.json();
-    const header=document.getElementById("siteHeader");
-    const dot=document.getElementById("healthDot");
-    const txt=document.getElementById("healthSummary");
-    const gradients={
-      GREEN:"linear-gradient(135deg,#0a2a0a,#1a1a2e)",
-      AMBER:"linear-gradient(135deg,#2a2a0a,#1a1a2e)",
-      RED:"linear-gradient(135deg,#2a0a0a,#1a1a2e)"
-    };
-    const dotColors={GREEN:"#16a34a",AMBER:"#d97706",RED:"#dc2626"};
-    const status=h.health_status||"RED";
-    if(header)header.style.background=gradients[status]||gradients.RED;
-    if(dot)dot.style.background=dotColors[status]||dotColors.RED;
-    if(txt)txt.textContent=h.summary||status;
-  }catch(e){/* best-effort */}
+    applyHealthStatus(h.health_status||"RED",h.summary||(h.health_status||"RED"));
+  }catch(e){applyHealthStatus("RED","Portfolio health unavailable");}
 }
 loadHealth();
 
