@@ -19,6 +19,7 @@ from app.routes import (
     chat,
     commands,
     control,
+    dashboard,
     distribution,
     factory,
     feedback,
@@ -82,6 +83,7 @@ app.include_router(intelligence.router, prefix="/intelligence", tags=["Intellige
 app.include_router(revenue.router, prefix="/revenue", tags=["Revenue Intelligence"])
 app.include_router(control.router, prefix="/control", tags=["Control"])
 app.include_router(distribution.router, prefix="/api/distribution", tags=["Distribution"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @app.get("/health", tags=["Health"])
