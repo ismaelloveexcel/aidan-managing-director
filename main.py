@@ -421,6 +421,10 @@ footer{padding:.8rem 1.5rem;border-top:1px solid #1a1a1a;color:#444;font-size:.7
 function esc(s){if(s==null)return'';var d=document.createElement('div');
   d.appendChild(document.createTextNode(String(s)));return d.innerHTML}
 
+function jsStr(s){if(s==null)return'';
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"')
+    .replace(/\r/g,'\\r').replace(/\n/g,'\\n')}
+
 function toast(msg,type){
   type=type||'info';
   var c=document.getElementById('toast-container');
@@ -629,13 +633,13 @@ function renderPortfolioTable(projects){
     h+='<td><div class="actions-row">';
     var s=(p.state||'').toLowerCase();
     if(s==='idea'||s==='hold'){
-      h+='<button class="btn btn-sm btn-success" onclick="approveProject(\''+esc(p.project_id)+'\')">&#x2705; Approve</button>';
-      h+='<button class="btn btn-sm btn-danger" onclick="rejectProject(\''+esc(p.project_id)+'\')">&#x274C; Reject</button>';
+      h+='<button class="btn btn-sm btn-success" onclick="approveProject(\''+jsStr(p.project_id)+'\')">&#x2705; Approve</button>';
+      h+='<button class="btn btn-sm btn-danger" onclick="rejectProject(\''+jsStr(p.project_id)+'\')">&#x274C; Reject</button>';
     }
     if(s==='approved'){
-      h+='<button class="btn btn-sm btn-warning" onclick="buildProject(\''+esc(p.project_id)+'\',\''+esc(p.name)+'\')">&#x1F680; Build</button>';
+      h+='<button class="btn btn-sm btn-warning" onclick="buildProject(\''+jsStr(p.project_id)+'\',\''+jsStr(p.name)+'\')">&#x1F680; Build</button>';
     }
-    h+='<button class="btn btn-sm btn-secondary" onclick="shareProject(\''+esc(p.project_id)+'\',\''+esc(p.name)+'\')">&#x1F4E3; Share</button>';
+    h+='<button class="btn btn-sm btn-secondary" onclick="shareProject(\''+jsStr(p.project_id)+'\',\''+jsStr(p.name)+'\')">&#x1F4E3; Share</button>';
     h+='</div></td></tr>';
   });
   h+='</tbody></table>';
@@ -803,7 +807,7 @@ function renderShareResults(d){
     h+='<div class="share-block">';
     h+='<div class="share-platform">'+p[1]+'</div>';
     h+='<div class="share-text" id="sb-'+p[0]+'">'+esc(p[2])+'</div>';
-    h+='<button class="btn btn-sm btn-secondary" onclick="copyShare(\''+p[0]+'\')">&#x1F4CB; Copy</button>';
+    h+='<button class="btn btn-sm btn-secondary" onclick="copyShare(\''+jsStr(p[0])+'\')">&#x1F4CB; Copy</button>';
     h+='</div>';
   });
   document.getElementById('shareResults').innerHTML=h||'<div class="empty-state">No messages generated.</div>';
