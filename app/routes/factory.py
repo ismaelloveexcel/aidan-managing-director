@@ -23,6 +23,7 @@ from app.core.dependencies import (
 from app.core.pipeline import run_pipeline
 from app.core.supervisor import validate_market_truth
 from app.factory.build_brief_validator import validate_build_brief
+from app.factory.deployment_verifier import DeploymentVerification, verify_deployment
 from app.factory.factory_client import FactoryTrackingResult
 from app.factory.models import (
     BuildBrief,
@@ -110,6 +111,12 @@ async def get_factory_run(run_id: str) -> FactoryRunResult:
     return run
 
 
+@router.get("/runs", response_model=list[FactoryRunResult])
+async def list_factory_runs() -> list[FactoryRunResult]:
+    """Return all factory runs in the in-memory run store."""
+    return _run_store.list_runs()
+
+
 @router.get("/runs/{run_id}/tracking", response_model=FactoryTrackingResult)
 async def get_factory_run_tracking(run_id: str) -> FactoryTrackingResult:
     """Return parsed workflow/build tracking payload for a run."""
@@ -117,6 +124,29 @@ async def get_factory_run_tracking(run_id: str) -> FactoryTrackingResult:
     if tracking is None:
         raise HTTPException(status_code=404, detail="Factory run not found")
     return tracking
+
+
+class VerifyDeploymentRequest(BaseModel):
+    """Request payload for verifying a deployment URL."""
+
+    project_id: str
+    deploy_url: str = ""
+    repo_url: str = ""
+
+
+@router.post("/verify-deployment", response_model=DeploymentVerification)
+async def verify_deployment_endpoint(request: VerifyDeploymentRequest) -> DeploymentVerification:
+    """Run metadata-level deployment checks (URL format, presence).
+
+    This does **not** probe the URL over HTTP; it validates that the
+    deployment metadata (URL format, repo URL, etc.) is well-formed.
+    For live HTTP probes, use the async verifier at the integration layer.
+    """
+    return verify_deployment(
+        project_id=request.project_id,
+        deploy_url=request.deploy_url,
+        repo_url=request.repo_url,
+    )
 
 
 @router.post("/ideas/execute", response_model=IdeaExecutionResult)
