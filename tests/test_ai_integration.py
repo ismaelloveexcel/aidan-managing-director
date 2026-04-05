@@ -10,6 +10,38 @@ client = TestClient(app)
 
 
 # ---------------------------------------------------------------------------
+# Root UI tests
+# ---------------------------------------------------------------------------
+
+
+class TestRootUI:
+    """Verify the root route serves the HTML UI."""
+
+    def test_root_returns_html(self) -> None:
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+
+    def test_root_contains_title(self) -> None:
+        resp = client.get("/")
+        assert "AI-DAN Managing Director" in resp.text
+
+    def test_root_contains_input_form(self) -> None:
+        resp = client.get("/")
+        assert "idea-input" in resp.text
+        assert "submit-btn" in resp.text
+
+    def test_root_contains_analyze_endpoint(self) -> None:
+        resp = client.get("/")
+        assert "/api/analyze/" in resp.text
+
+    def test_root_does_not_use_innerhtml_for_verdict(self) -> None:
+        """Verify the XSS fix: verdict rendering uses textContent, not innerHTML."""
+        resp = client.get("/")
+        assert "verdictSpan.textContent=v" in resp.text
+
+
+# ---------------------------------------------------------------------------
 # Analyze endpoint tests
 # ---------------------------------------------------------------------------
 

@@ -2,6 +2,12 @@
 
 AI-DAN is the **strategic decision engine** for an AI venture system. It transforms founder input into structured decisions, machine-readable commands, and launch-ready business packages – all optimized for a **single non-technical operator**.
 
+## ✨ What It Does
+
+1. **Enter a business idea** → AI-DAN researches, scores, and structures it
+2. **Get a full business verdict** → Feasibility, profitability, risk, pricing, distribution
+3. **Monetization-ready output** → Every response includes target user, pricing, and go-to-market plan
+
 ## 🚀 Quick Start
 
 ### One-Click Local Startup
@@ -25,6 +31,8 @@ pip install -r requirements.txt
 cp .env.example .env       # Edit with your API keys
 uvicorn main:app --reload
 ```
+
+Open **http://localhost:8000** in your browser → the UI loads at root.
 
 ---
 
@@ -116,6 +124,7 @@ Copy `.env.example` to `.env` and fill in your values:
 
 | Service | URL |
 |---------|-----|
+| **Web UI** | `http://localhost:8000` |
 | **API Docs (Swagger)** | `http://localhost:8000/docs` |
 | **Health Check** | `http://localhost:8000/health` |
 | **Streamlit UI** | `http://localhost:8501` (optional, separate process) |
@@ -124,7 +133,8 @@ Copy `.env.example` to `.env` and fill in your values:
 
 ## API Endpoints
 
-### Primary
+### Primary (UI-connected)
+- `GET /` — Web UI (single-page application)
 - `POST /api/analyze/` — Full AI-powered idea analysis with monetization output
 
 ### Core Decision Flow
@@ -169,6 +179,26 @@ Copy `.env.example` to `.env` and fill in your values:
 
 ### Health
 - `GET /health` — Health check
+
+---
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Connect this repo to Vercel
+2. Set environment variables in Vercel dashboard:
+   - `OPENAI_API_KEY`
+   - `PERPLEXITY_API_KEY`
+   - `PERPLEXITY_MODEL=sonar`
+3. Deploy — the `vercel.json` config handles Python runtime setup
+4. Root URL loads the UI, all API routes are accessible
+
+### Render / Railway / Fly.io
+
+1. Set environment variables from `.env.example`
+2. Deploy with `uvicorn main:app --host 0.0.0.0 --port $PORT`
+3. Health check: `GET /health` returns `{"status": "ok"}`
 
 ---
 
