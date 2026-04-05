@@ -23,6 +23,7 @@ from app.core.dependencies import (
 from app.core.pipeline import run_pipeline
 from app.core.supervisor import validate_market_truth
 from app.factory.build_brief_validator import validate_build_brief
+from app.factory.deployment_verifier import DeploymentVerification, verify_deployment
 from app.factory.factory_client import FactoryTrackingResult
 from app.factory.models import (
     BuildBrief,
@@ -108,6 +109,30 @@ async def get_factory_run(run_id: str) -> FactoryRunResult:
     if run is None:
         raise HTTPException(status_code=404, detail="Factory run not found")
     return run
+
+
+@router.get("/runs", response_model=list[FactoryRunResult])
+async def list_factory_runs() -> list[FactoryRunResult]:
+    """Return all factory runs stored in memory."""
+    return _run_store.list_runs()
+
+
+class DeploymentVerifyRequest(BaseModel):
+    """Input for verifying a deployment."""
+
+    project_id: str
+    deploy_url: str = ""
+    repo_url: str = ""
+
+
+@router.post("/verify-deployment", response_model=DeploymentVerification)
+async def verify_deployment_endpoint(request: DeploymentVerifyRequest) -> DeploymentVerification:
+    """Verify a deployment URL is accessible and functional."""
+    return verify_deployment(
+        project_id=request.project_id,
+        deploy_url=request.deploy_url,
+        repo_url=request.repo_url,
+    )
 
 
 @router.get("/runs/{run_id}/tracking", response_model=FactoryTrackingResult)
