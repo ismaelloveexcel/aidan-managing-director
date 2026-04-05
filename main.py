@@ -10,6 +10,8 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
+from app.core.config import get_settings
+from app.core.middleware import APIKeyMiddleware, RateLimitMiddleware
 from app.routes import (
     analytics,
     analyze,
@@ -53,6 +55,13 @@ app = FastAPI(
     version=_VERSION,
     lifespan=_lifespan,
 )
+
+# ---------------------------------------------------------------------------
+# Middleware registration (outermost = last to run on request / first on response)
+# ---------------------------------------------------------------------------
+_settings = get_settings()
+app.add_middleware(APIKeyMiddleware, api_key=_settings.api_key)
+app.add_middleware(RateLimitMiddleware, max_requests=100, window_seconds=60)
 
 # ---------------------------------------------------------------------------
 # Route registration
