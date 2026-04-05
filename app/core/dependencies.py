@@ -12,6 +12,9 @@ from app.command_center.service import CommandCenterService
 from app.core.config import get_settings
 from app.factory.factory_client import FactoryClient
 from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+from app.integrations.ai_provider import AIProvider
+from app.integrations.openai_client import OpenAIClient
+from app.integrations.perplexity_client import PerplexityClient
 from app.memory.auto_learner import AutoLearner
 from app.memory.store import MemoryStore
 from app.observability.control import ControlPlaneService
@@ -142,3 +145,32 @@ def get_command_center_service() -> CommandCenterService:
 def get_auto_learner() -> AutoLearner:
     """Return a cached auto-learner service bound to the memory store."""
     return AutoLearner(memory_store=get_memory_store())
+
+
+@_lru_cache(maxsize=1)
+def get_openai_client() -> OpenAIClient:
+    """Return a cached OpenAI client for reasoning tasks."""
+    settings = get_settings()
+    api_key = settings.openai_api_key or settings.llm_api_key
+    model = settings.openai_model or settings.llm_model
+    base_url = settings.llm_base_url
+    return OpenAIClient(api_key=api_key, model=model, base_url=base_url)
+
+
+@_lru_cache(maxsize=1)
+def get_perplexity_client() -> PerplexityClient:
+    """Return a cached Perplexity client for research tasks."""
+    settings = get_settings()
+    return PerplexityClient(
+        api_key=settings.perplexity_api_key,
+        model=settings.perplexity_model,
+    )
+
+
+@_lru_cache(maxsize=1)
+def get_ai_provider() -> AIProvider:
+    """Return a cached unified AI provider."""
+    return AIProvider(
+        openai_client=get_openai_client(),
+        perplexity_client=get_perplexity_client(),
+    )
