@@ -6,9 +6,22 @@ Uses pydantic-settings to load values from environment variables and
 that integration clients never read os.environ directly.
 """
 
+import os
 from functools import lru_cache as _lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _default_portfolio_db_path() -> str:
+    """Return a writable default database path.
+
+    Vercel's filesystem is read-only outside ``/tmp``, so when the
+    ``VERCEL`` environment variable is set we store the SQLite file
+    there instead of the local ``data/`` directory.
+    """
+    if os.environ.get("VERCEL"):
+        return "/tmp/portfolio.sqlite3"
+    return "data/portfolio.sqlite3"
 
 
 class Settings(BaseSettings):
@@ -58,7 +71,7 @@ class Settings(BaseSettings):
     vercel_team_id: str = ""
 
     # --- Portfolio Registry ----------------------------------------------------
-    portfolio_db_path: str = "data/portfolio.sqlite3"
+    portfolio_db_path: str = _default_portfolio_db_path()
 
     # --- Memory / Learning -----------------------------------------------------
     memory_max_events: int = 2000
