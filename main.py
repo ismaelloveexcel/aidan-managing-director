@@ -244,8 +244,8 @@ footer{padding:.8rem 1.5rem;border-top:1px solid #1a1a1a;color:#444;font-size:.7
     <div id="dashProjects"><div class="loading" style="display:block"><div class="spinner"></div></div></div>
     <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap">
       <button class="btn btn-primary" style="width:auto;padding:.5rem 1rem" onclick="loadDashboard()">&#x1F504; Refresh</button>
-      <button class="btn btn-secondary" style="width:auto;padding:.5rem 1rem" onclick="switchTab('analyze',document.querySelectorAll('.nav button')[1])">&#x2795; New Idea</button>
-      <button class="btn btn-secondary" style="width:auto;padding:.5rem 1rem" onclick="switchTab('portfolio',document.querySelectorAll('.nav button')[2])">&#x1F4CB; Portfolio</button>
+      <button class="btn btn-secondary" style="width:auto;padding:.5rem 1rem" onclick="switchTab('analyze',document.querySelector('.nav button[onclick*=\\'analyze\\']'))">&#x2795; New Idea</button>
+      <button class="btn btn-secondary" style="width:auto;padding:.5rem 1rem" onclick="switchTab('portfolio',document.querySelector('.nav button[onclick*=\\'portfolio\\']'))">&#x1F4CB; Portfolio</button>
     </div>
   </div>
 </div>
@@ -425,7 +425,7 @@ function esc(s){if(s==null)return'';var d=document.createElement('div');
 
 function jsStr(s){if(s==null)return'';
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"')
-    .replace(/`/g,'\\`').replace(/</g,'\\x3c').replace(/>/g,'\\x3e')
+    .replace(/`/g,'\\x60').replace(/</g,'\\x3c').replace(/>/g,'\\x3e')
     .replace(/&/g,'\\x26').replace(/\r/g,'\\r').replace(/\n/g,'\\n')}
 
 function toast(msg,type){
@@ -675,7 +675,7 @@ async function buildProject(id,name){
   var distBtn=document.querySelector('.nav button[onclick*="distribution"]');
   switchTab('distribution',distBtn||document.querySelectorAll('.nav button')[4]);
   document.getElementById('shareTitle').value=name;
-  toast('Switch to Factory tab to trigger a build for '+name,'info');
+  toast('Build queued — generate share messages for '+name,'info');
 }
 
 function shareProject(id,name){
