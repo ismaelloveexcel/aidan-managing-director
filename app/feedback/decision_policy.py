@@ -1,22 +1,91 @@
 """
 Deterministic decision policy for project performance evaluation.
+
+Supports original conversion-based rules plus payment-signal and
+user-feedback overrides from the revenue intelligence layer.
 """
 
 from __future__ import annotations
 
-from app.feedback.models import DecisionResult
+from app.feedback.models import DecisionResult, UserFeedbackType
 
 
-def decide(*, visits: int, conversion_rate: float, revenue: float) -> DecisionResult:
-    """Apply deterministic decision rules from the Phase 3 specification.
+def decide(
+    *,
+    visits: int,
+    conversion_rate: float,
+    revenue: float,
+    payment_attempted: bool = False,
+    payment_success: bool = False,
+    feedback: UserFeedbackType | None = None,
+) -> DecisionResult:
+    """Apply deterministic decision rules with payment + feedback signals."""
 
-    Thresholds:
-    - Kill: visits >= 100, conversion < 1%, revenue = 0
-    - Scale: revenue > 0, conversion >= 3%
-    - Revise: visits >= 100, conversion < 3%
-    - Monitor: default fallback
-    """
-    if visits >= 100 and conversion_rate < 0.01 and revenue == 0:
+    # ── Payment-signal overrides ──────────────────────────────────────
+    if payment_success:
+        return DecisionResult(
+            decision="scale_candidate",
+            reason="Payment received – revenue signal confirmed.",
+            next_action="Prioritize scaling: increase distribution and expand features.",
+            confidence=0.95,
+            suggested_next_state="scaled",
+            suggested_next_action="scale project",
+        )
+
+    if payment_attempted and not payment_success:
+        return DecisionResult(
+            decision="iterate_pricing",
+            reason="Payment was attempted but did not succeed – likely pricing or offer issue.",
+            next_action="Review pricing tier, payment flow, and offer clarity.",
+            confidence=0.85,
+            suggested_next_state="monitoring",
+            suggested_next_action="iterate pricing or offer",
+        )
+
+    # ── Feedback-signal overrides ─────────────────────────────────────
+    if feedback == UserFeedbackType.TOO_EXPENSIVE:
+        return DecisionResult(
+            decision="iterate_pricing",
+            reason="User feedback indicates price is too high.",
+            next_action="Reduce pricing or reposition the value proposition.",
+            confidence=0.82,
+            suggested_next_state="monitoring",
+            suggested_next_action="adjust pricing",
+        )
+
+    if feedback == UserFeedbackType.NOT_CLEAR:
+        return DecisionResult(
+            decision="revise_messaging",
+            reason="User feedback indicates messaging is unclear.",
+            next_action="Improve landing-page copy, CTA, and onboarding flow.",
+            confidence=0.80,
+            suggested_next_state="monitoring",
+            suggested_next_action="improve messaging",
+        )
+
+    if feedback == UserFeedbackType.NOT_NEEDED:
+        return DecisionResult(
+            decision="kill_candidate",
+            reason="User feedback indicates the product is not needed.",
+            next_action="Downgrade idea score and re-evaluate market fit.",
+            confidence=0.78,
+            suggested_next_state="killed",
+            suggested_next_action="downgrade idea score",
+        )
+
+    # ── Combined traffic + payment guard ──────────────────────────────
+    if visits >= 100 and payment_attempted and not payment_success:
+        return DecisionResult(
+            decision="iterate_pricing",
+            reason="Sufficient traffic and payment attempted but zero success – iterate once.",
+            next_action="Change pricing or offer structure, then measure again.",
+            confidence=0.84,
+            suggested_next_state="monitoring",
+            suggested_next_action="iterate pricing or offer",
+        )
+
+    # ── Original conversion-based rules ───────────────────────────────
+    if visits >= 200 and conversion_rate < 0.01 and revenue == 0:
         return DecisionResult(
             decision="kill_candidate",
             reason="Traffic is sufficient but conversion is below 1% with no revenue.",
