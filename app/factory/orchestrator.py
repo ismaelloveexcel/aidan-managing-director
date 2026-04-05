@@ -96,15 +96,25 @@ class FactoryOrchestrator:
         - In dry-run mode, emit deterministic preview URLs with no side effects.
         - In live mode, create repo from template, inject PRODUCT_BRIEF.md + product.config.json,
           and trigger Vercel deployment.
+
+        Idempotency:
+        - The effective key is ``{project_id}:{brief_hash}:{run_mode}`` where
+          *run_mode* is ``dry_run`` or ``live``.  This ensures a dry-run never
+          blocks a subsequent live run (and vice-versa).
         """
         validation = validate_build_brief(build_brief)
+        run_mode = "dry_run" if dry_run else "live"
+        # Include run_mode in effective idempotency key so dry_run
+        # never blocks a subsequent live run (and vice-versa).
+        effective_idempotency_key = f"{build_brief.idempotency_key()}:{run_mode}"
+
         if not validation.valid:
             return FactoryRunResult(
                 run_id=str(uuid.uuid4()),
                 project_id=build_brief.project_id,
                 idea_id=build_brief.idea_id,
                 status=FactoryRunStatus.FAILED,
-                idempotency_key=build_brief.idempotency_key(),
+                idempotency_key=effective_idempotency_key,
                 dry_run=dry_run,
                 error="; ".join(validation.errors),
                 events=[
@@ -117,8 +127,7 @@ class FactoryOrchestrator:
                 ],
             )
 
-        idempotency_key = build_brief.idempotency_key()
-        existing = self._store.get_by_idempotency_key(idempotency_key)
+        existing = self._store.get_by_idempotency_key(effective_idempotency_key)
         if existing and existing.status in (FactoryRunStatus.RUNNING, FactoryRunStatus.SUCCEEDED):
             replayed = existing.model_copy(deep=True)
             replayed.events.append(
@@ -138,7 +147,7 @@ class FactoryOrchestrator:
             project_id=build_brief.project_id,
             idea_id=build_brief.idea_id,
             status=FactoryRunStatus.RUNNING,
-            idempotency_key=idempotency_key,
+            idempotency_key=effective_idempotency_key,
             dry_run=dry_run,
             stub=True,
         )
@@ -149,7 +158,7 @@ class FactoryOrchestrator:
                 "status": "ok",
                 "details": {
                     "brief_hash": build_brief.brief_hash(),
-                    "idempotency_key": idempotency_key,
+                    "idempotency_key": effective_idempotency_key,
                 },
             },
         )
