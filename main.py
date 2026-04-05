@@ -612,12 +612,12 @@ function renderResult(d) {
 
   if (d.validation_blocking && d.validation_blocking.length) {
     h += '<div class="section"><h3>&#x1F6D1; Blocking Issues</h3>';
-    d.validation_blocking.forEach(function(b){ h += '<p class="blocking">&bull; ' + escapeHtml(b) + '</p>'; });
+    d.validation_blocking.forEach(function(b){ h += '<p class="blocking">&#x2022; ' + escapeHtml(b) + '</p>'; });
     h += '</div>';
   }
   if (d.validation_reasons && d.validation_reasons.length) {
     h += '<div class="section"><h3>&#x2705; Validation</h3>';
-    d.validation_reasons.forEach(function(v){ h += '<p class="reason">&bull; ' + escapeHtml(v) + '</p>'; });
+    d.validation_reasons.forEach(function(v){ h += '<p class="reason">&#x2022; ' + escapeHtml(v) + '</p>'; });
     h += '</div>';
   }
 
@@ -675,25 +675,18 @@ function detailRow(l, v) {
     '</span><span class="detail-value">' + escapeHtml(v) + '</span></div>';
 }
 
-async function createProject() {
+async function _saveIdeaAsProject(toastMsg) {
   var idea = _lastAnalysisIdea || document.getElementById('idea').value.trim();
   if (!idea) { showToast('No idea to save', 'error'); return; }
   try {
     await apiFetch('/portfolio/projects', {method:'POST',
       body:JSON.stringify({name:idea.slice(0,80), description:idea})});
-    showToast('Project created!', 'success');
+    showToast(toastMsg, 'success');
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-async function saveDraft() {
-  var idea = _lastAnalysisIdea || document.getElementById('idea').value.trim();
-  if (!idea) { showToast('No idea to save', 'error'); return; }
-  try {
-    await apiFetch('/portfolio/projects', {method:'POST',
-      body:JSON.stringify({name:idea.slice(0,80), description:idea})});
-    showToast('Draft saved!', 'success');
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
-}
+function createProject() { return _saveIdeaAsProject('Project created!'); }
+function saveDraft() { return _saveIdeaAsProject('Draft saved!'); }
 
 // ---------------------------------------------------------------------------
 // Portfolio
