@@ -99,7 +99,10 @@ def get_portfolio_repository() -> PortfolioRepository:
 @_lru_cache(maxsize=1)
 def get_feedback_service() -> FeedbackService:
     """Return a cached feedback service using the portfolio repository."""
-    return FeedbackService(repository=get_portfolio_repository())
+    return FeedbackService(
+        repository=get_portfolio_repository(),
+        memory_store=get_memory_store(),
+    )
 
 
 @_lru_cache(maxsize=1)
@@ -113,6 +116,12 @@ def get_memory_store() -> MemoryStore:
     """Return a cached in-memory memory/learning store."""
     settings = get_settings()
     return MemoryStore(max_events=settings.memory_max_events)
+
+
+@_lru_cache(maxsize=1)
+def get_auto_learner() -> AutoLearner:
+    """Return a cached auto-learner bound to the shared memory store."""
+    return AutoLearner(memory_store=get_memory_store())
 
 
 @_lru_cache(maxsize=1)
@@ -139,12 +148,6 @@ def get_command_center_service() -> CommandCenterService:
         governance=get_governance_service(),
         factory_run_store=get_factory_run_store(),
     )
-
-
-@_lru_cache(maxsize=1)
-def get_auto_learner() -> AutoLearner:
-    """Return a cached auto-learner service bound to the memory store."""
-    return AutoLearner(memory_store=get_memory_store())
 
 
 @_lru_cache(maxsize=1)
