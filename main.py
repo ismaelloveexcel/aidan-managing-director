@@ -19,6 +19,7 @@ from app.routes import (
     chat,
     commands,
     control,
+    distribution,
     factory,
     feedback,
     ideas,
@@ -80,6 +81,7 @@ app.include_router(memory.router, prefix="/memory", tags=["Memory"])
 app.include_router(intelligence.router, prefix="/intelligence", tags=["Intelligence"])
 app.include_router(revenue.router, prefix="/revenue", tags=["Revenue Intelligence"])
 app.include_router(control.router, prefix="/control", tags=["Control"])
+app.include_router(distribution.router, prefix="/api/distribution", tags=["Distribution"])
 
 
 @app.get("/health", tags=["Health"])
