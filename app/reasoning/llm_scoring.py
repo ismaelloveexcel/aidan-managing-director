@@ -14,7 +14,6 @@ Falls back gracefully to the keyword-based scores when:
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
@@ -202,10 +201,3 @@ def score_idea_with_llm(
         decision_reason=reason,
     )
 
-
-def _parse_llm_json_safe(raw: str) -> dict[str, Any]:
-    """Attempt to parse a JSON string, returning empty dict on failure."""
-    try:
-        return json.loads(raw)
-    except (json.JSONDecodeError, TypeError):
-        return {}

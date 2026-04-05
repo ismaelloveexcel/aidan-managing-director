@@ -83,7 +83,11 @@ _TRENDING_DOWN_MAP: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# Weights for relevance calculation
+# Weights used in relevance_score calculation.
+# Each matching up-trend category adds 0.12 to raw relevance (max ~1.0 at ~8 matches).
+# Each matching down-trend category subtracts 0.08, penalising declining-market ideas.
+# These values were chosen so that 2-3 strong up-trend matches yield a meaningful
+# positive score (~0.25-0.35) without a single match saturating the scale.
 _UP_WEIGHT = 0.12
 _DOWN_WEIGHT = 0.08
 _MAX_RELEVANCE = 1.0
