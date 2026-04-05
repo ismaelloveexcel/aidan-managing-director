@@ -73,17 +73,6 @@ def decide(
             suggested_next_action="downgrade idea score",
         )
 
-    # ── Combined traffic + payment guard ──────────────────────────────
-    if visits >= 100 and payment_attempted and not payment_success:
-        return DecisionResult(
-            decision="iterate_pricing",
-            reason="Sufficient traffic and payment attempted but zero success – iterate once.",
-            next_action="Change pricing or offer structure, then measure again.",
-            confidence=0.84,
-            suggested_next_state="monitoring",
-            suggested_next_action="iterate pricing or offer",
-        )
-
     # ── Original conversion-based rules ───────────────────────────────
     if visits >= 200 and conversion_rate < 0.01 and revenue == 0:
         return DecisionResult(

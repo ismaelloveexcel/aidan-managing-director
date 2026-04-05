@@ -50,7 +50,6 @@ async def run_fast_decision(payload: FastDecisionInput) -> FastDecisionOutput:
 class BusinessOutputRequest(BaseModel):
     """Optional overrides when generating a business output snapshot."""
 
-    project_id: str
     payment_link: str | None = None
     pricing_strategy: str = "default"
 

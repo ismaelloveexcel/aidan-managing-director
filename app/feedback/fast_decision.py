@@ -198,7 +198,7 @@ class FastDecisionOutput(BaseModel):
 
     project_id: str
     decision: DecisionResult
-    action: str  # scale / terminate / iterate / monitor / revise_messaging
+    action: str  # scale / kill / iterate / monitor / revise_messaging
     iteration_applied: bool
     max_iterations_reached: bool
 

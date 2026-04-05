@@ -100,10 +100,15 @@ class FeedbackService:
         if snapshot is None:
             return None
 
+        # Derive payment flags from the persisted raw_payload so the decision
+        # matches what was recorded at ingest time.
+        raw = snapshot.raw_payload or {}
         result = decide(
             visits=snapshot.visits,
             conversion_rate=snapshot.conversion_rate,
             revenue=snapshot.revenue,
+            payment_attempted=bool(raw.get("payment_attempted", False)),
+            payment_success=bool(raw.get("payment_success", False)),
         )
         return result
 

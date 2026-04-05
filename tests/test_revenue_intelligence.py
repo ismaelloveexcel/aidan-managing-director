@@ -584,7 +584,6 @@ class TestRevenueRoutes:
         resp = client.post(
             f"/revenue/projects/{pid}/business-output",
             json={
-                "project_id": pid,
                 "payment_link": "https://pay.example.com/test",
             },
         )
