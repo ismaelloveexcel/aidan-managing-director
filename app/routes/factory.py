@@ -136,7 +136,12 @@ class VerifyDeploymentRequest(BaseModel):
 
 @router.post("/verify-deployment", response_model=DeploymentVerification)
 async def verify_deployment_endpoint(request: VerifyDeploymentRequest) -> DeploymentVerification:
-    """Verify that a deployed project URL is accessible and functional."""
+    """Run metadata-level deployment checks (URL format, presence).
+
+    This does **not** probe the URL over HTTP; it validates that the
+    deployment metadata (URL format, repo URL, etc.) is well-formed.
+    For live HTTP probes, use the async verifier at the integration layer.
+    """
     return verify_deployment(
         project_id=request.project_id,
         deploy_url=request.deploy_url,

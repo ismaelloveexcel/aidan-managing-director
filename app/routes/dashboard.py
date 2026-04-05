@@ -163,10 +163,13 @@ def get_dashboard_health() -> DashboardHealth:
     approved = sum(1 for p in projects if p.status in _APPROVED_STATES)
     blocked = sum(1 for p in projects if p.status in _BLOCKED_STATES)
 
-    # Sum revenue from metadata if present
+    # Sum revenue from metadata if present (guard against non-numeric values).
     revenue_total = 0.0
     for project in projects:
-        revenue_total += float(project.metadata.get("revenue", 0) or 0)
+        try:
+            revenue_total += float(project.metadata.get("revenue", 0) or 0)
+        except (TypeError, ValueError):
+            pass  # Skip projects with non-numeric revenue metadata
 
     health_status, summary = _compute_health(total, approved, revenue_total, blocked)
 

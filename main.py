@@ -441,10 +441,19 @@ function toast(msg,type){
 
 function statusBadge(s){
   var m={approved:'badge-approved',building:'badge-building',launched:'badge-launched',
-    idea:'badge-idea',hold:'badge-hold',rejected:'badge-rejected',
+    idea:'badge-idea',hold:'badge-hold',killed:'badge-rejected',
     succeeded:'badge-succeeded',failed:'badge-failed',pending:'badge-pending',running:'badge-running'};
   var cls=m[(s||'').toLowerCase()]||'badge-idea';
   return '<span class="badge '+cls+'">'+esc(s)+'</span>';
+}
+
+/* ── API client with optional API key ── */
+function apiFetch(path,opts){
+  opts=opts||{};
+  opts.headers=opts.headers||{};
+  var key=localStorage.getItem('aidan_api_key')||'';
+  if(key)opts.headers['X-API-Key']=key;
+  return fetch(path,opts);
 }
 
 /* ── tab switching ── */
@@ -463,7 +472,7 @@ async function loadDashboard(){
   document.getElementById('dashProjects').innerHTML=
     '<div class="loading" style="display:block"><div class="spinner"></div></div>';
   try{
-    var resp=await fetch('/portfolio/projects');
+    var resp=await apiFetch('/portfolio/projects');
     if(!resp.ok)throw new Error(resp.statusText);
     var projects=await resp.json();
     renderDashStats(projects);
@@ -478,9 +487,9 @@ async function loadDashboard(){
 
 function renderDashStats(projects){
   var total=projects.length;
-  var approved=projects.filter(function(p){return(p.state||'').toLowerCase()==='approved'}).length;
-  var building=projects.filter(function(p){return(p.state||'').toLowerCase()==='building'}).length;
-  var launched=projects.filter(function(p){return(p.state||'').toLowerCase()==='launched'}).length;
+  var approved=projects.filter(function(p){return(p.status||'').toLowerCase()==='approved'}).length;
+  var building=projects.filter(function(p){return(p.status||'').toLowerCase()==='building'}).length;
+  var launched=projects.filter(function(p){return(p.status||'').toLowerCase()==='launched'}).length;
   document.getElementById('st-total').textContent=total;
   document.getElementById('st-approved').textContent=approved;
   document.getElementById('st-building').textContent=building;
@@ -499,9 +508,9 @@ function renderDashProjects(projects){
     return;
   }
   var recent=projects.slice(-5).reverse();
-  var h='<table><thead><tr><th>Name</th><th>State</th><th>Created</th></tr></thead><tbody>';
+  var h='<table><thead><tr><th>Name</th><th>Status</th><th>Created</th></tr></thead><tbody>';
   recent.forEach(function(p){
-    h+='<tr><td>'+esc(p.name)+'</td><td>'+statusBadge(p.state)+'</td>';
+    h+='<tr><td>'+esc(p.name)+'</td><td>'+statusBadge(p.status)+'</td>';
     h+='<td style="color:#555;font-size:.78rem">'+(p.created_at||'').substring(0,10)+'</td></tr>';
   });
   h+='</tbody></table>';
@@ -529,7 +538,7 @@ async function analyze(){
     differentiation:document.getElementById('differentiation').value.trim()
   };
   try{
-    var resp=await fetch('/api/analyze/',{method:'POST',
+    var resp=await apiFetch('/api/analyze/',{method:'POST',
       headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!resp.ok){var e=await resp.json();throw new Error(e.detail||resp.statusText)}
     var d=await resp.json();
@@ -612,7 +621,7 @@ async function loadPortfolio(){
   document.getElementById('portfolioTable').innerHTML=
     '<div class="loading" style="display:block"><div class="spinner"></div></div>';
   try{
-    var resp=await fetch('/portfolio/projects');
+    var resp=await apiFetch('/portfolio/projects');
     if(!resp.ok)throw new Error(resp.statusText);
     var projects=await resp.json();
     renderPortfolioTable(projects);
@@ -628,13 +637,13 @@ function renderPortfolioTable(projects){
       '<div class="empty-state">No projects yet. Use Analyze Idea to create your first one.</div>';
     return;
   }
-  var h='<table><thead><tr><th>Name</th><th>State</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+  var h='<table><thead><tr><th>Name</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
   projects.forEach(function(p){
     h+='<tr><td><strong>'+esc(p.name)+'</strong><br><span style="color:#555;font-size:.75rem">'+esc(p.project_id)+'</span></td>';
-    h+='<td>'+statusBadge(p.state)+'</td>';
+    h+='<td>'+statusBadge(p.status)+'</td>';
     h+='<td style="color:#555;font-size:.78rem">'+(p.created_at||'').substring(0,10)+'</td>';
     h+='<td><div class="actions-row">';
-    var s=(p.state||'').toLowerCase();
+    var s=(p.status||'').toLowerCase();
     if(s==='idea'||s==='hold'){
       h+='<button class="btn btn-sm btn-success" onclick="approveProject(\''+jsStr(p.project_id)+'\')">&#x2705; Approve</button>';
       h+='<button class="btn btn-sm btn-danger" onclick="rejectProject(\''+jsStr(p.project_id)+'\')">&#x274C; Reject</button>';
@@ -651,7 +660,7 @@ function renderPortfolioTable(projects){
 
 async function approveProject(id){
   try{
-    var resp=await fetch('/portfolio/projects/'+encodeURIComponent(id)+'/transition',{
+    var resp=await apiFetch('/portfolio/projects/'+encodeURIComponent(id)+'/transition',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({new_state:'approved',event_type:'manual_approve'})
     });
@@ -662,9 +671,9 @@ async function approveProject(id){
 
 async function rejectProject(id){
   try{
-    var resp=await fetch('/portfolio/projects/'+encodeURIComponent(id)+'/transition',{
+    var resp=await apiFetch('/portfolio/projects/'+encodeURIComponent(id)+'/transition',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({new_state:'rejected',event_type:'manual_reject'})
+      body:JSON.stringify({new_state:'killed',event_type:'manual_reject'})
     });
     if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
     toast('Project rejected','info');loadPortfolio();
@@ -672,16 +681,25 @@ async function rejectProject(id){
 }
 
 async function buildProject(id,name){
-  var distBtn=document.querySelector('.nav button[onclick*="distribution"]');
-  switchTab('distribution',distBtn||document.querySelectorAll('.nav button')[4]);
-  document.getElementById('shareTitle').value=name;
-  toast('Build queued — generate share messages for '+name,'info');
+  try{
+    var resp=await apiFetch('/factory/runs',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({project_id:id,dry_run:false})
+    });
+    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
+    toast('Build triggered for '+name,'success');
+    var factoryBtn=document.querySelector('.nav button[onclick*="factory"]');
+    if(factoryBtn)switchTab('factory',factoryBtn);
+  }catch(e){toast('Build failed: '+e.message,'error')}
 }
 
 function shareProject(id,name){
   var distBtn=document.querySelector('.nav button[onclick*="distribution"]');
-  switchTab('distribution',distBtn||document.querySelectorAll('.nav button')[4]);
-  document.getElementById('shareTitle').value=name;
+  if(!distBtn){toast('Distribution tab unavailable','error');return}
+  switchTab('distribution',distBtn);
+  var shareTitle=document.getElementById('shareTitle');
+  if(!shareTitle){toast('Distribution form unavailable','error');return}
+  shareTitle.value=name;
 }
 
 async function createProject(){
@@ -689,7 +707,7 @@ async function createProject(){
   var desc=document.getElementById('pDesc').value.trim();
   if(!name||!desc){toast('Name and description are required','error');return}
   try{
-    var resp=await fetch('/portfolio/projects',{
+    var resp=await apiFetch('/portfolio/projects',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({name:name,description:desc})
     });
@@ -705,7 +723,7 @@ async function loadRuns(){
   document.getElementById('runsTable').innerHTML=
     '<div class="loading" style="display:block"><div class="spinner"></div></div>';
   try{
-    var resp=await fetch('/factory/runs');
+    var resp=await apiFetch('/factory/runs');
     if(!resp.ok)throw new Error(resp.statusText);
     var runs=await resp.json();
     renderRunsTable(runs);
@@ -742,7 +760,7 @@ async function verifyDeployment(){
   var div=document.getElementById('verifyResult');
   div.innerHTML='<div class="loading" style="display:block"><div class="spinner"></div></div>';
   try{
-    var resp=await fetch('/factory/verify-deployment',{
+    var resp=await apiFetch('/factory/verify-deployment',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({project_id:pid,deploy_url:url,repo_url:repo})
     });
@@ -782,7 +800,7 @@ async function generateShare(){
   }
   btn.disabled=true;loading.style.display='block';results.innerHTML='';
   try{
-    var resp=await fetch('/api/distribution/share-messages',{
+    var resp=await apiFetch('/api/distribution/share-messages',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({title:title,url:url,description:desc,target_user:target,cta:cta})
     });
@@ -834,7 +852,7 @@ async function loadRevenueReport(){
   var result=document.getElementById('revResult');
   loading.style.display='block';result.innerHTML='';
   try{
-    var resp=await fetch('/revenue/projects/'+encodeURIComponent(pid)+'/learning-report');
+    var resp=await apiFetch('/revenue/projects/'+encodeURIComponent(pid)+'/learning-report');
     if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
     var d=await resp.json();
     renderRevenueReport(d);
@@ -866,6 +884,23 @@ function renderRevenueReport(d){
 }
 
 /* ── init ── */
+async function loadHealthTheme(){
+  try{
+    var resp=await apiFetch('/api/dashboard/health');
+    if(!resp.ok)return;
+    var h=await resp.json();
+    var hdr=document.querySelector('header');
+    var status=document.getElementById('headerStatus');
+    var gradients={GREEN:'linear-gradient(135deg,#0a2a0a,#1a1a2e)',
+      AMBER:'linear-gradient(135deg,#2a2a0a,#1a1a2e)',
+      RED:'linear-gradient(135deg,#2a0a0a,#1a1a2e)'};
+    var dots={GREEN:'🟢',AMBER:'🟡',RED:'🔴'};
+    var s=h.health_status||'RED';
+    if(hdr)hdr.style.background=gradients[s]||gradients.RED;
+    if(status)status.textContent=(dots[s]||'🔴')+' '+(h.summary||s);
+  }catch(e){/* health theming is best-effort */}
+}
+loadHealthTheme();
 loadDashboard();
 setInterval(loadDashboard,30000);
 </script>
