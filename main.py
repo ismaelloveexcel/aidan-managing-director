@@ -903,7 +903,7 @@ function renderShareMessages(d){
     var txt=m.content||m.message||'';
     h+='<div class="msg-box">';
     h+='<div class="plat">'+esc(m.platform||m.channel||'')
-      +'<button class="btn btn-outline btn-sm copy-btn" onclick="copyText(this,\''+esc(txt).replace(/'/g,"\\'").replace(/\\n/g,'\\n')+'\')">Copy</button></div>';
+      +'<button class="btn btn-outline btn-sm copy-btn" data-copy="'+esc(txt)+'" onclick="copyText(this)">Copy</button></div>';
     h+='<pre>'+esc(txt)+'</pre>';
     h+='</div>'
   });
@@ -912,7 +912,8 @@ function renderShareMessages(d){
   el.innerHTML=h;el.style.display='block'
 }
 
-function copyText(btn,text){
+function copyText(btn){
+  var text=btn.getAttribute('data-copy')||'';
   navigator.clipboard.writeText(text).then(function(){
     btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)
   }).catch(function(){toast('Copy failed — use Ctrl+C','err')})

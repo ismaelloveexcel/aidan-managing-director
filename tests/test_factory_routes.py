@@ -103,3 +103,42 @@ def test_execute_idea_flow_triggers_approved_build() -> None:
     assert body["repo_url"].startswith("dry-run://github/")
     assert body["deployment_url"].startswith("dry-run://vercel/")
 
+
+
+def test_list_runs_endpoint_empty() -> None:
+    get_factory_run_store().reset()
+    response = client.get("/factory/runs")
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_runs_endpoint_returns_created_run() -> None:
+    get_factory_run_store().reset()
+    client.post(
+        "/factory/runs",
+        json={"build_brief": _payload(), "dry_run": True},
+    )
+    response = client.get("/factory/runs")
+    assert response.status_code == 200
+    runs = response.json()
+    assert len(runs) == 1
+    assert runs[0]["project_id"] == "PRJ-API-1"
+
+
+def test_verify_deployment_endpoint() -> None:
+    response = client.post(
+        "/factory/verify-deployment",
+        json={"project_id": "PRJ-VD-1", "deploy_url": "", "repo_url": ""},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["project_id"] == "PRJ-VD-1"
+    assert "status" in body
+
+
+def test_verify_deployment_endpoint_requires_project_id() -> None:
+    response = client.post(
+        "/factory/verify-deployment",
+        json={"deploy_url": "https://example.com"},
+    )
+    assert response.status_code == 422
