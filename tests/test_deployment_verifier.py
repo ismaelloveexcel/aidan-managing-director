@@ -7,6 +7,7 @@ import pytest
 from app.factory.deployment_verifier import (
     DeploymentVerification,
     VerificationStatus,
+    async_verify_deployment,
     verify_deployment,
 )
 
@@ -81,3 +82,90 @@ class TestDeploymentVerifier:
     def test_verified_at_populated(self) -> None:
         result = verify_deployment(project_id="proj-1")
         assert result.verified_at
+
+
+class TestAsyncVerifyDeployment:
+    """Tests for the async_verify_deployment function."""
+
+    @pytest.mark.asyncio
+    async def test_returns_failed_for_missing_url(self) -> None:
+        """No HTTP request should be attempted when URL is absent."""
+        result = await async_verify_deployment(
+            project_id="proj-async-1",
+            deploy_url="",
+        )
+        assert result.status == VerificationStatus.FAILED
+        assert result.project_id == "proj-async-1"
+        assert any("No deployment URL" in i for i in result.issues)
+
+    @pytest.mark.asyncio
+    async def test_returns_failed_for_invalid_url(self) -> None:
+        result = await async_verify_deployment(
+            project_id="proj-async-2",
+            deploy_url="not-a-real-url",
+        )
+        assert result.status == VerificationStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_returns_failed_for_dry_run_url(self) -> None:
+        result = await async_verify_deployment(
+            project_id="proj-async-3",
+            deploy_url="dry-run://vercel/proj-async-3",
+        )
+        assert result.status == VerificationStatus.FAILED
+
+    @pytest.mark.asyncio
+    async def test_http_checks_added_to_checks_performed(self) -> None:
+        """Verify that HTTP check entries appear in checks_performed."""
+        import httpx
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.is_success = True
+        mock_response.is_redirect = False
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.factory.deployment_verifier.httpx.AsyncClient", return_value=mock_client):
+            result = await async_verify_deployment(
+                project_id="proj-async-4",
+                deploy_url="https://example.vercel.app",
+            )
+
+        assert "http_root_reachable" in result.checks_performed
+        assert result.response_time_ms >= 0.0
+
+    @pytest.mark.asyncio
+    async def test_unhealthy_when_server_returns_500(self) -> None:
+        import httpx
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.is_success = False
+        mock_response.is_redirect = False
+        mock_response.status_code = 500
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.factory.deployment_verifier.httpx.AsyncClient", return_value=mock_client):
+            result = await async_verify_deployment(
+                project_id="proj-async-5",
+                deploy_url="https://broken.vercel.app",
+            )
+
+        assert result.status in (VerificationStatus.FAILED, VerificationStatus.DEGRADED)
+        assert result.health_check_passed is False
+
+    @pytest.mark.asyncio
+    async def test_project_id_propagated(self) -> None:
+        result = await async_verify_deployment(
+            project_id="proj-check-id",
+            deploy_url="",
+        )
+        assert result.project_id == "proj-check-id"

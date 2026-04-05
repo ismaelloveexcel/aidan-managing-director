@@ -4,15 +4,18 @@ factory.py - Routes for BuildBrief validation and factory orchestration.
 
 from __future__ import annotations
 
+import logging
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.core.dependencies import (
+    get_auto_learner,
     get_factory_client,
     get_factory_orchestrator,
+    get_factory_run_store,
     get_governance_service,
     get_portfolio_intelligence_service,
     get_portfolio_repository,
@@ -26,6 +29,7 @@ from app.factory.models import (
     BuildBriefValidationResult,
     FactoryBuildRequest,
     FactoryRunResult,
+    FactoryRunStatus,
 )
 from app.governance.models import GovernanceReviewRequest
 from app.planning.planner import generate_business_package
@@ -33,15 +37,19 @@ from app.reasoning.evaluator import Evaluator
 from app.reasoning.idea_engine import IdeaEngine
 from app.reasoning.models import DecisionAction
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 _orchestrator = get_factory_orchestrator()
 _factory_client = get_factory_client()
 _portfolio = get_portfolio_repository()
+_run_store = get_factory_run_store()
 _idea_engine = IdeaEngine()
 _evaluator = Evaluator()
 _intelligence = get_portfolio_intelligence_service()
 _governance = get_governance_service()
+_auto_learner = get_auto_learner()
 
 
 class IdeaExecutionRequest(BaseModel):
@@ -302,4 +310,115 @@ async def execute_idea_build(request: IdeaExecutionRequest) -> IdeaExecutionResu
         score_breakdown=evaluation.breakdown.model_dump(),
         business_package=business_package,
         reason=evaluation.reason,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Factory Webhook – receives build completion callbacks from ai-dan-factory
+# ---------------------------------------------------------------------------
+
+
+class FactoryWebhookPayload(BaseModel):
+    """Payload sent by the ai-dan-factory repo on build completion or failure."""
+
+    project_id: str
+    run_id: str
+    status: Literal["succeeded", "failed"]
+    deploy_url: str = ""
+    repo_url: str = ""
+    error: str | None = None
+
+
+class FactoryWebhookAck(BaseModel):
+    """Acknowledgment returned after processing a factory webhook."""
+
+    received: bool = True
+    project_id: str
+    run_id: str
+    status: str
+
+
+@router.post("/webhook", response_model=FactoryWebhookAck, status_code=200)
+async def factory_webhook(payload: FactoryWebhookPayload) -> FactoryWebhookAck:
+    """Receive build completion/failure callbacks from the ai-dan-factory.
+
+    This endpoint is called by the factory GitHub Actions workflow after a
+    build succeeds or fails.  It updates the portfolio and the factory run
+    store, and records the outcome in the auto-learner for revenue intelligence.
+
+    Args:
+        payload: Build completion payload from the factory.
+
+    Returns:
+        Acknowledgment with the recorded status.
+    """
+    logger.info(
+        "Factory webhook received: project=%s run=%s status=%s",
+        payload.project_id,
+        payload.run_id,
+        payload.status,
+    )
+
+    new_status = FactoryRunStatus.SUCCEEDED if payload.status == "succeeded" else FactoryRunStatus.FAILED
+
+    # 1. Update the in-memory factory run store.
+    existing_run = _run_store.get_by_run_id(payload.run_id)
+    if existing_run is not None:
+        updated_run = existing_run.model_copy(
+            update={
+                "status": new_status,
+                "deploy_url": payload.deploy_url or existing_run.deploy_url,
+                "repo_url": payload.repo_url or existing_run.repo_url,
+                "error": payload.error,
+            },
+        )
+        _run_store.upsert(updated_run)
+    else:
+        logger.warning("Factory webhook: run_id %s not found in store.", payload.run_id)
+
+    # 2. Persist the factory run in the portfolio if the project exists.
+    project = _portfolio.get_project(payload.project_id)
+    if project is not None and existing_run is not None:
+        run_to_save = existing_run.model_copy(
+            update={
+                "status": new_status,
+                "deploy_url": payload.deploy_url or existing_run.deploy_url,
+                "repo_url": payload.repo_url or existing_run.repo_url,
+                "error": payload.error,
+            },
+        )
+        _portfolio.save_factory_run(run_to_save)
+        _portfolio.log_event(
+            project_id=payload.project_id,
+            event_type="factory_webhook",
+            payload={
+                "run_id": payload.run_id,
+                "status": payload.status,
+                "deploy_url": payload.deploy_url,
+                "repo_url": payload.repo_url,
+                "error": payload.error,
+            },
+        )
+
+    # 3. Record outcome in the auto-learner for revenue intelligence.
+    outcome_label = "build_success" if payload.status == "succeeded" else "build_failure"
+    try:
+        _auto_learner.record_outcome(
+            project_id=payload.project_id,
+            outcome_type=outcome_label,
+            score=1.0 if payload.status == "succeeded" else 0.0,
+            metadata={
+                "run_id": payload.run_id,
+                "deploy_url": payload.deploy_url,
+                "error": payload.error or "",
+            },
+        )
+    except Exception:
+        logger.exception("Failed to record outcome in auto-learner for run %s.", payload.run_id)
+
+    return FactoryWebhookAck(
+        received=True,
+        project_id=payload.project_id,
+        run_id=payload.run_id,
+        status=payload.status,
     )

@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # --- Portfolio Registry ----------------------------------------------------
     portfolio_db_path: str = _default_portfolio_db_path()
 
+    # --- API Security ----------------------------------------------------------
+    api_key: str = ""
+
     # --- Memory / Learning -----------------------------------------------------
     memory_max_events: int = 2000
 

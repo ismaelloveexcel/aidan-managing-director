@@ -10,10 +10,13 @@ Checks:
 
 from __future__ import annotations
 
+import asyncio
+import time
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+import httpx
 from pydantic import BaseModel, Field
 
 
@@ -128,3 +131,133 @@ def verify_deployment(
         checks_performed=checks,
         issues=issues,
     )
+
+
+_HTTP_TIMEOUT = 10.0  # seconds per request
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_BASE = 1.0  # seconds (exponential: 1, 2, 4)
+
+
+async def async_verify_deployment(
+    *,
+    project_id: str,
+    deploy_url: str = "",
+    repo_url: str = "",
+    expected_endpoints: list[str] | None = None,
+    extra: dict[str, Any] | None = None,
+) -> DeploymentVerification:
+    """Verify a deployment with real async HTTP requests.
+
+    Makes actual HTTP requests to the deployment URL and health endpoints
+    using ``httpx.AsyncClient``.  Implements up to 3 retry attempts with
+    exponential back-off (1 s, 2 s, 4 s) for transient failures.
+
+    Args:
+        project_id: Project identifier.
+        deploy_url: Deployment URL to probe.
+        repo_url: Repository URL (recorded in metadata but not probed).
+        expected_endpoints: Additional endpoint paths to probe.
+            Defaults to ``["/health"]``.
+        extra: Optional additional data (unused by this function).
+
+    Returns:
+        :class:`DeploymentVerification` populated with real timing and
+        HTTP status information.
+    """
+    # Run the synchronous metadata checks first.
+    base = verify_deployment(
+        project_id=project_id,
+        deploy_url=deploy_url,
+        repo_url=repo_url,
+        expected_endpoints=expected_endpoints,
+        extra=extra,
+    )
+
+    # If metadata validation already failed (e.g. missing/invalid URL),
+    # there is nothing to probe — return early.
+    if base.status == VerificationStatus.FAILED:
+        return base
+
+    checks = list(base.checks_performed)
+    issues = list(base.issues)
+
+    endpoints_to_probe: list[str] = list(expected_endpoints) if expected_endpoints else ["/health"]
+    base_url = deploy_url.rstrip("/")
+
+    health_passed = False
+    ui_accessible = False
+    response_time_ms = 0.0
+
+    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT, follow_redirects=True) as client:
+        # --- Probe the root URL ---
+        checks.append("http_root_reachable")
+        root_ok, root_ms, root_issue = await _probe_url(client, base_url)
+        response_time_ms = root_ms
+        if root_ok:
+            ui_accessible = True
+        else:
+            issues.append(f"Root URL unreachable: {root_issue}")
+
+        # --- Probe health / custom endpoints ---
+        for endpoint in endpoints_to_probe:
+            url = base_url + endpoint
+            check_key = f"http_{endpoint.lstrip('/').replace('/', '_') or 'health'}"
+            checks.append(check_key)
+            ok, ep_ms, ep_issue = await _probe_url(client, url)
+            if ok:
+                health_passed = True
+            else:
+                issues.append(f"Endpoint {endpoint} failed: {ep_issue}")
+
+    # Determine overall status.
+    if health_passed and ui_accessible:
+        status = VerificationStatus.HEALTHY
+    elif health_passed or ui_accessible:
+        status = VerificationStatus.DEGRADED
+    else:
+        status = VerificationStatus.FAILED
+
+    return DeploymentVerification(
+        project_id=project_id,
+        deploy_url=deploy_url,
+        status=status,
+        health_check_passed=health_passed,
+        ui_accessible=ui_accessible,
+        response_time_ms=response_time_ms,
+        checks_performed=checks,
+        issues=issues,
+        verified_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+async def _probe_url(
+    client: httpx.AsyncClient,
+    url: str,
+) -> tuple[bool, float, str]:
+    """Probe a single URL with retry logic.
+
+    Args:
+        client: Shared ``httpx.AsyncClient``.
+        url: The URL to GET.
+
+    Returns:
+        A 3-tuple of ``(success, response_time_ms, error_detail)``.
+        ``response_time_ms`` is 0.0 on failure.
+    """
+    last_error = ""
+    for attempt in range(_MAX_RETRIES):
+        if attempt > 0:
+            await asyncio.sleep(_RETRY_BACKOFF_BASE * (2 ** (attempt - 1)))
+        try:
+            start = time.monotonic()
+            response = await client.get(url)
+            elapsed_ms = (time.monotonic() - start) * 1000.0
+            if response.is_success or response.is_redirect:
+                return True, elapsed_ms, ""
+            last_error = f"HTTP {response.status_code}"
+        except httpx.TimeoutException:
+            last_error = "Request timed out"
+        except httpx.RequestError as exc:
+            last_error = str(exc)
+
+    return False, 0.0, last_error
