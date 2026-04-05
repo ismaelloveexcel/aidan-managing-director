@@ -38,7 +38,6 @@ class Settings(BaseSettings):
     # --- Perplexity (Research) -------------------------------------------------
     perplexity_api_key: str = ""
     perplexity_model: str = "sonar"
-    research_provider: str = "perplexity"
 
     # --- GitHub Integration ----------------------------------------------------
     github_token: str = ""

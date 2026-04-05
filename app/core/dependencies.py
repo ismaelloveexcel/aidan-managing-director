@@ -153,7 +153,8 @@ def get_openai_client() -> OpenAIClient:
     settings = get_settings()
     api_key = settings.openai_api_key or settings.llm_api_key
     model = settings.openai_model or settings.llm_model
-    return OpenAIClient(api_key=api_key, model=model)
+    base_url = settings.llm_base_url
+    return OpenAIClient(api_key=api_key, model=model, base_url=base_url)
 
 
 @_lru_cache(maxsize=1)

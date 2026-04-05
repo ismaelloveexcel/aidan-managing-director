@@ -1,7 +1,7 @@
 """
 openai_client.py – Real OpenAI API integration for AI-DAN.
 
-Provides async-compatible client for text generation, structured output,
+Provides a synchronous client for text generation, structured output,
 and reasoning tasks using the OpenAI Chat Completions API.
 Falls back to stub responses when no API key is configured.
 """

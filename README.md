@@ -2,12 +2,6 @@
 
 AI-DAN is the **strategic decision engine** for an AI venture system. It transforms founder input into structured decisions, machine-readable commands, and launch-ready business packages – all optimized for a **single non-technical operator**.
 
-## ✨ What It Does
-
-1. **Enter a business idea** → AI-DAN researches, scores, and structures it
-2. **Get a full business verdict** → Feasibility, profitability, risk, pricing, distribution
-3. **Monetization-ready output** → Every response includes target user, pricing, and go-to-market plan
-
 ## 🚀 Quick Start
 
 ### One-Click Local Startup
@@ -31,8 +25,6 @@ pip install -r requirements.txt
 cp .env.example .env       # Edit with your API keys
 uvicorn main:app --reload
 ```
-
-Open **http://localhost:8000** in your browser → the UI loads at root.
 
 ---
 
@@ -71,7 +63,7 @@ Both providers have **graceful fallback** to deterministic mode when API keys ar
 
 ### Pipeline Flow
 
-1. **Input** → User enters business idea via UI or API
+1. **Input** → User submits business idea via API
 2. **Research** → Perplexity analyzes market, competitors, pricing (when configured)
 3. **Validation Gate 0** → Deterministic field checks + market truth
 4. **Scoring Engine** → 0–10 mandatory gate: `<6` reject, `6–8` hold, `≥8` approve
@@ -101,7 +93,6 @@ Copy `.env.example` to `.env` and fill in your values:
 | `OPENAI_API_KEY` | OpenAI API key for reasoning and structured output |
 | `PERPLEXITY_API_KEY` | Perplexity API key for market research |
 | `PERPLEXITY_MODEL` | Perplexity model (default: `sonar`) |
-| `RESEARCH_PROVIDER` | Research provider (default: `perplexity`) |
 
 ### Optional Configuration
 
@@ -111,6 +102,7 @@ Copy `.env.example` to `.env` and fill in your values:
 | `APP_ENV` | `development` | Environment mode |
 | `APP_PORT` | `8000` | Listen port |
 | `LLM_API_KEY` | — | Legacy: falls back from `OPENAI_API_KEY` |
+| `LLM_BASE_URL` | — | Custom LLM endpoint (e.g. OpenAI-compatible proxy) |
 | `GITHUB_TOKEN` | — | GitHub personal access token |
 | `VERCEL_TOKEN` | — | Vercel deployment token |
 | `PORTFOLIO_DB_PATH` | `data/portfolio.sqlite3` | SQLite path |
@@ -124,7 +116,6 @@ Copy `.env.example` to `.env` and fill in your values:
 
 | Service | URL |
 |---------|-----|
-| **Web UI** | `http://localhost:8000` |
 | **API Docs (Swagger)** | `http://localhost:8000/docs` |
 | **Health Check** | `http://localhost:8000/health` |
 | **Streamlit UI** | `http://localhost:8501` (optional, separate process) |
@@ -133,8 +124,7 @@ Copy `.env.example` to `.env` and fill in your values:
 
 ## API Endpoints
 
-### Primary (UI-connected)
-- `GET /` — Web UI (single-page application)
+### Primary
 - `POST /api/analyze/` — Full AI-powered idea analysis with monetization output
 
 ### Core Decision Flow
@@ -182,38 +172,6 @@ Copy `.env.example` to `.env` and fill in your values:
 
 ---
 
-## Deployment
-
-### Vercel (Recommended)
-
-1. Connect this repo to Vercel
-2. Set environment variables in Vercel dashboard:
-   - `OPENAI_API_KEY`
-   - `PERPLEXITY_API_KEY`
-   - `PERPLEXITY_MODEL=sonar`
-   - `RESEARCH_PROVIDER=perplexity`
-3. Deploy — the `vercel.json` config handles Python runtime setup
-4. Root URL loads the UI, all API routes are accessible
-
-### Render / Railway / Fly.io
-
-1. Set environment variables from `.env.example`
-2. Deploy with `uvicorn main:app --host 0.0.0.0 --port $PORT`
-3. Health check: `GET /health` returns `{"status": "ok"}`
-
-### Docker
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
----
-
 ## Monetization Strategy
 
 AI-DAN enforces revenue-readiness at every stage:
@@ -241,9 +199,6 @@ python -m pytest tests/ -v
 ## System Flow
 
 ```
-User enters idea in UI (/)
-        │
-        ▼
 POST /api/analyze/
         │
         ├── Perplexity: market research, competitors, pricing

@@ -8,7 +8,6 @@ Falls back to deterministic stubs when no API key is configured.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 

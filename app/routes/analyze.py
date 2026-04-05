@@ -1,9 +1,8 @@
 """
-analyze.py – AI-powered idea analysis endpoint for the UI.
+analyze.py – Idea analysis route (validation + delegation).
 
-Accepts a business idea, runs it through the full AI-DAN pipeline
-(research → evaluate → structure → output), and returns a rich
-monetization-ready response.
+Accepts a business idea, delegates to the analysis service, and
+returns a monetization-ready structured response.
 """
 
 from __future__ import annotations
@@ -14,23 +13,9 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.core.dependencies import get_ai_provider
-from app.reasoning.strategist import Strategist
+from app.reasoning.analyze_service import run_analysis
 
 router = APIRouter()
-
-_strategist = Strategist()
-
-# Baseline scores by difficulty / attribute (0-10 scale)
-_SCORE_LOW_DIFFICULTY = 7.0
-_SCORE_MED_DIFFICULTY = 5.0
-_SCORE_HIGH_DIFFICULTY = 3.0
-_SCORE_FAST_LAUNCH = 8.0
-_SCORE_SLOW_LAUNCH = 5.0
-_SCORE_SUBSCRIPTION = 7.0
-_SCORE_OTHER_MONETIZATION = 5.0
-_SCORE_COMPETITION_DEFAULT = 6.0
-# Pipeline breakdown scores are 0-2; multiply to convert to 0-10 scale.
-_BREAKDOWN_SCALE = 5
 
 
 class AnalyzeRequest(BaseModel):
@@ -85,7 +70,7 @@ class AnalyzeResponse(BaseModel):
 
 
 @router.post("/", response_model=AnalyzeResponse)
-async def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
+def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
     """Analyze a business idea using AI-DAN's full pipeline.
 
     Combines:
@@ -95,118 +80,10 @@ async def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
 
     Returns a monetization-ready structured output.
     """
-    ai = get_ai_provider()
-
-    # Run deterministic pipeline for structured scoring
-    pipeline_result = _strategist.process_founder_input(request.idea)
-    pipeline_dict = pipeline_result.model_dump(mode="json")
-
-    # Also generate an idea directly for field extraction
-    from app.reasoning.idea_engine import IdeaEngine
-    from app.planning.distribution import generate_distribution_plan
-
-    idea = IdeaEngine().generate(request.idea)
-    dist_dict = generate_distribution_plan(
-        target_user=idea.target_user,
-        title=idea.title,
-        problem=idea.problem,
-    )
-
-    # Run AI-powered analysis if available
-    ai_analysis: dict[str, Any] = {}
-    research_context = ""
-
-    if ai.research_enabled:
-        try:
-            research_context = ai.perplexity.research(
-                f"Market research for this business idea: {request.idea}"
-            )
-        except Exception:
-            research_context = ""
-
-    if ai.ai_enabled:
-        try:
-            ai_analysis = ai.analyze_idea(request.idea, research_context=research_context)
-        except Exception:
-            ai_analysis = {}
-
-    # Merge AI output with deterministic pipeline output
-    score = pipeline_dict.get("score") or {}
-    breakdown = score.get("breakdown") or {}
-    total = float(score.get("total_score", 0) or 0)
-    decision_output = pipeline_dict.get("decision_output") or {}
-
-    # Heuristic baseline scores from idea attributes (used when
-    # the deterministic pipeline rejects at gate 0 with all-zero scores).
-    from app.reasoning.models import Difficulty
-
-    difficulty_scores = {
-        Difficulty.LOW: _SCORE_LOW_DIFFICULTY,
-        Difficulty.MEDIUM: _SCORE_MED_DIFFICULTY,
-        Difficulty.HIGH: _SCORE_HIGH_DIFFICULTY,
-    }
-    base_feasibility = difficulty_scores.get(idea.difficulty, _SCORE_MED_DIFFICULTY)
-    base_speed = _SCORE_FAST_LAUNCH if "week" in idea.time_to_launch.lower() else _SCORE_SLOW_LAUNCH
-    base_profitability = _SCORE_SUBSCRIPTION if "subscription" in idea.monetization_path.lower() else _SCORE_OTHER_MONETIZATION
-    base_competition = _SCORE_COMPETITION_DEFAULT
-
-    def _scaled_or_base(breakdown_key: str, base: float) -> float:
-        """Scale a 0-2 pipeline breakdown value to 0-10, or fall back to base."""
-        raw = breakdown.get(breakdown_key, 0) or 0
-        scaled = raw * _BREAKDOWN_SCALE
-        return scaled if scaled > 0 else base
-
-    overall_fallback = round(
-        (base_feasibility + base_speed + base_profitability + base_competition) / 4, 1,
-    )
-
-    analysis = MonetizationOutput(
-        title=ai_analysis.get("title", idea.title),
-        problem=ai_analysis.get("problem", idea.problem),
-        target_user=ai_analysis.get("target_user", idea.target_user),
-        solution=ai_analysis.get("solution", idea.summary),
-        monetization_method=ai_analysis.get("monetization_method", idea.monetization_path),
-        pricing_suggestion=ai_analysis.get("pricing_suggestion", idea.monetization_path),
-        distribution_plan=ai_analysis.get(
-            "distribution_plan", dist_dict.get("primary_channel", "Direct outreach"),
-        ),
-        first_10_users=ai_analysis.get(
-            "first_10_users",
-            dist_dict.get("first_10_users_plan", "Manual outreach to target communities"),
-        ),
-        competitive_edge=ai_analysis.get("competitive_edge", "Speed to market and focused feature set"),
-        overall_score=float(ai_analysis.get(
-            "overall_score", total if total > 0 else overall_fallback,
-        )),
-        feasibility_score=float(ai_analysis.get(
-            "feasibility_score", _scaled_or_base("build_complexity", base_feasibility),
-        )),
-        profitability_score=float(ai_analysis.get(
-            "profitability_score", _scaled_or_base("monetization_potential", base_profitability),
-        )),
-        speed_score=float(ai_analysis.get(
-            "speed_score", _scaled_or_base("speed_to_revenue", base_speed),
-        )),
-        competition_score=float(ai_analysis.get(
-            "competition_score", _scaled_or_base("competition_saturation", base_competition),
-        )),
-        verdict=ai_analysis.get("verdict", score.get("decision", "HOLD") if total > 0 else "HOLD"),
-        why_now=ai_analysis.get(
-            "why_now", decision_output.get("why_now", "Evaluate timing based on market conditions."),
-        ),
-        main_risk=ai_analysis.get(
-            "main_risk", decision_output.get("main_risk", "Market validation needed before scaling."),
-        ),
-        recommended_next_move=ai_analysis.get(
-            "recommended_next_move",
-            pipeline_dict.get("suggested_next_action", "Validate with 5 potential customers."),
-        ),
-        market_research=research_context,
-        ai_powered=ai.ai_enabled,
-    )
+    result = run_analysis(request.idea, ai=get_ai_provider())
 
     return AnalyzeResponse(
         success=True,
-        analysis=analysis,
-        pipeline_result=pipeline_dict,
+        analysis=MonetizationOutput(**result["analysis"]),
+        pipeline_result=result["pipeline_result"],
     )

@@ -1,4 +1,4 @@
-"""Tests for the new AI integration and analyze endpoint."""
+"""Tests for the AI integration and analyze endpoint."""
 
 from __future__ import annotations
 
@@ -7,33 +7,6 @@ from fastapi.testclient import TestClient
 from main import app
 
 client = TestClient(app)
-
-
-# ---------------------------------------------------------------------------
-# Root UI tests
-# ---------------------------------------------------------------------------
-
-
-class TestRootUI:
-    """Verify the root route serves the HTML UI."""
-
-    def test_root_returns_html(self) -> None:
-        resp = client.get("/")
-        assert resp.status_code == 200
-        assert "text/html" in resp.headers["content-type"]
-
-    def test_root_contains_title(self) -> None:
-        resp = client.get("/")
-        assert "AI-DAN Managing Director" in resp.text
-
-    def test_root_contains_input_form(self) -> None:
-        resp = client.get("/")
-        assert "idea-input" in resp.text
-        assert "submit-btn" in resp.text
-
-    def test_root_contains_analyze_endpoint(self) -> None:
-        resp = client.get("/")
-        assert "/api/analyze/" in resp.text
 
 
 # ---------------------------------------------------------------------------
@@ -99,8 +72,8 @@ class TestAnalyzeEndpoint:
         analysis = resp.json()["analysis"]
         assert analysis["verdict"] in ("APPROVE", "HOLD", "REJECT", "approve", "hold", "reject")
 
-    def test_analyze_ai_powered_flag(self) -> None:
-        """Without API keys, ai_powered should be False."""
+    def test_analyze_ai_powered_flag_false_without_keys(self) -> None:
+        """Without API keys, ai_powered should be False (no real AI call succeeded)."""
         resp = client.post("/api/analyze/", json={"idea": "Food delivery app"})
         analysis = resp.json()["analysis"]
         assert analysis["ai_powered"] is False
@@ -239,9 +212,3 @@ class TestConfigNewFields:
 
         s = Settings()
         assert s.perplexity_model == "sonar"
-
-    def test_research_provider_default(self) -> None:
-        from app.core.config import Settings
-
-        s = Settings()
-        assert s.research_provider == "perplexity"
