@@ -67,6 +67,10 @@ _SATURATION_SIGNALS = frozenset({
 })
 
 
+# Minimum length for differentiation text to be considered meaningful.
+_MIN_DIFFERENTIATION_LENGTH = 10
+
+
 def _token_set(text: str) -> set[str]:
     """Return lowercase word tokens from text."""
     return {w.strip(".,;:!?()[]{}\"'") for w in text.lower().split()}
@@ -143,7 +147,7 @@ def validate_business_gate(
     )
 
     # --- Gate 4: Differentiation check ---
-    has_differentiation = bool(differentiation.strip()) and len(differentiation.strip()) > 10
+    has_differentiation = bool(differentiation.strip()) and len(differentiation.strip()) > _MIN_DIFFERENTIATION_LENGTH
 
     saturation_ok = True
     differentiation_ok = True

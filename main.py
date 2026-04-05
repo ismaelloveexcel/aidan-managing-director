@@ -254,12 +254,12 @@ function renderResult(d){
   /* Validation */
   if(d.validation_blocking&&d.validation_blocking.length){
     h+='<div class="section"><h3>&#x1F6D1; Blocking Issues</h3>';
-    d.validation_blocking.forEach(function(b){h+='<p class="blocking">• '+esc(b)+'</p>'});
+    d.validation_blocking.forEach(function(b){h+='<p class="blocking">• '+escapeHtml(b)+'</p>'});
     h+='</div>';
   }
   if(d.validation_reasons&&d.validation_reasons.length){
     h+='<div class="section"><h3>&#x2705; Validation</h3>';
-    d.validation_reasons.forEach(function(v){h+='<p class="reason">• '+esc(v)+'</p>'});
+    d.validation_reasons.forEach(function(v){h+='<p class="reason">• '+escapeHtml(v)+'</p>'});
     h+='</div>';
   }
 
@@ -269,10 +269,10 @@ function renderResult(d){
     d.score_dimensions.forEach(function(dim){
       var dp=(dim.score/2*100).toFixed(0);
       var dc=dim.score>=1.5?"high":dim.score>=1?"med":"low";
-      h+='<div class="detail-row"><span class="detail-label">'+esc(dim.name)+
+      h+='<div class="detail-row"><span class="detail-label">'+escapeHtml(dim.name)+
         '</span><span class="detail-value">'+dim.score.toFixed(1)+'/2</span></div>';
       h+='<div class="score-bar"><div class="score-fill score-'+dc+'" style="width:'+dp+'%"></div></div>';
-      h+='<p style="font-size:.8rem;color:#777;margin-bottom:.3rem">'+esc(dim.reason)+'</p>';
+      h+='<p style="font-size:.8rem;color:#777;margin-bottom:.3rem">'+escapeHtml(dim.reason)+'</p>';
     });
     h+='</div>';
   }
@@ -281,11 +281,11 @@ function renderResult(d){
   var o=d.offer||{};
   if(o.decision==="generated"){
     h+='<div class="section"><h3>&#x1F4B0; Offer</h3>';
-    h+=dr("Pricing",o.pricing);
-    h+=dr("Model",o.pricing_model);
-    h+=dr("Delivery",o.delivery_method);
-    h+=dr("Value",o.value_proposition);
-    h+=dr("CTA",o.cta);
+    h+=detailRow("Pricing",o.pricing);
+    h+=detailRow("Model",o.pricing_model);
+    h+=detailRow("Delivery",o.delivery_method);
+    h+=detailRow("Value",o.value_proposition);
+    h+=detailRow("CTA",o.cta);
     h+='</div>';
   }
 
@@ -293,14 +293,14 @@ function renderResult(d){
   var di=d.distribution||{};
   if(di.decision==="generated"){
     h+='<div class="section"><h3>&#x1F680; Distribution</h3>';
-    h+=dr("Channel",di.primary_channel);
-    h+=dr("Acquisition",di.acquisition_method);
-    h+=dr("First 10 Users",di.first_10_users_plan);
-    h+=dr("Messaging",di.messaging);
+    h+=detailRow("Channel",di.primary_channel);
+    h+=detailRow("Acquisition",di.acquisition_method);
+    h+=detailRow("First 10 Users",di.first_10_users_plan);
+    h+=detailRow("Messaging",di.messaging);
     if(di.execution_steps&&di.execution_steps.length){
       h+='<p style="font-size:.85rem;color:#aaa;margin-top:.4rem">Steps:</p>';
       di.execution_steps.forEach(function(s,i){
-        h+='<p style="font-size:.8rem;color:#ccc;margin-left:.5rem">'+(i+1)+'. '+esc(s)+'</p>'
+        h+='<p style="font-size:.8rem;color:#ccc;margin-left:.5rem">'+(i+1)+'. '+escapeHtml(s)+'</p>'
       });
     }
     h+='</div>';
@@ -308,18 +308,18 @@ function renderResult(d){
 
   /* Next step */
   h+='<div class="section"><h3>&#x27A1;&#xFE0F; Next Step</h3>';
-  h+='<p style="font-size:.9rem">'+esc(d.next_step||"Awaiting analysis.")+'</p>';
-  h+='<p style="font-size:.8rem;color:#666;margin-top:.3rem">Stage: '+esc(d.pipeline_stage||"unknown")+'</p>';
+  h+='<p style="font-size:.9rem">'+escapeHtml(d.next_step||"Awaiting analysis.")+'</p>';
+  h+='<p style="font-size:.8rem;color:#666;margin-top:.3rem">Stage: '+escapeHtml(d.pipeline_stage||"unknown")+'</p>';
   h+='</div>';
 
   r.innerHTML=h;r.style.display="block";
 }
 
-function dr(l,v){if(!v)return'';
-  return'<div class="detail-row"><span class="detail-label">'+esc(l)+
-    '</span><span class="detail-value">'+esc(v)+'</span></div>'}
+function detailRow(l,v){if(!v)return'';
+  return'<div class="detail-row"><span class="detail-label">'+escapeHtml(l)+
+    '</span><span class="detail-value">'+escapeHtml(v)+'</span></div>'}
 
-function esc(s){if(!s)return'';var d=document.createElement("div");
+function escapeHtml(s){if(!s)return'';var d=document.createElement("div");
   d.appendChild(document.createTextNode(String(s)));return d.innerHTML}
 </script>
 </body>

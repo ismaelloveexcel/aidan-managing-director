@@ -123,11 +123,11 @@ def analyze_idea(request: AnalyzeRequest) -> AnalyzeResponse:
     problem = request.problem or extracted.get("problem", "")
     target_user = request.target_user or extracted.get("target_user", "")
 
-    # If still no problem/target_user, use the idea text itself
+    # If still no problem, use the idea text itself as the problem statement
     if not problem:
         problem = idea_text
-    if not target_user:
-        target_user = "general users"
+    # target_user left empty intentionally — the validation gate will
+    # flag missing demand evidence when no explicit audience is given.
 
     # --- Step 1: Business Validation Gate ---
     validation = validate_business_gate(

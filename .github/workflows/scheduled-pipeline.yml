@@ -36,13 +36,12 @@ jobs:
           FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL }}
         run: |
           if [ -z "$FACTORY_BASE_URL" ]; then
-            echo "::warning::FACTORY_BASE_URL not set – using localhost fallback"
-            echo "FACTORY_BASE_URL=http://localhost:8000" >> "$GITHUB_ENV"
+            echo "::warning::FACTORY_BASE_URL not set – pipeline check runs in diagnostic mode only"
           fi
 
       - name: Run scheduled pipeline check
         env:
-          FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL || 'http://localhost:8000' }}
+          FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL || '' }}
           APP_ENV: ${{ vars.APP_ENV || 'production' }}
         run: |
           python -c "
