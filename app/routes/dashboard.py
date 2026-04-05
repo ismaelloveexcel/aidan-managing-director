@@ -169,7 +169,11 @@ def get_dashboard_health() -> DashboardHealth:
         try:
             revenue_total += float(project.metadata.get("revenue", 0) or 0)
         except (TypeError, ValueError):
-            pass  # Skip projects with non-numeric revenue metadata
+            logger.warning(
+                "Non-numeric revenue metadata for project %s: %r",
+                project.project_id,
+                project.metadata.get("revenue"),
+            )
 
     health_status, summary = _compute_health(total, approved, revenue_total, blocked)
 

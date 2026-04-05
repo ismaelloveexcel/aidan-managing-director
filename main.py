@@ -163,6 +163,7 @@ tr:hover td{background:#131313}
 .badge-idea{background:#292524;color:#d6d3d1}
 .badge-hold{background:#451a03;color:#fbbf24}
 .badge-rejected{background:#450a0a;color:#fca5a5}
+.badge-killed{background:#450a0a;color:#fca5a5}
 .badge-succeeded{background:#14532d;color:#4ade80}
 .badge-failed{background:#450a0a;color:#fca5a5}
 .badge-pending{background:#292524;color:#d6d3d1}
@@ -441,7 +442,7 @@ function toast(msg,type){
 
 function statusBadge(s){
   var m={approved:'badge-approved',building:'badge-building',launched:'badge-launched',
-    idea:'badge-idea',hold:'badge-hold',killed:'badge-rejected',
+    idea:'badge-idea',hold:'badge-hold',killed:'badge-killed',
     succeeded:'badge-succeeded',failed:'badge-failed',pending:'badge-pending',running:'badge-running'};
   var cls=m[(s||'').toLowerCase()]||'badge-idea';
   return '<span class="badge '+cls+'">'+esc(s)+'</span>';
@@ -690,6 +691,7 @@ async function buildProject(id,name){
     toast('Build triggered for '+name,'success');
     var factoryBtn=document.querySelector('.nav button[onclick*="factory"]');
     if(factoryBtn)switchTab('factory',factoryBtn);
+    else toast('Navigate to Factory tab to view run','info');
   }catch(e){toast('Build failed: '+e.message,'error')}
 }
 
