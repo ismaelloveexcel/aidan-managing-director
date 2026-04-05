@@ -480,6 +480,11 @@ function escapeHtml(s){
   d.appendChild(document.createTextNode(String(s)));
   return d.innerHTML;
 }
+function jsEscape(s){
+  if(s==null||s===undefined)return'';
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"')
+    .replace(/\n/g,'\\n').replace(/\r/g,'\\r');
+}
 function toast(msg,type){
   type=type||'info';
   var tc=document.getElementById('toast-container');
@@ -643,7 +648,7 @@ function renderAnalysis(d){
   // Create project button if APPROVED or HOLD
   if(dec==='APPROVED'||dec==='HOLD'){
     h+='<div class="section">';
-    h+='<button class="btn btn-success btn-full" onclick="createProjectFromAnalysis('+JSON.stringify(escapeHtml(d.idea||''))+')">&#x2795; Create Project from This Idea</button>';
+    h+='<button class="btn btn-success btn-full" onclick="createProjectFromAnalysis('+JSON.stringify(d.idea||'')+')">&#x2795; Create Project from This Idea</button>';
     h+='</div>';
   }
   h+='</div>';
@@ -680,11 +685,11 @@ function loadPortfolio(){
       rows+='<td>'+(url?'<a href="'+escapeHtml(url)+'" target="_blank" style="color:#5b6ef7;font-size:.8rem">View ↗</a>':'-')+'</td>';
       rows+='<td><div style="display:flex;gap:.3rem;flex-wrap:wrap">';
       if(status!=='approved'&&status!=='building'&&status!=='launched'){
-        rows+='<button class="btn btn-success btn-sm" onclick="approveProject(\''+escapeHtml(pid)+'\')">✅ Approve</button>';
+        rows+='<button class="btn btn-success btn-sm" onclick="approveProject(\''+jsEscape(pid)+'\')">✅ Approve</button>';
       }
-      rows+='<button class="btn btn-primary btn-sm" onclick="buildProject(\''+escapeHtml(pid)+'\')">🚀 Build</button>';
-      rows+='<button class="btn btn-secondary btn-sm" onclick="shareProject(\''+escapeHtml(p.name||pid)+'\',\''+escapeHtml(url)+'\')">📣 Share</button>';
-      if(url){rows+='<button class="btn btn-secondary btn-sm" onclick="checkHealth(\''+escapeHtml(pid)+'\',\''+escapeHtml(url)+'\')">🩺 Health</button>';}
+      rows+='<button class="btn btn-primary btn-sm" onclick="buildProject(\''+jsEscape(pid)+'\')">🚀 Build</button>';
+      rows+='<button class="btn btn-secondary btn-sm" onclick="shareProject(\''+jsEscape(p.name||pid)+'\',\''+jsEscape(url)+'\')">📣 Share</button>';
+      if(url){rows+='<button class="btn btn-secondary btn-sm" onclick="checkHealth(\''+jsEscape(pid)+'\',\''+jsEscape(url)+'\')">🩺 Health</button>';}
       rows+='</div></td></tr>';
     });
     tbody.innerHTML=rows;
@@ -760,7 +765,7 @@ function loadRuns(){
       rows+='<td>'+statusBadge(status)+'</td>';
       rows+='<td>'+(url?'<a href="'+escapeHtml(url)+'" target="_blank" style="color:#5b6ef7;font-size:.8rem">View ↗</a>':'-')+'</td>';
       rows+='<td>';
-      if(url){rows+='<button class="btn btn-secondary btn-sm" onclick="checkHealth(\''+escapeHtml(run.project_id)+'\',\''+escapeHtml(url)+'\')">🩺 Health</button>';}
+      if(url){rows+='<button class="btn btn-secondary btn-sm" onclick="checkHealth(\''+jsEscape(run.project_id)+'\',\''+jsEscape(url)+'\')">🩺 Health</button>';}
       rows+='</td></tr>';
     });
     tbody.innerHTML=rows;
@@ -816,15 +821,16 @@ function renderMessages(d){
   var icons={twitter:'🐦',linkedin:'💼',whatsapp:'💬',email:'📧',sms:'📱',reddit:'🤖',product_hunt:'🚀'};
   var html='<div class="card"><div class="card-title" style="margin-bottom:.8rem">📋 Generated Messages</div>';
   var found=false;
+  var msgCounter=0;
   platforms.forEach(function(p){
     var msg=d[p]||d[p.replace('_',' ')]||'';
     if(!msg)return;
     found=true;
-    var msgId='msg-'+p;
+    var msgId='msg-'+msgCounter++;
     html+='<div class="msg-card">';
     html+='<div class="msg-platform">'+(icons[p]||'')+'&nbsp;'+p.replace('_',' ')+'</div>';
     html+='<button class="btn btn-secondary btn-sm copy-btn" onclick="copyMsg(\''+msgId+'\')">Copy</button>';
-    html+='<div class="msg-text" id="'+msgId+'">'+escapeHtml(msg)+'</div>';
+    html+='<div class="msg-text" id="'+escapeHtml(msgId)+'">'+escapeHtml(msg)+'</div>';
     html+='</div>';
   });
   if(!found){
@@ -832,11 +838,11 @@ function renderMessages(d){
     Object.keys(d).forEach(function(k){
       if(typeof d[k]==='string'&&d[k].length>5){
         found=true;
-        var msgId='msg-'+k;
+        var msgId='msg-'+msgCounter++;
         html+='<div class="msg-card">';
         html+='<div class="msg-platform">'+escapeHtml(k.replace('_',' '))+'</div>';
         html+='<button class="btn btn-secondary btn-sm copy-btn" onclick="copyMsg(\''+msgId+'\')">Copy</button>';
-        html+='<div class="msg-text" id="'+msgId+'">'+escapeHtml(d[k])+'</div>';
+        html+='<div class="msg-text" id="'+escapeHtml(msgId)+'">'+escapeHtml(d[k])+'</div>';
         html+='</div>';
       }
     });

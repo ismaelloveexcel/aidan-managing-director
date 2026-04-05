@@ -2,6 +2,7 @@
 
 from fastapi.testclient import TestClient
 
+from app.core.dependencies import get_factory_run_store
 from main import app
 
 client = TestClient(app)
@@ -38,8 +39,6 @@ def test_root_contains_version() -> None:
 
 def test_factory_list_runs_empty() -> None:
     """GET /factory/runs should return an empty list when no runs exist."""
-    from app.core.dependencies import get_factory_run_store
-
     get_factory_run_store().reset()
     response = client.get("/factory/runs")
     assert response.status_code == 200
