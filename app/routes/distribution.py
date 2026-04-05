@@ -7,8 +7,8 @@ from a project ID or inline product data.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter
+from pydantic import BaseModel, Field, HttpUrl
 
 from app.planning.share_templates import ShareMessageBundle, generate_share_messages
 
@@ -24,7 +24,7 @@ class ShareMessageRequest(BaseModel):
     """Payload for generating distribution share messages."""
 
     title: str = Field(..., min_length=1, description="Product name or idea title.")
-    url: str = Field(..., min_length=1, description="Deployment URL for the product.")
+    url: HttpUrl = Field(..., description="Deployment URL for the product.")
     description: str = Field(
         ...,
         min_length=1,
@@ -56,15 +56,9 @@ async def generate_share_messages_endpoint(
     Returns platform-optimised copy for Twitter, LinkedIn, WhatsApp,
     email, SMS, Reddit, and Product Hunt — all including the deployment URL.
     """
-    if not request.url.startswith(("http://", "https://")):
-        raise HTTPException(
-            status_code=422,
-            detail="url must start with http:// or https://",
-        )
-
     return generate_share_messages(
         title=request.title,
-        url=request.url,
+        url=str(request.url),
         description=request.description,
         target_user=request.target_user,
         cta=request.cta,

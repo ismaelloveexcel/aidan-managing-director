@@ -19,6 +19,11 @@ _DEFAULT_KWARGS = {
 }
 
 
+def _has_url(text: str, url: str) -> bool:
+    """Return True if url appears somewhere in text."""
+    return text.find(url) >= 0
+
+
 @pytest.fixture()
 def bundle() -> ShareMessageBundle:
     return generate_share_messages(**_DEFAULT_KWARGS)
@@ -38,7 +43,7 @@ def test_twitter_within_280_chars(bundle: ShareMessageBundle) -> None:
 
 
 def test_twitter_contains_url(bundle: ShareMessageBundle) -> None:
-    assert "https://taskflow.app" in bundle.twitter
+    assert _has_url(bundle.twitter, "https://taskflow.app")
 
 
 def test_twitter_contains_title(bundle: ShareMessageBundle) -> None:
@@ -50,11 +55,11 @@ def test_sms_within_160_chars(bundle: ShareMessageBundle) -> None:
 
 
 def test_sms_contains_url(bundle: ShareMessageBundle) -> None:
-    assert "https://taskflow.app" in bundle.sms
+    assert _has_url(bundle.sms, "https://taskflow.app")
 
 
 def test_linkedin_contains_url(bundle: ShareMessageBundle) -> None:
-    assert "https://taskflow.app" in bundle.linkedin
+    assert _has_url(bundle.linkedin, "https://taskflow.app")
 
 
 def test_linkedin_professional_tone(bundle: ShareMessageBundle) -> None:
@@ -70,7 +75,7 @@ def test_whatsapp_contains_emoji(bundle: ShareMessageBundle) -> None:
 
 
 def test_whatsapp_contains_url(bundle: ShareMessageBundle) -> None:
-    assert "https://taskflow.app" in bundle.whatsapp
+    assert _has_url(bundle.whatsapp, "https://taskflow.app")
 
 
 def test_email_subject_contains_title(bundle: ShareMessageBundle) -> None:
@@ -82,7 +87,7 @@ def test_email_subject_contains_cta(bundle: ShareMessageBundle) -> None:
 
 
 def test_email_body_contains_url(bundle: ShareMessageBundle) -> None:
-    assert "https://taskflow.app" in bundle.email_body
+    assert _has_url(bundle.email_body, "https://taskflow.app")
 
 
 def test_email_body_contains_target_user(bundle: ShareMessageBundle) -> None:
@@ -223,3 +228,4 @@ def test_share_messages_route_default_cta() -> None:
     data = resp.json()
     # default CTA is "Try it free"
     assert "Try it free" in data["email_subject"]
+
