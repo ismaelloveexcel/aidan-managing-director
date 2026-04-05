@@ -31,28 +31,38 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run scheduled pipeline check
+      - name: Validate FACTORY_BASE_URL
         env:
           FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL }}
+        run: |
+          if [ -z "$FACTORY_BASE_URL" ]; then
+            echo "::warning::FACTORY_BASE_URL not set – pipeline check runs in diagnostic mode only"
+          fi
+
+      - name: Run scheduled pipeline check
+        env:
+          FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL || '' }}
           APP_ENV: ${{ vars.APP_ENV || 'production' }}
         run: |
           python -c "
-          import json
-          from app.core.dependencies import get_portfolio_intelligence_service, get_feedback_service
+          import json, sys
+          from app.core.dependencies import get_portfolio_intelligence_service
 
           intel = get_portfolio_intelligence_service()
           capacity = intel.operator_capacity()
           digest = intel.generate_daily_digest()
           ranked = intel.ranked_projects()
 
-          print('=== OPERATOR CAPACITY ===')
-          print(json.dumps({
+          cap_data = {
               'active_projects': capacity.active_projects,
               'builds_in_parallel': capacity.builds_in_parallel,
               'launches_this_week': capacity.launches_this_week,
               'should_hold': capacity.should_hold_new_projects,
               'reason': capacity.reason,
-          }, indent=2))
+          }
+
+          print('=== OPERATOR CAPACITY ===')
+          print(json.dumps(cap_data, indent=2))
 
           print()
           print('=== DAILY DIGEST ===')
@@ -66,4 +76,18 @@ jobs:
 
           if not ranked:
               print('  (no projects)')
+
+          # Actionable decisions: flag projects needing attention
+          for p in ranked:
+              if p.recommendation == 'kill':
+                  print(f'::warning::Project {p.project_id} recommended for KILL (health={p.health_score})')
+              elif p.recommendation == 'scale':
+                  print(f'::notice::Project {p.project_id} recommended for SCALE (health={p.health_score})')
+
+          if capacity.should_hold_new_projects:
+              print(f'::warning::Capacity limit reached: {capacity.reason}')
+              sys.exit(0)
+
+          print()
+          print('=== PIPELINE CHECK COMPLETE ===')
           "

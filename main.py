@@ -1,8 +1,7 @@
 """
 main.py – FastAPI application entry point for AI-DAN Managing Director.
 
-Registers all route modules, serves the embedded UI at root,
-and configures the application for deployment.
+Registers all route modules, serves the root UI, and configures the application.
 """
 
 from contextlib import asynccontextmanager
@@ -79,244 +78,270 @@ async def health_check() -> dict[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Root UI – embedded single-page application
+# Root UI – embedded HTML for idea analysis
 # ---------------------------------------------------------------------------
-
-_UI_HTML = """\
+_ROOT_HTML = """\
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>AI-DAN Managing Director</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-background:#0a0a0f;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center}
-.container{max-width:860px;width:100%;padding:24px 20px}
-header{text-align:center;padding:48px 0 24px}
-header h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa);
--webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
-header p{color:#9ca3af;font-size:1rem}
-.input-section{background:#111118;border:1px solid #1e1e2e;border-radius:12px;padding:24px;margin-bottom:24px}
-textarea{width:100%;min-height:100px;background:#0a0a0f;border:1px solid #2a2a3e;border-radius:8px;
-color:#e0e0e0;padding:14px;font-size:1rem;resize:vertical;font-family:inherit}
-textarea:focus{outline:none;border-color:#60a5fa}
-textarea::placeholder{color:#6b7280}
-.btn{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:14px 24px;
-margin-top:14px;background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;border:none;
-border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;transition:opacity .2s}
-.btn:hover{opacity:.9}.btn:disabled{opacity:.5;cursor:not-allowed}
-.loading{display:none;text-align:center;padding:40px 0;color:#9ca3af}
-.loading.active{display:block}
-.spinner{display:inline-block;width:32px;height:32px;border:3px solid #2a2a3e;
-border-top-color:#60a5fa;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+background:#0a0a0a;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;
+align-items:center;padding:2rem 1rem}
+h1{font-size:1.8rem;margin-bottom:.3rem;color:#fff}
+.subtitle{color:#888;margin-bottom:2rem;font-size:.95rem}
+.container{width:100%;max-width:700px}
+.card{background:#1a1a2e;border:1px solid #333;border-radius:12px;padding:1.5rem;margin-bottom:1.5rem}
+label{display:block;font-size:.85rem;color:#aaa;margin-bottom:.3rem;margin-top:.8rem}
+label:first-child{margin-top:0}
+textarea,input,select{width:100%;padding:.6rem .8rem;border-radius:8px;border:1px solid #444;
+background:#111;color:#e0e0e0;font-size:.9rem;font-family:inherit}
+textarea{resize:vertical;min-height:80px}
+textarea:focus,input:focus,select:focus{outline:none;border-color:#5b6ef7}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+button{width:100%;padding:.8rem;border:none;border-radius:8px;font-size:1rem;
+font-weight:600;cursor:pointer;margin-top:1.2rem;transition:all .2s}
+.btn-primary{background:#5b6ef7;color:#fff}
+.btn-primary:hover{background:#4a5ce6}
+.btn-primary:disabled{background:#333;color:#666;cursor:not-allowed}
+#result{display:none}
+.decision-badge{display:inline-block;padding:.3rem .8rem;border-radius:6px;
+font-weight:700;font-size:.9rem;margin:.5rem 0}
+.decision-APPROVED{background:#16a34a;color:#fff}
+.decision-HOLD{background:#d97706;color:#fff}
+.decision-REJECTED{background:#dc2626;color:#fff}
+.score-bar{height:8px;border-radius:4px;background:#333;margin:.3rem 0;overflow:hidden}
+.score-fill{height:100%;border-radius:4px;transition:width .5s}
+.score-high{background:#16a34a}
+.score-med{background:#d97706}
+.score-low{background:#dc2626}
+.section{margin-top:1rem;padding-top:1rem;border-top:1px solid #333}
+.section h3{font-size:.95rem;color:#aaa;margin-bottom:.5rem}
+.detail-row{display:flex;justify-content:space-between;padding:.25rem 0;font-size:.85rem}
+.detail-label{color:#888}
+.detail-value{color:#e0e0e0;text-align:right;max-width:60%}
+.error-box{background:#2d1111;border:1px solid #dc2626;border-radius:8px;padding:1rem;
+color:#fca5a5;margin-top:1rem;display:none}
+.loading{display:none;text-align:center;padding:2rem;color:#888}
+.loading .spinner{display:inline-block;width:24px;height:24px;border:3px solid #333;
+border-top-color:#5b6ef7;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.result{display:none;margin-top:8px}
-.result.active{display:block}
-.card{background:#111118;border:1px solid #1e1e2e;border-radius:12px;padding:24px;margin-bottom:16px}
-.card h2{font-size:1.25rem;font-weight:600;margin-bottom:16px;color:#f0f0f0}
-.card h3{font-size:1rem;font-weight:600;margin:16px 0 8px;color:#d0d0d0}
-.verdict{display:inline-block;padding:6px 16px;border-radius:20px;font-weight:700;font-size:.9rem;margin-bottom:12px}
-.verdict-approve{background:#064e3b;color:#34d399}.verdict-hold{background:#78350f;color:#fbbf24}
-.verdict-reject{background:#7f1d1d;color:#f87171}
-.score-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:12px 0}
-.score-item{background:#0a0a0f;border:1px solid #1e1e2e;border-radius:8px;padding:14px;text-align:center}
-.score-item .label{font-size:.8rem;color:#9ca3af;margin-bottom:4px}
-.score-item .value{font-size:1.5rem;font-weight:700;color:#60a5fa}
-.field{margin-bottom:12px}.field .label{font-size:.8rem;color:#9ca3af;text-transform:uppercase;
-letter-spacing:.5px;margin-bottom:4px}.field .value{font-size:.95rem;line-height:1.5}
-.research-box{background:#0a0a0f;border:1px solid #1e1e2e;border-radius:8px;padding:16px;
-font-size:.9rem;line-height:1.6;white-space:pre-wrap;max-height:300px;overflow-y:auto;color:#b0b0c0}
-.error-box{display:none;background:#7f1d1d;border:1px solid #991b1b;border-radius:8px;
-padding:16px;color:#fca5a5;margin-top:16px}
-.error-box.active{display:block}
-.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.75rem;font-weight:600;margin-left:8px}
-.badge-ai{background:#1e3a5f;color:#60a5fa}.badge-stub{background:#2a2a3e;color:#9ca3af}
-footer{text-align:center;padding:24px;color:#6b7280;font-size:.85rem}
+.tag{display:inline-block;background:#222;border:1px solid #444;border-radius:4px;
+padding:.15rem .4rem;font-size:.75rem;margin:.15rem .1rem;color:#ccc}
+.blocking{color:#fca5a5;font-size:.85rem;margin:.2rem 0}
+.reason{color:#86efac;font-size:.85rem;margin:.2rem 0}
+footer{margin-top:2rem;color:#555;font-size:.8rem;text-align:center}
 </style>
 </head>
 <body>
-<div class="container">
-<header>
-<h1>&#x1F9ED; AI-DAN Managing Director</h1>
-<p>AI-powered business idea analysis &amp; monetization engine</p>
-</header>
+<h1>&#x1F9E0; AI-DAN Managing Director</h1>
+<p class="subtitle">Idea → Validate → Score → Decide → Offer → Distribute</p>
 
-<div class="input-section">
-<textarea id="idea-input" placeholder="Describe your business idea...&#10;&#10;Example: I want to build a SaaS tool that helps freelancers track their invoices and get paid faster"></textarea>
-<button class="btn" id="submit-btn" onclick="analyzeIdea()">
-&#x1F680; Analyze Idea
-</button>
+<div class="container">
+<div class="card">
+<label for="idea">Your Idea *</label>
+<textarea id="idea" placeholder="Describe your idea in detail..."></textarea>
+
+<div class="row">
+<div>
+<label for="problem">Problem</label>
+<input id="problem" placeholder="What problem does it solve?"/>
+</div>
+<div>
+<label for="target_user">Target User</label>
+<input id="target_user" placeholder="Who is this for?"/>
+</div>
+</div>
+
+<div class="row">
+<div>
+<label for="monetization_model">Monetization Model</label>
+<select id="monetization_model">
+<option value="">Select...</option>
+<option value="subscription">Subscription/SaaS</option>
+<option value="freemium">Freemium</option>
+<option value="marketplace">Marketplace</option>
+<option value="one-time">One-time Purchase</option>
+<option value="api">API Usage-based</option>
+<option value="ads">Advertising</option>
+<option value="affiliate">Affiliate</option>
+</select>
+</div>
+<div>
+<label for="competition_level">Competition Level</label>
+<select id="competition_level">
+<option value="">Select...</option>
+<option value="low">Low</option>
+<option value="medium">Medium</option>
+<option value="high">High</option>
+</select>
+</div>
+</div>
+
+<div class="row">
+<div>
+<label for="difficulty">Build Difficulty</label>
+<select id="difficulty">
+<option value="">Select...</option>
+<option value="easy">Easy</option>
+<option value="medium">Medium</option>
+<option value="hard">Hard</option>
+</select>
+</div>
+<div>
+<label for="time_to_revenue">Time to Revenue</label>
+<select id="time_to_revenue">
+<option value="">Select...</option>
+<option value="days">Days</option>
+<option value="weeks">Weeks</option>
+<option value="months">Months</option>
+</select>
+</div>
+</div>
+
+<label for="differentiation">Differentiation</label>
+<input id="differentiation" placeholder="What makes this unique?"/>
+
+<button class="btn-primary" id="analyzeBtn" onclick="analyze()">&#x1F50D; Analyze Idea</button>
 </div>
 
 <div class="loading" id="loading">
 <div class="spinner"></div>
-<p>AI-DAN is researching &amp; analyzing your idea...</p>
+<p style="margin-top:.8rem">Running full pipeline analysis...</p>
 </div>
 
-<div class="error-box" id="error-box"></div>
+<div class="error-box" id="errorBox"></div>
 
-<div class="result" id="result">
-<div class="card" id="verdict-card">
-<h2>&#x1F3AF; Verdict <span class="badge" id="ai-badge"></span></h2>
-<div id="verdict-tag"></div>
-<div class="field"><div class="label">Why Now</div><div class="value" id="why-now"></div></div>
-<div class="field"><div class="label">Main Risk</div><div class="value" id="main-risk"></div></div>
-<div class="field"><div class="label">Recommended Next Move</div><div class="value" id="next-move"></div></div>
+<div id="result" class="card"></div>
 </div>
 
-<div class="card">
-<h2>&#x1F4CA; Scores</h2>
-<div class="score-grid" id="score-grid"></div>
-</div>
-
-<div class="card">
-<h2>&#x1F4A1; Business Idea</h2>
-<div class="field"><div class="label">Title</div><div class="value" id="title"></div></div>
-<div class="field"><div class="label">Problem</div><div class="value" id="problem"></div></div>
-<div class="field"><div class="label">Target User</div><div class="value" id="target-user"></div></div>
-<div class="field"><div class="label">Solution</div><div class="value" id="solution"></div></div>
-</div>
-
-<div class="card">
-<h2>&#x1F4B0; Monetization</h2>
-<div class="field"><div class="label">Method</div><div class="value" id="monetization"></div></div>
-<div class="field"><div class="label">Pricing</div><div class="value" id="pricing"></div></div>
-<div class="field"><div class="label">Competitive Edge</div><div class="value" id="edge"></div></div>
-</div>
-
-<div class="card">
-<h2>&#x1F4E3; Distribution</h2>
-<div class="field"><div class="label">Distribution Plan</div><div class="value" id="distribution"></div></div>
-<div class="field"><div class="label">First 10 Users</div><div class="value" id="first-users"></div></div>
-</div>
-
-<div class="card" id="research-card" style="display:none">
-<h2>&#x1F50D; Market Research</h2>
-<div class="research-box" id="research-content"></div>
-</div>
-</div>
-</div>
-
-<footer>AI-DAN Managing Director &middot; Strategic Decision Engine &middot; v{version}</footer>
+<footer>AI-DAN Managing Director v{version} &mdash; Monetization-first decision engine</footer>
 
 <script>
-async function analyzeIdea(){
-  const input=document.getElementById('idea-input');
-  const idea=input.value.trim();
-  if(!idea){input.focus();return}
+async function analyze(){
+  const btn=document.getElementById("analyzeBtn");
+  const loading=document.getElementById("loading");
+  const result=document.getElementById("result");
+  const errorBox=document.getElementById("errorBox");
+  const idea=document.getElementById("idea").value.trim();
 
-  const btn=document.getElementById('submit-btn');
-  const loading=document.getElementById('loading');
-  const result=document.getElementById('result');
-  const errorBox=document.getElementById('error-box');
+  if(!idea){errorBox.textContent="Please enter an idea.";errorBox.style.display="block";return}
 
-  btn.disabled=true;
-  loading.classList.add('active');
-  result.classList.remove('active');
-  errorBox.classList.remove('active');
+  btn.disabled=true;loading.style.display="block";result.style.display="none";
+  errorBox.style.display="none";
+
+  const body={
+    idea:idea,
+    problem:document.getElementById("problem").value.trim(),
+    target_user:document.getElementById("target_user").value.trim(),
+    monetization_model:document.getElementById("monetization_model").value,
+    competition_level:document.getElementById("competition_level").value,
+    difficulty:document.getElementById("difficulty").value,
+    time_to_revenue:document.getElementById("time_to_revenue").value,
+    differentiation:document.getElementById("differentiation").value.trim()
+  };
 
   try{
-    const resp=await fetch('/api/analyze/',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({idea:idea})
-    });
-    if(!resp.ok){
-      const errText=await resp.text();
-      throw new Error('Server error '+resp.status+': '+errText);
-    }
-    const data=await resp.json();
-    if(!data.success){throw new Error(data.error||'Analysis failed')}
-    renderResult(data.analysis);
+    const resp=await fetch("/api/analyze/",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!resp.ok){const e=await resp.json();throw new Error(e.detail||resp.statusText)}
+    const d=await resp.json();
+    renderResult(d);
   }catch(err){
-    errorBox.textContent='Error: '+err.message;
-    errorBox.classList.add('active');
-  }finally{
-    btn.disabled=false;
-    loading.classList.remove('active');
+    errorBox.textContent="Error: "+err.message;errorBox.style.display="block";
+  }finally{btn.disabled=false;loading.style.display="none"}
+}
+
+function renderResult(d){
+  const r=document.getElementById("result");
+  const sc=d.total_score||0;
+  const pct=(sc/10*100).toFixed(0);
+  const cls=sc>=8?"high":sc>=6?"med":"low";
+  const dec=d.final_decision||"UNKNOWN";
+
+  let h='<div style="display:flex;justify-content:space-between;align-items:center">';
+  h+='<div><span class="decision-badge decision-'+dec+'">'+dec+'</span></div>';
+  h+='<div style="text-align:right;font-size:1.5rem;font-weight:700">'+sc.toFixed(1);
+  h+='<span style="font-size:.9rem;color:#888">/10</span></div></div>';
+
+  h+='<div class="score-bar"><div class="score-fill score-'+cls+'" style="width:'+pct+'%"></div></div>';
+  h+='<p style="font-size:.85rem;color:#aaa;margin-top:.3rem">'+
+    (d.score_decision_reason||d.next_step||"")+'</p>';
+
+  /* Validation */
+  if(d.validation_blocking&&d.validation_blocking.length){
+    h+='<div class="section"><h3>&#x1F6D1; Blocking Issues</h3>';
+    d.validation_blocking.forEach(function(b){h+='<p class="blocking">• '+escapeHtml(b)+'</p>'});
+    h+='</div>';
   }
+  if(d.validation_reasons&&d.validation_reasons.length){
+    h+='<div class="section"><h3>&#x2705; Validation</h3>';
+    d.validation_reasons.forEach(function(v){h+='<p class="reason">• '+escapeHtml(v)+'</p>'});
+    h+='</div>';
+  }
+
+  /* Score breakdown */
+  if(d.score_dimensions&&d.score_dimensions.length){
+    h+='<div class="section"><h3>&#x1F4CA; Score Breakdown</h3>';
+    d.score_dimensions.forEach(function(dim){
+      var dp=(dim.score/2*100).toFixed(0);
+      var dc=dim.score>=1.5?"high":dim.score>=1?"med":"low";
+      h+='<div class="detail-row"><span class="detail-label">'+escapeHtml(dim.name)+
+        '</span><span class="detail-value">'+dim.score.toFixed(1)+'/2</span></div>';
+      h+='<div class="score-bar"><div class="score-fill score-'+dc+'" style="width:'+dp+'%"></div></div>';
+      h+='<p style="font-size:.8rem;color:#777;margin-bottom:.3rem">'+escapeHtml(dim.reason)+'</p>';
+    });
+    h+='</div>';
+  }
+
+  /* Offer */
+  var o=d.offer||{};
+  if(o.decision==="generated"){
+    h+='<div class="section"><h3>&#x1F4B0; Offer</h3>';
+    h+=detailRow("Pricing",o.pricing);
+    h+=detailRow("Model",o.pricing_model);
+    h+=detailRow("Delivery",o.delivery_method);
+    h+=detailRow("Value",o.value_proposition);
+    h+=detailRow("CTA",o.cta);
+    h+='</div>';
+  }
+
+  /* Distribution */
+  var di=d.distribution||{};
+  if(di.decision==="generated"){
+    h+='<div class="section"><h3>&#x1F680; Distribution</h3>';
+    h+=detailRow("Channel",di.primary_channel);
+    h+=detailRow("Acquisition",di.acquisition_method);
+    h+=detailRow("First 10 Users",di.first_10_users_plan);
+    h+=detailRow("Messaging",di.messaging);
+    if(di.execution_steps&&di.execution_steps.length){
+      h+='<p style="font-size:.85rem;color:#aaa;margin-top:.4rem">Steps:</p>';
+      di.execution_steps.forEach(function(s,i){
+        h+='<p style="font-size:.8rem;color:#ccc;margin-left:.5rem">'+(i+1)+'. '+escapeHtml(s)+'</p>'
+      });
+    }
+    h+='</div>';
+  }
+
+  /* Next step */
+  h+='<div class="section"><h3>&#x27A1;&#xFE0F; Next Step</h3>';
+  h+='<p style="font-size:.9rem">'+escapeHtml(d.next_step||"Awaiting analysis.")+'</p>';
+  h+='<p style="font-size:.8rem;color:#666;margin-top:.3rem">Stage: '+escapeHtml(d.pipeline_stage||"unknown")+'</p>';
+  h+='</div>';
+
+  r.innerHTML=h;r.style.display="block";
 }
 
-function renderResult(a){
-  const result=document.getElementById('result');
+function detailRow(l,v){if(!v)return'';
+  return'<div class="detail-row"><span class="detail-label">'+escapeHtml(l)+
+    '</span><span class="detail-value">'+escapeHtml(v)+'</span></div>'}
 
-  // AI badge
-  const badge=document.getElementById('ai-badge');
-  badge.textContent=a.ai_powered?'AI-Powered':'Deterministic';
-  badge.className='badge '+(a.ai_powered?'badge-ai':'badge-stub');
-
-  // Verdict – use textContent to avoid XSS from AI output
-  const vt=document.getElementById('verdict-tag');
-  vt.textContent='';
-  const v=(a.verdict||'HOLD').toUpperCase();
-  const vc=v==='APPROVE'?'approve':(v==='REJECT'?'reject':'hold');
-  const verdictSpan=document.createElement('span');
-  verdictSpan.className='verdict verdict-'+vc;
-  verdictSpan.textContent=v;
-  vt.appendChild(verdictSpan);
-
-  setText('why-now',a.why_now);
-  setText('main-risk',a.main_risk);
-  setText('next-move',a.recommended_next_move);
-
-  // Scores – build DOM elements instead of innerHTML
-  const sg=document.getElementById('score-grid');
-  sg.textContent='';
-  const scores=[
-    ['Overall',a.overall_score],
-    ['Feasibility',a.feasibility_score],
-    ['Profitability',a.profitability_score],
-    ['Speed',a.speed_score],
-    ['Competition',a.competition_score]
-  ];
-  scores.forEach(function(s){
-    const val=Number(s[1])||0;
-    const d=document.createElement('div');
-    d.className='score-item';
-    const lbl=document.createElement('div');
-    lbl.className='label';
-    lbl.textContent=s[0];
-    const valEl=document.createElement('div');
-    valEl.className='value';
-    valEl.textContent=val.toFixed(1);
-    d.appendChild(lbl);
-    d.appendChild(valEl);
-    sg.appendChild(d);
-  });
-
-  // Idea
-  setText('title',a.title);
-  setText('problem',a.problem);
-  setText('target-user',a.target_user);
-  setText('solution',a.solution);
-
-  // Monetization
-  setText('monetization',a.monetization_method);
-  setText('pricing',a.pricing_suggestion);
-  setText('edge',a.competitive_edge);
-
-  // Distribution
-  setText('distribution',a.distribution_plan);
-  setText('first-users',a.first_10_users);
-
-  // Research
-  const rc=document.getElementById('research-card');
-  if(a.market_research){
-    rc.style.display='block';
-    document.getElementById('research-content').textContent=a.market_research;
-  }else{rc.style.display='none'}
-
-  result.classList.add('active');
-  result.scrollIntoView({behavior:'smooth'});
-}
-
-function setText(id,val){document.getElementById(id).textContent=val||'N/A'}
-
-document.getElementById('idea-input').addEventListener('keydown',function(e){
-  if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){analyzeIdea()}
-});
+function escapeHtml(s){if(!s)return'';var d=document.createElement("div");
+  d.appendChild(document.createTextNode(String(s)));return d.innerHTML}
 </script>
 </body>
 </html>
@@ -325,6 +350,6 @@ document.getElementById('idea-input').addEventListener('keydown',function(e){
 
 @app.get("/", response_class=HTMLResponse, tags=["UI"])
 async def root_ui() -> HTMLResponse:
-    """Serve the AI-DAN Managing Director web interface."""
-    html = _UI_HTML.replace("{version}", _VERSION)
+    """Serve the root idea-analysis UI."""
+    html = _ROOT_HTML.replace("{version}", _VERSION)
     return HTMLResponse(content=html)
