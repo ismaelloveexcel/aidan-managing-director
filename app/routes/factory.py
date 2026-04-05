@@ -23,6 +23,10 @@ from app.core.dependencies import (
 from app.core.pipeline import run_pipeline
 from app.core.supervisor import validate_market_truth
 from app.factory.build_brief_validator import validate_build_brief
+import ipaddress
+import re as _re
+from urllib.parse import urlparse as _urlparse
+
 from app.factory.deployment_verifier import DeploymentVerification, async_verify_deployment
 from app.factory.factory_client import FactoryTrackingResult
 from app.factory.models import (
@@ -135,13 +139,59 @@ class VerifyDeploymentRequest(BaseModel):
     expected_endpoints: list[str] | None = None
 
 
+_PRIVATE_PREFIXES = (
+    "localhost",
+    "127.",
+    "0.",
+    "10.",
+    "169.254.",
+    "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
+    "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
+    "192.168.",
+    "::1",
+    "fc00::", "fd",
+)
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return True if ``url`` resolves to a non-private/non-internal host.
+
+    Blocks requests to localhost, link-local, RFC-1918 ranges, and IPv6
+    loopback/unique-local addresses to prevent Server-Side Request Forgery.
+    """
+    try:
+        parsed = _urlparse(url)
+        host = (parsed.hostname or "").lower().strip("[]")
+        if not host:
+            return False
+        if any(host == p.rstrip(".") or host.startswith(p) for p in _PRIVATE_PREFIXES):
+            return False
+        # Block bare numeric IP addresses in private ranges.
+        try:
+            addr = ipaddress.ip_address(host)
+            return not (addr.is_private or addr.is_loopback or addr.is_link_local)
+        except ValueError:
+            pass  # Not an IP literal – hostname is fine.
+    except Exception:
+        return False
+    return True
+
+
 @router.post("/verify-deployment", response_model=DeploymentVerification)
 async def verify_deployment_endpoint(request: VerifyDeploymentRequest) -> DeploymentVerification:
     """Verify that a deployed URL is accessible and healthy.
 
     Makes real HTTP requests (with retry) to the deployment URL and its
     health endpoints.  Returns a structured verification result.
+
+    The ``deploy_url`` must resolve to a public (non-private) host.
+    Requests to internal IP ranges or localhost are rejected to prevent SSRF.
     """
+    if request.deploy_url and not _is_safe_url(request.deploy_url):
+        raise HTTPException(
+            status_code=422,
+            detail="deploy_url must point to a publicly accessible host (not localhost or a private IP range).",
+        )
     return await async_verify_deployment(
         project_id=request.project_id,
         deploy_url=request.deploy_url,

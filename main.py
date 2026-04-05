@@ -1015,7 +1015,7 @@ function detailRow(l,v){if(!v)return"";
 function approveAndBuild(){
   if(!_lastAnalysis){showToast("Run analysis first","err");return;}
   var idea=document.getElementById("idea").value.trim();
-  var name=idea.substring(0,60)||(idea.substring(0,40)+"...");
+  var name=idea.length>60?idea.substring(0,40)+"...":idea.substring(0,60);
   var btn=document.getElementById("approveBuildBtn");
   btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Creating...';
   apiCall("POST","/portfolio/projects",{
@@ -1037,7 +1037,7 @@ function approveAndBuild(){
 function saveAsDraft(){
   if(!_lastAnalysis){showToast("Run analysis first","err");return;}
   var idea=document.getElementById("idea").value.trim();
-  var name=idea.substring(0,60);
+  var name=idea.length>60?idea.substring(0,40)+"...":idea.substring(0,60);
   var btn=document.getElementById("saveDraftBtn");
   btn.disabled=true;
   apiCall("POST","/portfolio/projects",{
