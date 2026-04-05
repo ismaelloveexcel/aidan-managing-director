@@ -23,6 +23,7 @@ from app.core.dependencies import (
 from app.core.pipeline import run_pipeline
 from app.core.supervisor import validate_market_truth
 from app.factory.build_brief_validator import validate_build_brief
+from app.factory.deployment_verifier import DeploymentVerification, verify_deployment
 from app.factory.factory_client import FactoryTrackingResult
 from app.factory.models import (
     BuildBrief,
@@ -99,6 +100,12 @@ async def create_factory_run(request: FactoryBuildRequest) -> FactoryRunResult:
     if _portfolio.get_project(run.project_id) is not None:
         _portfolio.save_factory_run(run)
     return run
+
+
+@router.get("/runs", response_model=list[FactoryRunResult])
+async def list_factory_runs() -> list[FactoryRunResult]:
+    """Return all factory runs."""
+    return _run_store.list_runs()
 
 
 @router.get("/runs/{run_id}", response_model=FactoryRunResult)
@@ -310,6 +317,24 @@ async def execute_idea_build(request: IdeaExecutionRequest) -> IdeaExecutionResu
         score_breakdown=evaluation.breakdown.model_dump(),
         business_package=business_package,
         reason=evaluation.reason,
+    )
+
+
+class VerifyDeploymentRequest(BaseModel):
+    """Input payload for deployment verification."""
+
+    project_id: str
+    deploy_url: str
+    repo_url: str = ""
+
+
+@router.post("/verify-deployment", response_model=DeploymentVerification)
+async def verify_project_deployment(request: VerifyDeploymentRequest) -> DeploymentVerification:
+    """Verify that a project deployment URL is accessible and functional."""
+    return verify_deployment(
+        project_id=request.project_id,
+        deploy_url=request.deploy_url,
+        repo_url=request.repo_url,
     )
 
 

@@ -33,12 +33,12 @@ class TestRootUI:
 
     def test_root_has_loading_state(self) -> None:
         resp = client.get("/")
-        assert 'id="loading"' in resp.text
+        assert 'id="analyzeLoading"' in resp.text
         assert "spinner" in resp.text
 
     def test_root_has_error_state(self) -> None:
         resp = client.get("/")
-        assert 'id="errorBox"' in resp.text
+        assert 'id="analyzeError"' in resp.text
 
 
 class TestAnalyzeEndpoint:
