@@ -26,7 +26,10 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
 # Paths that are unconditionally public regardless of API key / rate limits.
-_PUBLIC_PATHS: frozenset[str] = frozenset({"/", "/health", "/docs", "/openapi.json", "/redoc"})
+_PUBLIC_PATHS: frozenset[str] = frozenset({
+    "/", "/health", "/docs", "/openapi.json", "/redoc",
+    "/api/dashboard/health", "/api/dashboard/tokens",
+})
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):
