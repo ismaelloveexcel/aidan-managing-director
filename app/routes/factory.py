@@ -23,6 +23,7 @@ from app.core.dependencies import (
 from app.core.pipeline import run_pipeline
 from app.core.supervisor import validate_market_truth
 from app.factory.build_brief_validator import validate_build_brief
+from app.factory.deployment_verifier import DeploymentVerification, verify_deployment
 from app.factory.factory_client import FactoryTrackingResult
 from app.factory.models import (
     BuildBrief,
@@ -87,6 +88,25 @@ class IdeaExecutionResult(BaseModel):
 async def validate_brief(brief: BuildBrief) -> BuildBriefValidationResult:
     """Validate BuildBrief payloads before queueing a factory run."""
     return validate_build_brief(brief)
+
+
+class VerifyRequest(BaseModel):
+    """Request payload for deployment verification."""
+
+    project_id: str
+    deploy_url: str = ""
+
+
+@router.get("/runs", response_model=list[FactoryRunResult])
+async def list_factory_runs() -> list[FactoryRunResult]:
+    """Return all factory runs in the in-memory store."""
+    return _run_store.list_runs()
+
+
+@router.post("/verify-deployment", response_model=DeploymentVerification)
+async def verify_deployment_endpoint(request: VerifyRequest) -> DeploymentVerification:
+    """Verify a deployed project URL is accessible and healthy."""
+    return verify_deployment(project_id=request.project_id, deploy_url=request.deploy_url)
 
 
 @router.post("/runs", response_model=FactoryRunResult)
