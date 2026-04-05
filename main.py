@@ -19,6 +19,7 @@ from app.routes import (
     chat,
     commands,
     control,
+    dashboard,
     distribution,
     factory,
     feedback,
@@ -82,6 +83,7 @@ app.include_router(intelligence.router, prefix="/intelligence", tags=["Intellige
 app.include_router(revenue.router, prefix="/revenue", tags=["Revenue Intelligence"])
 app.include_router(control.router, prefix="/control", tags=["Control"])
 app.include_router(distribution.router, prefix="/api/distribution", tags=["Distribution"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @app.get("/health", tags=["Health"])
@@ -151,6 +153,10 @@ footer{margin-top:2rem;color:#555;font-size:.8rem;text-align:center}
 </style>
 </head>
 <body>
+<header id="siteHeader" style="width:100%;padding:.75rem 1rem;background:linear-gradient(135deg,#2a0a0a,#1a1a2e);margin-bottom:1rem;border-bottom:1px solid #333;display:flex;align-items:center;justify-content:center;gap:.5rem">
+<span id="healthDot" style="width:10px;height:10px;border-radius:50%;background:#dc2626;display:inline-block;flex-shrink:0"></span>
+<span style="color:#e0e0e0;font-size:.85rem" id="healthSummary">Loading portfolio health...</span>
+</header>
 <h1>&#x1F9E0; AI-DAN Managing Director</h1>
 <p class="subtitle">Idea → Validate → Score → Decide → Offer → Distribute</p>
 
@@ -235,6 +241,32 @@ footer{margin-top:2rem;color:#555;font-size:.8rem;text-align:center}
 <footer>AI-DAN Managing Director v{version} &mdash; Monetization-first decision engine</footer>
 
 <script>
+function applyHealthStatus(status,summary){
+  const header=document.getElementById("siteHeader");
+  const dot=document.getElementById("healthDot");
+  const txt=document.getElementById("healthSummary");
+  const gradients={
+    GREEN:"linear-gradient(135deg,#0a2a0a,#1a1a2e)",
+    AMBER:"linear-gradient(135deg,#2a2a0a,#1a1a2e)",
+    RED:"linear-gradient(135deg,#2a0a0a,#1a1a2e)"
+  };
+  const dotColors={GREEN:"#16a34a",AMBER:"#d97706",RED:"#dc2626"};
+  const resolvedStatus=status||"RED";
+  if(header)header.style.background=gradients[resolvedStatus]||gradients.RED;
+  if(dot)dot.style.background=dotColors[resolvedStatus]||dotColors.RED;
+  if(txt)txt.textContent=summary||resolvedStatus;
+}
+
+async function loadHealth(){
+  try{
+    const r=await fetch("/api/dashboard/health");
+    if(!r.ok){applyHealthStatus("RED","Portfolio health unavailable");return;}
+    const h=await r.json();
+    applyHealthStatus(h.health_status||"RED",h.summary||(h.health_status||"RED"));
+  }catch(e){applyHealthStatus("RED","Portfolio health unavailable");}
+}
+loadHealth();
+
 async function analyze(){
   const btn=document.getElementById("analyzeBtn");
   const loading=document.getElementById("loading");
