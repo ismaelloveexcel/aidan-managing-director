@@ -23,6 +23,7 @@ from app.core.dependencies import (
 from app.core.pipeline import run_pipeline
 from app.core.supervisor import validate_market_truth
 from app.factory.build_brief_validator import validate_build_brief
+from app.factory.deployment_verifier import DeploymentVerification, verify_deployment
 from app.factory.factory_client import FactoryTrackingResult
 from app.factory.models import (
     BuildBrief,
@@ -87,6 +88,12 @@ class IdeaExecutionResult(BaseModel):
 async def validate_brief(brief: BuildBrief) -> BuildBriefValidationResult:
     """Validate BuildBrief payloads before queueing a factory run."""
     return validate_build_brief(brief)
+
+
+@router.get("/runs", response_model=list[FactoryRunResult])
+async def list_factory_runs() -> list[FactoryRunResult]:
+    """Return all factory runs from the run store."""
+    return _run_store.list_runs()
 
 
 @router.post("/runs", response_model=FactoryRunResult)
@@ -421,4 +428,30 @@ async def factory_webhook(payload: FactoryWebhookPayload) -> FactoryWebhookAck:
         project_id=payload.project_id,
         run_id=payload.run_id,
         status=payload.status,
+    )
+
+
+
+# ---------------------------------------------------------------------------
+# Deployment Verification
+# ---------------------------------------------------------------------------
+
+
+class VerifyDeploymentRequest(BaseModel):
+    """Request payload for verifying a deployment URL."""
+
+    project_id: str
+    deploy_url: str = ""
+    repo_url: str = ""
+    expected_endpoints: list[str] | None = None
+
+
+@router.post("/verify-deployment", response_model=DeploymentVerification)
+async def verify_deployment_endpoint(request: VerifyDeploymentRequest) -> DeploymentVerification:
+    """Verify that a deployed project URL is accessible and healthy."""
+    return verify_deployment(
+        project_id=request.project_id,
+        deploy_url=request.deploy_url,
+        repo_url=request.repo_url,
+        expected_endpoints=request.expected_endpoints,
     )
