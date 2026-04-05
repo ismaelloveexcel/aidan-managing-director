@@ -23,6 +23,7 @@ from app.core.dependencies import (
 from app.core.pipeline import run_pipeline
 from app.core.supervisor import validate_market_truth
 from app.factory.build_brief_validator import validate_build_brief
+from app.factory.deployment_verifier import DeploymentVerification, async_verify_deployment
 from app.factory.factory_client import FactoryTrackingResult
 from app.factory.models import (
     BuildBrief,
@@ -117,6 +118,36 @@ async def get_factory_run_tracking(run_id: str) -> FactoryTrackingResult:
     if tracking is None:
         raise HTTPException(status_code=404, detail="Factory run not found")
     return tracking
+
+
+@router.get("/runs", response_model=list[FactoryRunResult])
+async def list_factory_runs() -> list[FactoryRunResult]:
+    """List all factory runs in reverse-chronological order."""
+    return sorted(_run_store.list_runs(), key=lambda r: r.created_at, reverse=True)
+
+
+class VerifyDeploymentRequest(BaseModel):
+    """Request payload for deployment verification."""
+
+    project_id: str
+    deploy_url: str = ""
+    repo_url: str = ""
+    expected_endpoints: list[str] | None = None
+
+
+@router.post("/verify-deployment", response_model=DeploymentVerification)
+async def verify_deployment_endpoint(request: VerifyDeploymentRequest) -> DeploymentVerification:
+    """Verify that a deployed URL is accessible and healthy.
+
+    Makes real HTTP requests (with retry) to the deployment URL and its
+    health endpoints.  Returns a structured verification result.
+    """
+    return await async_verify_deployment(
+        project_id=request.project_id,
+        deploy_url=request.deploy_url,
+        repo_url=request.repo_url,
+        expected_endpoints=request.expected_endpoints,
+    )
 
 
 @router.post("/ideas/execute", response_model=IdeaExecutionResult)
