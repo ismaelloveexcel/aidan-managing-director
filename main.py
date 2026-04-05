@@ -425,7 +425,8 @@ function esc(s){if(s==null)return'';var d=document.createElement('div');
 
 function jsStr(s){if(s==null)return'';
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"')
-    .replace(/\r/g,'\\r').replace(/\n/g,'\\n')}
+    .replace(/`/g,'\\`').replace(/</g,'\\x3c').replace(/>/g,'\\x3e')
+    .replace(/&/g,'\\x26').replace(/\r/g,'\\r').replace(/\n/g,'\\n')}
 
 function toast(msg,type){
   type=type||'info';
@@ -671,13 +672,15 @@ async function rejectProject(id){
 }
 
 async function buildProject(id,name){
-  switchTab('distribution',document.querySelectorAll('.nav button')[4]);
+  var distBtn=document.querySelector('.nav button[onclick*="distribution"]');
+  switchTab('distribution',distBtn||document.querySelectorAll('.nav button')[4]);
   document.getElementById('shareTitle').value=name;
   toast('Switch to Factory tab to trigger a build for '+name,'info');
 }
 
 function shareProject(id,name){
-  switchTab('distribution',document.querySelectorAll('.nav button')[4]);
+  var distBtn=document.querySelector('.nav button[onclick*="distribution"]');
+  switchTab('distribution',distBtn||document.querySelectorAll('.nav button')[4]);
   document.getElementById('shareTitle').value=name;
 }
 
