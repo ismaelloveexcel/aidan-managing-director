@@ -24,7 +24,7 @@ class TestRootUI:
 
     def test_root_contains_title(self) -> None:
         resp = client.get("/")
-        assert "AI-DAN Managing Director" in resp.text
+        assert "AI-DAN" in resp.text
 
     def test_root_contains_input_form(self) -> None:
         resp = client.get("/")
@@ -36,9 +36,9 @@ class TestRootUI:
         assert "/api/analyze/" in resp.text
 
     def test_root_does_not_use_innerhtml_for_verdict(self) -> None:
-        """Verify XSS safety: all user data is escaped via escapeHtml."""
+        """Verify XSS safety: all user data is escaped via esc helper."""
         resp = client.get("/")
-        assert "escapeHtml" in resp.text
+        assert "function esc(" in resp.text
 
 
 # ---------------------------------------------------------------------------

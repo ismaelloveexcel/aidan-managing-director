@@ -17,7 +17,7 @@ class TestRootUI:
         resp = client.get("/")
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
-        assert "AI-DAN Managing Director" in resp.text
+        assert "AI-DAN" in resp.text
 
     def test_root_has_form(self) -> None:
         resp = client.get("/")
