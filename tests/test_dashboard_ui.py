@@ -55,3 +55,20 @@ def test_factory_verify_deployment_missing_url() -> None:
     body = response.json()
     assert body["project_id"] == "test-proj"
     assert body["status"] == "failed"
+
+
+def test_factory_verify_deployment_valid_url() -> None:
+    """POST /factory/verify-deployment with a valid HTTPS URL returns healthy status."""
+    response = client.post(
+        "/factory/verify-deployment",
+        json={
+            "project_id": "test-proj-2",
+            "deploy_url": "https://example.com",
+            "repo_url": "https://github.com/test/repo",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["project_id"] == "test-proj-2"
+    assert body["status"] == "healthy"
+    assert body["health_check_passed"] is True

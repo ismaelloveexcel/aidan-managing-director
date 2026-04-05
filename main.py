@@ -483,7 +483,9 @@ function escapeHtml(s){
 function jsEscape(s){
   if(s==null||s===undefined)return'';
   return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"')
-    .replace(/\n/g,'\\n').replace(/\r/g,'\\r');
+    .replace(/</g,'\\x3c').replace(/>/g,'\\x3e').replace(/&/g,'\\x26')
+    .replace(/\n/g,'\\n').replace(/\r/g,'\\r')
+    .replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
 }
 function toast(msg,type){
   type=type||'info';
@@ -648,7 +650,7 @@ function renderAnalysis(d){
   // Create project button if APPROVED or HOLD
   if(dec==='APPROVED'||dec==='HOLD'){
     h+='<div class="section">';
-    h+='<button class="btn btn-success btn-full" onclick="createProjectFromAnalysis('+JSON.stringify(d.idea||'')+')">&#x2795; Create Project from This Idea</button>';
+    h+='<button class="btn btn-success btn-full" data-idea="'+escapeHtml(d.idea||'')+'" onclick="createProjectFromAnalysis(this.dataset.idea)">&#x2795; Create Project from This Idea</button>';
     h+='</div>';
   }
   h+='</div>';
