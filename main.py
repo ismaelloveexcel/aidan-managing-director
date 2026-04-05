@@ -37,6 +37,7 @@ async def _lifespan(application: FastAPI) -> AsyncIterator[None]:
 
     try:
         get_ai_provider().close()
+        get_ai_provider.cache_clear()
     except Exception:  # pragma: no cover – best-effort cleanup
         pass
 

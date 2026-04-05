@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import httpx
+
 from app.integrations.ai_provider import AIProvider
 from app.planning.distribution import generate_distribution_plan
 from app.reasoning.idea_engine import IdeaEngine
@@ -76,7 +78,7 @@ def run_analysis(idea_text: str, ai: AIProvider) -> dict[str, Any]:
             research_context = ai.perplexity.research(
                 f"Market research for this business idea: {idea_text}"
             )
-        except Exception:
+        except (httpx.HTTPError, KeyError, IndexError):
             logger.exception("Perplexity research failed for idea: %s", idea_text[:100])
             research_context = ""
 
@@ -86,7 +88,7 @@ def run_analysis(idea_text: str, ai: AIProvider) -> dict[str, Any]:
             # Mark as AI-powered only if the result is NOT a stub fallback
             if not ai_analysis.get("stub"):
                 ai_actually_used = True
-        except Exception:
+        except (httpx.HTTPError, KeyError, IndexError, ValueError):
             logger.exception("OpenAI analysis failed for idea: %s", idea_text[:100])
             ai_analysis = {}
 
