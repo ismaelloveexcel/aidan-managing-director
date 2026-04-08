@@ -328,8 +328,8 @@ class GitHubClient:
             ``True`` if the dispatch was accepted.
         """
         if not self.token:
-            logger.warning("dispatch_workflow: no token configured, using stub response.")
-            return True
+            logger.warning("dispatch_workflow: no token configured, returning False for local fallback.")
+            return False
 
         try:
             response = self._client().post(
