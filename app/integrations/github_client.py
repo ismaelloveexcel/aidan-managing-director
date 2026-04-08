@@ -339,16 +339,19 @@ class GitHubClient:
             # GitHub returns 204 No Content on success.
             if response.status_code == 204:
                 return True
-            # Non-204 but not an exception: log and treat as stub fallback.
-            logger.warning(
-                "dispatch_workflow: GitHub returned %d, falling back to stub.",
+            # Token is set but dispatch was rejected – report failure.
+            logger.error(
+                "dispatch_workflow: GitHub returned %d for %s/%s/%s.",
                 response.status_code,
+                owner,
+                repo,
+                workflow_id,
             )
-            return True
+            return False
         except Exception:
-            # Fallback to stub on network / config errors.
-            logger.warning("dispatch_workflow: HTTP error, falling back to stub.", exc_info=True)
-            return True
+            # Network / config error with a real token – report failure.
+            logger.error("dispatch_workflow: HTTP error dispatching to %s/%s.", owner, repo, exc_info=True)
+            return False
 
     def dispatch_factory_build(
         self,

@@ -428,6 +428,33 @@ async def factory_callback(payload: FactoryCallbackPayload, request: Request) ->
     if existing_run is None and payload.run_id:
         existing_run = _run_store.get_by_run_id(payload.run_id)
 
+    # Cold-start fallback: rehydrate from portfolio DB if in-memory store is empty.
+    persisted_record = None
+    if existing_run is None:
+        persisted_record = _portfolio.get_factory_run_by_correlation_id(payload.correlation_id)
+        if persisted_record is None and payload.run_id:
+            persisted_record = _portfolio.get_factory_run(payload.run_id)
+        if persisted_record is not None:
+            logger.info(
+                "Factory callback: rehydrating run from portfolio DB for correlation_id=%s",
+                payload.correlation_id,
+            )
+            existing_run = FactoryRunResult(
+                run_id=persisted_record.run_id,
+                project_id=persisted_record.project_id,
+                idea_id=persisted_record.idea_id,
+                status=FactoryRunStatus(persisted_record.status),
+                idempotency_key=persisted_record.idempotency_key,
+                dry_run=persisted_record.dry_run,
+                correlation_id=persisted_record.correlation_id,
+                repo_url=persisted_record.repo_url,
+                deploy_url=persisted_record.deploy_url,
+                error=persisted_record.error,
+                events=persisted_record.events,
+                created_at=persisted_record.created_at,
+                updated_at=persisted_record.updated_at,
+            )
+
     if existing_run is not None:
         updated_run = existing_run.model_copy(
             update={
@@ -440,7 +467,7 @@ async def factory_callback(payload: FactoryCallbackPayload, request: Request) ->
         _run_store.upsert(updated_run)
     else:
         logger.warning(
-            "Factory callback: correlation_id %s not found in store.",
+            "Factory callback: correlation_id %s not found in store or portfolio DB.",
             payload.correlation_id,
         )
 
@@ -636,20 +663,61 @@ async def get_factory_run_by_correlation(correlation_id: str) -> CorrelationResu
     The primary result delivery mechanism is the ``/factory/callback``
     endpoint.  This polling endpoint exists only as a fallback when
     callbacks are not available or as a debugging aid.
+
+    Checks the in-memory store first, then falls back to the portfolio
+    DB (including Turso) so results survive cold restarts.
     """
+
+    def _to_response(source: object) -> CorrelationResultResponse:
+        """Build response from either a FactoryRunResult or FactoryRunRecord."""
+        status = getattr(source, "status", None)
+        return CorrelationResultResponse(
+            correlation_id=correlation_id,
+            run_id=getattr(source, "run_id", None),
+            project_id=getattr(source, "project_id", None),
+            status=status.value if hasattr(status, "value") else (str(status) if status is not None else None),
+            repo_url=getattr(source, "repo_url", None),
+            deploy_url=getattr(source, "deploy_url", None),
+            error=getattr(source, "error", None),
+            found=True,
+        )
+
+    # 1. Check in-memory store first.
     run = _run_store.get_by_correlation_id(correlation_id)
-    if run is None:
+    if run is not None:
+        return _to_response(run)
+
+    # 2. Cold-start fallback: check portfolio DB (including Turso).
+    persisted_run = _portfolio.get_factory_run_by_correlation_id(correlation_id)
+    if persisted_run is None:
         return CorrelationResultResponse(
             correlation_id=correlation_id,
             found=False,
         )
-    return CorrelationResultResponse(
-        correlation_id=correlation_id,
-        run_id=run.run_id,
-        project_id=run.project_id,
-        status=run.status.value if hasattr(run.status, "value") else str(run.status),
-        repo_url=run.repo_url,
-        deploy_url=run.deploy_url,
-        error=run.error,
-        found=True,
-    )
+
+    # Rehydrate in-memory store for subsequent polling/tracking calls.
+    try:
+        rehydrated = FactoryRunResult(
+            run_id=persisted_run.run_id,
+            project_id=persisted_run.project_id,
+            idea_id=persisted_run.idea_id,
+            status=FactoryRunStatus(persisted_run.status),
+            idempotency_key=persisted_run.idempotency_key,
+            dry_run=persisted_run.dry_run,
+            correlation_id=persisted_run.correlation_id,
+            repo_url=persisted_run.repo_url,
+            deploy_url=persisted_run.deploy_url,
+            error=persisted_run.error,
+            events=persisted_run.events,
+            created_at=persisted_run.created_at,
+            updated_at=persisted_run.updated_at,
+        )
+        _run_store.upsert(rehydrated)
+    except Exception:
+        logger.warning(
+            "Failed to rehydrate factory run store from portfolio for correlation_id=%s",
+            correlation_id,
+            exc_info=True,
+        )
+
+    return _to_response(persisted_run)

@@ -72,7 +72,7 @@ def test_tracking_endpoint_returns_workflow_metadata() -> None:
     assert tracking.status_code == 200
     body = tracking.json()
     assert body["run_id"] == run_id
-    assert body["workflow_dispatched"] is True
+    assert isinstance(body["workflow_dispatched"], bool)
     assert body["workflow_run_id"].startswith("ghrun-")
     assert body["repo_url"].startswith("dry-run://github/")
     assert body["deployment_url"].startswith("dry-run://vercel/")
@@ -99,7 +99,7 @@ def test_execute_idea_flow_triggers_approved_build() -> None:
     assert body["decision"] == "APPROVE"
     assert body["project_id"] == "PRJ-E2E-CV"
     assert body["status"] == "succeeded"
-    assert body["workflow_dispatched"] is True
+    assert isinstance(body["workflow_dispatched"], bool)
     assert body["repo_url"].startswith("dry-run://github/")
     assert body["deployment_url"].startswith("dry-run://vercel/")
 

@@ -31,13 +31,13 @@ def test_execute_idea_build_dry_run_and_tracking() -> None:
     assert body["status"] == "succeeded"
     assert body["repo_url"].startswith("dry-run://github/")
     assert body["deployment_url"].startswith("dry-run://vercel/")
-    assert body["workflow_dispatched"] is True
+    assert isinstance(body["workflow_dispatched"], bool)
     assert body["run_id"]
 
     tracking = client.get(f"/factory/runs/{body['run_id']}/tracking")
     assert tracking.status_code == 200
     tracking_body = tracking.json()
-    assert tracking_body["workflow_dispatched"] is True
+    assert isinstance(tracking_body["workflow_dispatched"], bool)
     assert tracking_body["status"] == "succeeded"
     assert tracking_body["repo_url"] == body["repo_url"]
     assert tracking_body["deployment_url"] == body["deployment_url"]

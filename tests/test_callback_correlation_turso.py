@@ -419,3 +419,225 @@ class TestFactoryRunStatusEnum:
             "pending", "dispatched", "building", "running",
             "deployed", "succeeded", "failed",
         }
+
+
+# ---------------------------------------------------------------------------
+# Callback authentication tests
+# ---------------------------------------------------------------------------
+
+
+class TestCallbackAuthentication:
+    """Test X-Factory-Secret header authentication on /factory/callback."""
+
+    def test_callback_rejected_with_wrong_secret(self, monkeypatch: Any) -> None:
+        """When factory_callback_secret is set, wrong header → 401."""
+        from app.core.config import get_settings
+        from app.routes import factory as factory_mod
+
+        original_settings = get_settings()
+        patched = original_settings.model_copy(update={"factory_callback_secret": "correct-secret"})
+        monkeypatch.setattr(factory_mod, "get_settings", lambda: patched)
+
+        store = get_factory_run_store()
+        store.reset()
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-AUTH-1",
+                "correlation_id": "PRJ-AUTH-1:auth12345678",
+                "status": "succeeded",
+            },
+            headers={"X-Factory-Secret": "wrong-secret"},
+        )
+        assert resp.status_code == 401
+
+    def test_callback_rejected_with_missing_secret(self, monkeypatch: Any) -> None:
+        """When factory_callback_secret is set, missing header → 401."""
+        from app.core.config import get_settings
+        from app.routes import factory as factory_mod
+
+        original_settings = get_settings()
+        patched = original_settings.model_copy(update={"factory_callback_secret": "correct-secret"})
+        monkeypatch.setattr(factory_mod, "get_settings", lambda: patched)
+
+        store = get_factory_run_store()
+        store.reset()
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-AUTH-2",
+                "correlation_id": "PRJ-AUTH-2:auth12345678",
+                "status": "succeeded",
+            },
+        )
+        assert resp.status_code == 401
+
+    def test_callback_accepted_with_correct_secret(self, monkeypatch: Any) -> None:
+        """When factory_callback_secret is set, correct header → 200."""
+        from app.core.config import get_settings
+        from app.routes import factory as factory_mod
+
+        original_settings = get_settings()
+        patched = original_settings.model_copy(update={"factory_callback_secret": "correct-secret"})
+        monkeypatch.setattr(factory_mod, "get_settings", lambda: patched)
+
+        store = get_factory_run_store()
+        store.reset()
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-AUTH-3",
+                "correlation_id": "PRJ-AUTH-3:auth12345678",
+                "status": "succeeded",
+            },
+            headers={"X-Factory-Secret": "correct-secret"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["received"] is True
+
+    def test_callback_accepted_when_no_secret_configured(self) -> None:
+        """When factory_callback_secret is empty (dev mode), any request → 200."""
+        store = get_factory_run_store()
+        store.reset()
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-AUTH-4",
+                "correlation_id": "PRJ-AUTH-4:auth12345678",
+                "status": "failed",
+            },
+        )
+        assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Cold-start fallback: polling from portfolio DB
+# ---------------------------------------------------------------------------
+
+
+class TestPollingDbFallback:
+    """Polling endpoint falls back to portfolio DB when in-memory store is empty."""
+
+    def test_poll_finds_run_in_portfolio_db_after_cold_start(self) -> None:
+        """Run persisted in portfolio DB is returned even if in-memory store is empty."""
+        store = get_factory_run_store()
+        store.reset()
+        repo = get_portfolio_repository()
+        repo.reset()
+
+        # Create project and save a factory run directly to the portfolio DB.
+        repo.create_project(
+            name="poll-db-test",
+            description="test",
+            project_id="PRJ-POLLDB-1",
+        )
+        run = FactoryRunResult(
+            project_id="PRJ-POLLDB-1",
+            idea_id="IDEA-POLLDB-1",
+            status=FactoryRunStatus.SUCCEEDED,
+            idempotency_key="PRJ-POLLDB-1:polldb-key:dry_run",
+            dry_run=True,
+            correlation_id="PRJ-POLLDB-1:polldb123456",
+            repo_url="https://github.com/test/poll-db-repo",
+            deploy_url="https://poll-db.vercel.app",
+        )
+        repo.save_factory_run(run)
+
+        # Clear in-memory store to simulate cold start.
+        store.reset()
+
+        resp = client.get("/factory/runs/PRJ-POLLDB-1:polldb123456/result")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["found"] is True
+        assert body["correlation_id"] == "PRJ-POLLDB-1:polldb123456"
+        assert body["status"] == "succeeded"
+        assert body["repo_url"] == "https://github.com/test/poll-db-repo"
+        assert body["deploy_url"] == "https://poll-db.vercel.app"
+
+    def test_poll_rehydrates_in_memory_store(self) -> None:
+        """After DB fallback, the run is rehydrated into the in-memory store."""
+        store = get_factory_run_store()
+        store.reset()
+        repo = get_portfolio_repository()
+        repo.reset()
+
+        repo.create_project(
+            name="rehydrate-test",
+            description="test",
+            project_id="PRJ-REHY-1",
+        )
+        run = FactoryRunResult(
+            project_id="PRJ-REHY-1",
+            idea_id="IDEA-REHY-1",
+            status=FactoryRunStatus.DEPLOYED,
+            idempotency_key="PRJ-REHY-1:rehy-key:dry_run",
+            dry_run=True,
+            correlation_id="PRJ-REHY-1:rehy12345678",
+        )
+        repo.save_factory_run(run)
+        store.reset()
+
+        # First poll triggers DB fallback + rehydration.
+        client.get("/factory/runs/PRJ-REHY-1:rehy12345678/result")
+
+        # After rehydration, the in-memory store should have the run.
+        rehydrated = store.get_by_correlation_id("PRJ-REHY-1:rehy12345678")
+        assert rehydrated is not None
+        assert rehydrated.run_id == run.run_id
+
+
+# ---------------------------------------------------------------------------
+# Cold-start fallback: callback from portfolio DB
+# ---------------------------------------------------------------------------
+
+
+class TestCallbackDbFallback:
+    """Callback endpoint falls back to portfolio DB when in-memory store is empty."""
+
+    def test_callback_rehydrates_from_portfolio_db(self) -> None:
+        """Callback for a run in portfolio DB but not in-memory store succeeds."""
+        store = get_factory_run_store()
+        store.reset()
+        repo = get_portfolio_repository()
+        repo.reset()
+
+        repo.create_project(
+            name="cb-db-test",
+            description="test",
+            project_id="PRJ-CBDB-1",
+        )
+        run = FactoryRunResult(
+            project_id="PRJ-CBDB-1",
+            idea_id="IDEA-CBDB-1",
+            status=FactoryRunStatus.RUNNING,
+            idempotency_key="PRJ-CBDB-1:cbdb-key:dry_run",
+            dry_run=True,
+            correlation_id="PRJ-CBDB-1:cbdb12345678",
+        )
+        repo.save_factory_run(run)
+
+        # Clear in-memory store to simulate cold start.
+        store.reset()
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-CBDB-1",
+                "correlation_id": "PRJ-CBDB-1:cbdb12345678",
+                "status": "succeeded",
+                "deploy_url": "https://cbdb.vercel.app",
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "succeeded"
+
+        # Verify in-memory store was rehydrated with updated status.
+        updated = store.get_by_correlation_id("PRJ-CBDB-1:cbdb12345678")
+        assert updated is not None
+        assert updated.status == FactoryRunStatus.SUCCEEDED
+        assert updated.deploy_url == "https://cbdb.vercel.app"

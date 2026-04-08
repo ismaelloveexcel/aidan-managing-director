@@ -4,7 +4,6 @@ factory_client.py - Minimal bridge to dispatch external factory workflows.
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import datetime, timezone
 
