@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     factory_ref: str = "main"
     public_base_url: str = ""
     factory_callback_secret: str = ""
+    factory_secret: str = ""
+    alert_webhook_url: str = ""
 
     # --- Portfolio Registry ----------------------------------------------------
     portfolio_db_path: str = _default_portfolio_db_path()
