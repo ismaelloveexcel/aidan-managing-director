@@ -641,3 +641,290 @@ class TestCallbackDbFallback:
         assert updated is not None
         assert updated.status == FactoryRunStatus.SUCCEEDED
         assert updated.deploy_url == "https://cbdb.vercel.app"
+
+
+# ---------------------------------------------------------------------------
+# GAP 5 — Execution path separation tests
+# ---------------------------------------------------------------------------
+
+
+class TestExecutionPathSeparation:
+    """Verify that GitHub Actions is the primary production path and local
+    orchestrator is only used as a dev/fallback path."""
+
+    def test_local_fallback_when_dispatch_unavailable(self) -> None:
+        """When GitHub dispatch fails, local orchestrator provides immediate output."""
+        from app.core.dependencies import get_factory_client
+
+        fc = get_factory_client()
+        store = get_factory_run_store()
+        store.reset()
+
+        from app.factory.models import BuildBrief
+
+        brief = BuildBrief(
+            project_id="PRJ-PATH-1",
+            idea_id="IDEA-PATH-1",
+            hypothesis="Test execution path",
+            target_user="developers",
+            problem="Need to test paths",
+            solution="Automated testing",
+            mvp_scope=["Test page"],
+            acceptance_criteria=["Page loads"],
+            landing_page_requirements=["Primary CTA: Test CTA"],
+            cta="Test CTA",
+            pricing_hint="Free",
+            deployment_target="vercel",
+            command_bundle={"entrypoint": "test"},
+            feature_flags={"dry_run": True},
+        )
+
+        run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
+
+        # In test/CI environment, dispatch returns False (no valid token for factory),
+        # so local fallback should be used. Run should have immediate output.
+        assert run.correlation_id is not None
+        assert run.status in (FactoryRunStatus.SUCCEEDED, FactoryRunStatus.DISPATCHED)
+
+        # The events should contain either local_orchestrator_fallback or awaiting_factory_callback
+        event_steps = [e.get("step") for e in run.events]
+        assert "workflow_dispatch" in event_steps
+
+        # If local fallback was used, verify it's explicitly marked
+        if run.status == FactoryRunStatus.SUCCEEDED:
+            assert "local_orchestrator_fallback" in event_steps
+        else:
+            # Production path — status should be DISPATCHED
+            assert "awaiting_factory_callback" in event_steps
+
+    def test_dispatched_status_exists(self) -> None:
+        """DISPATCHED is a valid status for production path runs."""
+        assert FactoryRunStatus.DISPATCHED.value == "dispatched"
+
+    def test_production_path_creates_dispatched_run(self) -> None:
+        """When workflow dispatch succeeds, run status should be DISPATCHED."""
+        from unittest.mock import MagicMock, patch
+
+        from app.factory.factory_client import FactoryClient
+        from app.factory.models import BuildBrief
+        from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+
+        mock_github = MagicMock()
+        mock_github.dispatch_factory_build.return_value = True  # Simulate success
+
+        store = FactoryRunStore()
+        orchestrator = FactoryOrchestrator(
+            github_client=mock_github,
+            vercel_client=MagicMock(),
+            run_store=store,
+        )
+
+        fc = FactoryClient(
+            github_client=mock_github,
+            orchestrator=orchestrator,
+            factory_owner="test-owner",
+            factory_repo="test-factory",
+            workflow_id="factory-build.yml",
+        )
+
+        brief = BuildBrief(
+            project_id="PRJ-PROD-1",
+            idea_id="IDEA-PROD-1",
+            hypothesis="Production path test",
+            target_user="developers",
+            problem="Need to test production path",
+            solution="Direct testing",
+            mvp_scope=["Test page"],
+            acceptance_criteria=["Page loads"],
+            landing_page_requirements=["Primary CTA: Test CTA"],
+            cta="Test CTA",
+            pricing_hint="Free",
+            deployment_target="vercel",
+            command_bundle={"entrypoint": "test"},
+            feature_flags={"dry_run": True},
+        )
+
+        with patch("app.factory.factory_client.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                public_base_url="https://md.example.com",
+                factory_ref="main",
+            )
+            run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
+
+        # Production path: dispatch succeeded → status should be DISPATCHED
+        assert run.status == FactoryRunStatus.DISPATCHED
+        assert tracking.workflow_dispatched is True
+        assert run.correlation_id is not None
+
+        # Should NOT have run local orchestrator
+        event_steps = [e.get("step") for e in run.events]
+        assert "local_orchestrator_fallback" not in event_steps
+        assert "awaiting_factory_callback" in event_steps
+
+    def test_fallback_path_uses_local_orchestrator(self) -> None:
+        """When workflow dispatch fails, local orchestrator provides output."""
+        from unittest.mock import MagicMock, patch
+
+        from app.factory.factory_client import FactoryClient
+        from app.factory.models import BuildBrief
+        from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+
+        mock_github = MagicMock()
+        mock_github.dispatch_factory_build.return_value = False  # Simulate failure
+
+        store = FactoryRunStore()
+        orchestrator = FactoryOrchestrator(
+            github_client=mock_github,
+            vercel_client=MagicMock(),
+            run_store=store,
+        )
+
+        fc = FactoryClient(
+            github_client=mock_github,
+            orchestrator=orchestrator,
+            factory_owner="test-owner",
+            factory_repo="test-factory",
+            workflow_id="factory-build.yml",
+        )
+
+        brief = BuildBrief(
+            project_id="PRJ-FALLBACK-1",
+            idea_id="IDEA-FALLBACK-1",
+            hypothesis="Fallback path test",
+            target_user="developers",
+            problem="Need to test fallback",
+            solution="Direct testing",
+            mvp_scope=["Test page"],
+            acceptance_criteria=["Page loads"],
+            landing_page_requirements=["Primary CTA: Test CTA"],
+            cta="Test CTA",
+            pricing_hint="Free",
+            deployment_target="vercel",
+            command_bundle={"entrypoint": "test"},
+            feature_flags={"dry_run": True},
+        )
+
+        with patch("app.factory.factory_client.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                public_base_url="https://md.example.com",
+                factory_ref="main",
+            )
+            run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
+
+        # Fallback path: dispatch failed → local orchestrator provides output
+        assert run.status == FactoryRunStatus.SUCCEEDED
+        assert tracking.workflow_dispatched is False
+        assert run.correlation_id is not None
+
+        # Should have local orchestrator fallback event
+        event_steps = [e.get("step") for e in run.events]
+        assert "local_orchestrator_fallback" in event_steps
+        assert "awaiting_factory_callback" not in event_steps
+
+    def test_callback_updates_dispatched_run(self) -> None:
+        """Callback correctly updates a DISPATCHED run to final status."""
+        store = get_factory_run_store()
+        store.reset()
+
+        # Create a DISPATCHED run (simulating production path)
+        run = FactoryRunResult(
+            project_id="PRJ-DISPATCH-1",
+            idea_id="IDEA-DISPATCH-1",
+            status=FactoryRunStatus.DISPATCHED,
+            idempotency_key="PRJ-DISPATCH-1:test-key:dry_run",
+            dry_run=True,
+            correlation_id="PRJ-DISPATCH-1:disp12345678",
+        )
+        store.upsert(run)
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-DISPATCH-1",
+                "correlation_id": "PRJ-DISPATCH-1:disp12345678",
+                "status": "succeeded",
+                "deploy_url": "https://dispatched.vercel.app",
+                "repo_url": "https://github.com/test/dispatched",
+            },
+        )
+        assert resp.status_code == 200
+
+        updated = store.get_by_correlation_id("PRJ-DISPATCH-1:disp12345678")
+        assert updated is not None
+        assert updated.status == FactoryRunStatus.SUCCEEDED
+        assert updated.deploy_url == "https://dispatched.vercel.app"
+        assert updated.repo_url == "https://github.com/test/dispatched"
+
+
+# ---------------------------------------------------------------------------
+# GAP 6 — End-to-end callback field completeness
+# ---------------------------------------------------------------------------
+
+
+class TestCallbackFieldCompleteness:
+    """Verify all required callback fields are handled end-to-end."""
+
+    def test_callback_accepts_all_required_fields(self) -> None:
+        """Callback endpoint processes the complete set of production fields."""
+        store = get_factory_run_store()
+        store.reset()
+
+        run = FactoryRunResult(
+            project_id="PRJ-FIELDS-1",
+            idea_id="IDEA-FIELDS-1",
+            status=FactoryRunStatus.DISPATCHED,
+            idempotency_key="PRJ-FIELDS-1:test-key:live",
+            dry_run=False,
+            correlation_id="PRJ-FIELDS-1:field123456",
+        )
+        store.upsert(run)
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-FIELDS-1",
+                "correlation_id": "PRJ-FIELDS-1:field123456",
+                "run_id": run.run_id,
+                "status": "deployed",
+                "deploy_url": "https://fields.vercel.app",
+                "repo_url": "https://github.com/test/fields",
+                "error": None,
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["received"] is True
+        assert body["correlation_id"] == "PRJ-FIELDS-1:field123456"
+        assert body["status"] == "deployed"
+
+    def test_callback_handles_failure_with_error(self) -> None:
+        """Callback correctly processes failure with error details."""
+        store = get_factory_run_store()
+        store.reset()
+
+        run = FactoryRunResult(
+            project_id="PRJ-ERRFIELD-1",
+            idea_id="IDEA-ERRFIELD-1",
+            status=FactoryRunStatus.DISPATCHED,
+            idempotency_key="PRJ-ERRFIELD-1:test-key:live",
+            dry_run=False,
+            correlation_id="PRJ-ERRFIELD-1:errfield1234",
+        )
+        store.upsert(run)
+
+        resp = client.post(
+            "/factory/callback",
+            json={
+                "project_id": "PRJ-ERRFIELD-1",
+                "correlation_id": "PRJ-ERRFIELD-1:errfield1234",
+                "run_id": run.run_id,
+                "status": "failed",
+                "error": "Build timeout after 600s",
+            },
+        )
+        assert resp.status_code == 200
+
+        updated = store.get_by_correlation_id("PRJ-ERRFIELD-1:errfield1234")
+        assert updated is not None
+        assert updated.status == FactoryRunStatus.FAILED
+        assert updated.error == "Build timeout after 600s"
