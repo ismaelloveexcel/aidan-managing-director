@@ -93,6 +93,7 @@ class FactoryRunRecord(BaseModel):
     status: str
     idempotency_key: str
     dry_run: bool
+    correlation_id: str | None = None
     repo_url: str | None = None
     deploy_url: str | None = None
     error: str | None = None

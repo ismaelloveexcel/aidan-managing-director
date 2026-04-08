@@ -40,3 +40,16 @@ class PortfolioDB:
         schema = Path(self.schema_path).read_text(encoding="utf-8")
         with self.connect() as conn:
             conn.executescript(schema)
+            self._apply_migrations(conn)
+
+    @staticmethod
+    def _apply_migrations(conn: sqlite3.Connection) -> None:
+        """Apply incremental schema migrations for backwards compatibility."""
+        # Migration: add correlation_id column to factory_runs if missing.
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(factory_runs)").fetchall()}
+        if "correlation_id" not in columns:
+            conn.execute("ALTER TABLE factory_runs ADD COLUMN correlation_id TEXT")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_factory_runs_correlation_id "
+            "ON factory_runs(correlation_id)"
+        )

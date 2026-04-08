@@ -18,6 +18,11 @@ permissions:
 jobs:
   pipeline-check:
     runs-on: ubuntu-latest
+    # Guard: skip scheduled runs when FACTORY_BASE_URL is not configured
+    # to prevent no-op runs from consuming CI minutes unnecessarily.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.FACTORY_BASE_URL != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v6

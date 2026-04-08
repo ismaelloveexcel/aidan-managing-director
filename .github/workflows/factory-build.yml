@@ -7,6 +7,21 @@ on:
         description: "Project identifier used in BuildBrief"
         required: true
         type: string
+      correlation_id:
+        description: "End-to-end correlation ID for tracing"
+        required: false
+        type: string
+        default: ""
+      callback_url:
+        description: "URL to POST build results back to"
+        required: false
+        type: string
+        default: ""
+      build_brief_json:
+        description: "JSON-serialised BuildBrief payload"
+        required: false
+        type: string
+        default: ""
       dry_run:
         description: "Run without side effects"
         required: true

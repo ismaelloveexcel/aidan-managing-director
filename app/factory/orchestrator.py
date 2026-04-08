@@ -30,11 +30,13 @@ class FactoryRunStore:
     def __init__(self) -> None:
         self._runs_by_id: dict[str, FactoryRunResult] = {}
         self._runs_by_idempotency_key: dict[str, str] = {}
+        self._runs_by_correlation_id: dict[str, str] = {}
 
     def reset(self) -> None:
         """Clear all in-memory run data (used by tests)."""
         self._runs_by_id.clear()
         self._runs_by_idempotency_key.clear()
+        self._runs_by_correlation_id.clear()
 
     def get_by_run_id(self, run_id: str) -> FactoryRunResult | None:
         """Return a run by ID."""
@@ -50,10 +52,19 @@ class FactoryRunStore:
             return None
         return self.get_by_run_id(run_id)
 
+    def get_by_correlation_id(self, correlation_id: str) -> FactoryRunResult | None:
+        """Return the run mapped to a correlation ID."""
+        run_id = self._runs_by_correlation_id.get(correlation_id)
+        if run_id is None:
+            return None
+        return self.get_by_run_id(run_id)
+
     def upsert(self, run: FactoryRunResult) -> None:
-        """Persist a run and maintain idempotency mapping."""
+        """Persist a run and maintain idempotency and correlation mappings."""
         self._runs_by_id[run.run_id] = run.model_copy(deep=True)
         self._runs_by_idempotency_key[run.idempotency_key] = run.run_id
+        if run.correlation_id:
+            self._runs_by_correlation_id[run.correlation_id] = run.run_id
 
     def list_runs(self) -> list[FactoryRunResult]:
         """Return a defensive copy of all runs in the store."""

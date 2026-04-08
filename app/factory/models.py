@@ -23,7 +23,10 @@ class FactoryRunStatus(str, Enum):
     """Lifecycle states for a factory run."""
 
     PENDING = "pending"
+    DISPATCHED = "dispatched"
+    BUILDING = "building"
     RUNNING = "running"
+    DEPLOYED = "deployed"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
 
@@ -233,6 +236,7 @@ class FactoryRunResult(BaseModel):
     status: FactoryRunStatus
     idempotency_key: str
     dry_run: bool
+    correlation_id: str | None = None
     repo_url: str | None = None
     deploy_url: str | None = None
     error: str | None = None

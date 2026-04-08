@@ -91,9 +91,17 @@ def get_factory_client() -> FactoryClient:
 
 @_lru_cache(maxsize=1)
 def get_portfolio_repository() -> PortfolioRepository:
-    """Return a cached SQLite-backed portfolio repository."""
+    """Return a cached portfolio repository.
+
+    Uses Turso when ``TURSO_DATABASE_URL`` and ``TURSO_AUTH_TOKEN`` are
+    configured; otherwise falls back to local SQLite.
+    """
     settings = get_settings()
-    return PortfolioRepository(db_path=settings.portfolio_db_path)
+    return PortfolioRepository(
+        db_path=settings.portfolio_db_path,
+        turso_database_url=settings.turso_database_url,
+        turso_auth_token=settings.turso_auth_token,
+    )
 
 
 @_lru_cache(maxsize=1)

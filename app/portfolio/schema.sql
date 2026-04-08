@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS factory_runs (
     status TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
     dry_run INTEGER NOT NULL DEFAULT 1,
+    correlation_id TEXT,
     repo_url TEXT,
     deploy_url TEXT,
     error TEXT,
