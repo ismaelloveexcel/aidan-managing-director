@@ -79,7 +79,6 @@ def main() -> int:
     parser.add_argument("--deploy-url", default="", help="Deployment URL")
     parser.add_argument("--repo-url", default="", help="Repository URL")
     parser.add_argument("--error-summary", default="", help="Error summary for failures")
-    parser.add_argument("--error-message", default="", help="Error message for failures")
     parser.add_argument("--completed-at", default="", help="ISO-8601 completion timestamp")
     parser.add_argument("--dry-run", default="false", help="Whether this was a dry run")
     args = parser.parse_args()
@@ -97,10 +96,9 @@ def main() -> int:
         "deploy_url": args.deploy_url.strip(),
         "repo_url": args.repo_url.strip(),
     }
-    # Include optional error fields only when present
-    error_msg = args.error_summary.strip() or args.error_message.strip()
-    if error_msg:
-        payload["error"] = error_msg
+    # Include optional error field only when present
+    if args.error_summary.strip():
+        payload["error"] = args.error_summary.strip()
 
     print(f"[factory_callback] Payload: {json.dumps(payload, ensure_ascii=True)}", flush=True)
 
