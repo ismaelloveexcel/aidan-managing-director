@@ -44,6 +44,16 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Trigger a factory build run.")
     parser.add_argument("--project-id", required=True, help="Project ID to build.")
     parser.add_argument(
+        "--correlation-id",
+        default="",
+        help="End-to-end correlation ID from MD dispatch.",
+    )
+    parser.add_argument(
+        "--callback-url",
+        default="",
+        help="URL for factory to POST results back to MD.",
+    )
+    parser.add_argument(
         "--dry-run",
         required=True,
         help="Set to true or false.",

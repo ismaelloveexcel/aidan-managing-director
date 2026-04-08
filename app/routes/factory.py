@@ -4,13 +4,15 @@ factory.py - Routes for BuildBrief validation and factory orchestration.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from app.core.config import get_settings
 from app.core.dependencies import (
     get_auto_learner,
     get_factory_client,
@@ -70,6 +72,7 @@ class IdeaExecutionResult(BaseModel):
     approved_for_build: bool
     decision: str
     run_id: str | None = None
+    correlation_id: str | None = None
     status: str | None = None
     repo_url: str | None = None
     deployment_url: str | None = None
@@ -328,6 +331,7 @@ async def execute_idea_build(request: IdeaExecutionRequest) -> IdeaExecutionResu
         approved_for_build=True,
         decision=DecisionAction.APPROVE.value,
         run_id=run.run_id,
+        correlation_id=run.correlation_id,
         status=run.status.value if hasattr(run.status, "value") else str(run.status),
         repo_url=run.repo_url,
         deployment_url=run.deploy_url,
@@ -344,7 +348,184 @@ async def execute_idea_build(request: IdeaExecutionRequest) -> IdeaExecutionResu
 
 
 # ---------------------------------------------------------------------------
-# Factory Webhook – receives build completion callbacks from ai-dan-factory
+# Factory Callback – receives build completion callbacks from ai-dan-factory
+# ---------------------------------------------------------------------------
+
+
+def _verify_callback_secret(request: Request) -> None:
+    """Verify the factory callback secret from the request header.
+
+    Raises HTTPException 401 if a secret is configured and the request
+    does not carry a matching ``X-Factory-Secret`` header.  When no
+    secret is configured (development mode), all requests are accepted.
+    """
+    settings = get_settings()
+    expected = settings.factory_callback_secret
+    if not expected:
+        return  # No secret configured → allow (dev mode).
+
+    provided = request.headers.get("X-Factory-Secret", "")
+    if not provided or not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="Invalid or missing factory callback secret.")
+
+
+class FactoryCallbackPayload(BaseModel):
+    """Payload sent by the ai-dan-factory repo on build completion or failure."""
+
+    project_id: str
+    correlation_id: str
+    run_id: str = ""
+    status: Literal["succeeded", "failed", "deployed", "building"]
+    deploy_url: str = ""
+    repo_url: str = ""
+    error: str | None = None
+
+
+class FactoryCallbackAck(BaseModel):
+    """Acknowledgment returned after processing a factory callback."""
+
+    received: bool = True
+    project_id: str
+    correlation_id: str
+    status: str
+
+
+@router.post("/callback", response_model=FactoryCallbackAck, status_code=200)
+async def factory_callback(payload: FactoryCallbackPayload, request: Request) -> FactoryCallbackAck:
+    """Receive build completion/failure callbacks from the ai-dan-factory.
+
+    This endpoint is idempotent and authenticated via the
+    ``X-Factory-Secret`` header.  It is the **primary** mechanism for the
+    factory to report results back to the MD.  The correlation_id is used
+    as the join key to locate the corresponding factory run.
+
+    Args:
+        payload: Build completion payload from the factory.
+        request: The incoming HTTP request (for header extraction).
+
+    Returns:
+        Acknowledgment with the recorded status.
+    """
+    _verify_callback_secret(request)
+
+    logger.info(
+        "Factory callback received: project=%s correlation_id=%s status=%s",
+        payload.project_id,
+        payload.correlation_id,
+        payload.status,
+    )
+
+    status_map = {
+        "succeeded": FactoryRunStatus.SUCCEEDED,
+        "failed": FactoryRunStatus.FAILED,
+        "deployed": FactoryRunStatus.DEPLOYED,
+        "building": FactoryRunStatus.BUILDING,
+    }
+    new_status = status_map.get(payload.status, FactoryRunStatus.FAILED)
+
+    # 1. Update the in-memory factory run store (lookup by correlation_id).
+    existing_run = _run_store.get_by_correlation_id(payload.correlation_id)
+    if existing_run is None and payload.run_id:
+        existing_run = _run_store.get_by_run_id(payload.run_id)
+
+    # Cold-start fallback: rehydrate from portfolio DB if in-memory store is empty.
+    persisted_record = None
+    if existing_run is None:
+        persisted_record = _portfolio.get_factory_run_by_correlation_id(payload.correlation_id)
+        if persisted_record is None and payload.run_id:
+            persisted_record = _portfolio.get_factory_run(payload.run_id)
+        if persisted_record is not None:
+            logger.info(
+                "Factory callback: rehydrating run from portfolio DB for correlation_id=%s",
+                payload.correlation_id,
+            )
+            existing_run = FactoryRunResult(
+                run_id=persisted_record.run_id,
+                project_id=persisted_record.project_id,
+                idea_id=persisted_record.idea_id,
+                status=FactoryRunStatus(persisted_record.status),
+                idempotency_key=persisted_record.idempotency_key,
+                dry_run=persisted_record.dry_run,
+                correlation_id=persisted_record.correlation_id,
+                repo_url=persisted_record.repo_url,
+                deploy_url=persisted_record.deploy_url,
+                error=persisted_record.error,
+                events=persisted_record.events,
+                created_at=persisted_record.created_at,
+                updated_at=persisted_record.updated_at,
+            )
+
+    if existing_run is not None:
+        updated_run = existing_run.model_copy(
+            update={
+                "status": new_status,
+                "deploy_url": payload.deploy_url or existing_run.deploy_url,
+                "repo_url": payload.repo_url or existing_run.repo_url,
+                "error": payload.error,
+            },
+        )
+        _run_store.upsert(updated_run)
+    else:
+        logger.warning(
+            "Factory callback: correlation_id %s not found in store or portfolio DB.",
+            payload.correlation_id,
+        )
+
+    # 2. Persist the factory run in the portfolio if the project exists.
+    project = _portfolio.get_project(payload.project_id)
+    if project is not None and existing_run is not None:
+        run_to_save = existing_run.model_copy(
+            update={
+                "status": new_status,
+                "deploy_url": payload.deploy_url or existing_run.deploy_url,
+                "repo_url": payload.repo_url or existing_run.repo_url,
+                "error": payload.error,
+            },
+        )
+        _portfolio.save_factory_run(run_to_save)
+        _portfolio.log_event(
+            project_id=payload.project_id,
+            event_type="factory_callback",
+            payload={
+                "correlation_id": payload.correlation_id,
+                "run_id": payload.run_id or existing_run.run_id,
+                "status": payload.status,
+                "deploy_url": payload.deploy_url,
+                "repo_url": payload.repo_url,
+                "error": payload.error,
+            },
+        )
+
+    # 3. Record outcome in the auto-learner for revenue intelligence.
+    outcome_label = "build_success" if payload.status in ("succeeded", "deployed") else "build_failure"
+    try:
+        _auto_learner.record_outcome(
+            project_id=payload.project_id,
+            outcome_type=outcome_label,
+            score=1.0 if payload.status in ("succeeded", "deployed") else 0.0,
+            metadata={
+                "correlation_id": payload.correlation_id,
+                "run_id": payload.run_id,
+                "deploy_url": payload.deploy_url,
+                "error": payload.error or "",
+            },
+        )
+    except Exception:
+        logger.exception(
+            "Failed to record outcome in auto-learner for correlation_id %s.",
+            payload.correlation_id,
+        )
+
+    return FactoryCallbackAck(
+        received=True,
+        project_id=payload.project_id,
+        correlation_id=payload.correlation_id,
+        status=payload.status,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Legacy webhook endpoint – maintained for backward compatibility
 # ---------------------------------------------------------------------------
 
 
@@ -452,3 +633,91 @@ async def factory_webhook(payload: FactoryWebhookPayload) -> FactoryWebhookAck:
         run_id=payload.run_id,
         status=payload.status,
     )
+
+
+# ---------------------------------------------------------------------------
+# Polling fallback – GET /factory/runs/{correlation_id}/result
+# ---------------------------------------------------------------------------
+
+
+class CorrelationResultResponse(BaseModel):
+    """Response payload for polling a factory run by correlation_id."""
+
+    correlation_id: str
+    run_id: str | None = None
+    project_id: str | None = None
+    status: str | None = None
+    repo_url: str | None = None
+    deploy_url: str | None = None
+    error: str | None = None
+    found: bool = True
+
+
+@router.get(
+    "/runs/{correlation_id}/result",
+    response_model=CorrelationResultResponse,
+)
+async def get_factory_run_by_correlation(correlation_id: str) -> CorrelationResultResponse:
+    """Poll for a factory run result by correlation_id (fallback only).
+
+    The primary result delivery mechanism is the ``/factory/callback``
+    endpoint.  This polling endpoint exists only as a fallback when
+    callbacks are not available or as a debugging aid.
+
+    Checks the in-memory store first, then falls back to the portfolio
+    DB (including Turso) so results survive cold restarts.
+    """
+
+    def _to_response(source: object) -> CorrelationResultResponse:
+        """Build response from either a FactoryRunResult or FactoryRunRecord."""
+        status = getattr(source, "status", None)
+        return CorrelationResultResponse(
+            correlation_id=correlation_id,
+            run_id=getattr(source, "run_id", None),
+            project_id=getattr(source, "project_id", None),
+            status=status.value if hasattr(status, "value") else (str(status) if status is not None else None),
+            repo_url=getattr(source, "repo_url", None),
+            deploy_url=getattr(source, "deploy_url", None),
+            error=getattr(source, "error", None),
+            found=True,
+        )
+
+    # 1. Check in-memory store first.
+    run = _run_store.get_by_correlation_id(correlation_id)
+    if run is not None:
+        return _to_response(run)
+
+    # 2. Cold-start fallback: check portfolio DB (including Turso).
+    persisted_run = _portfolio.get_factory_run_by_correlation_id(correlation_id)
+    if persisted_run is None:
+        return CorrelationResultResponse(
+            correlation_id=correlation_id,
+            found=False,
+        )
+
+    # Rehydrate in-memory store for subsequent polling/tracking calls.
+    try:
+        rehydrated = FactoryRunResult(
+            run_id=persisted_run.run_id,
+            project_id=persisted_run.project_id,
+            idea_id=persisted_run.idea_id,
+            status=FactoryRunStatus(persisted_run.status),
+            idempotency_key=persisted_run.idempotency_key,
+            dry_run=persisted_run.dry_run,
+            correlation_id=persisted_run.correlation_id,
+            repo_url=persisted_run.repo_url,
+            deploy_url=persisted_run.deploy_url,
+            error=persisted_run.error,
+            events=persisted_run.events,
+            created_at=persisted_run.created_at,
+            updated_at=persisted_run.updated_at,
+        )
+        _run_store.upsert(rehydrated)
+    except Exception:
+        logger.warning(
+            "Failed to rehydrate factory run store from portfolio for correlation_id=%s",
+            correlation_id,
+            exc_info=True,
+        )
+
+    return _to_response(persisted_run)

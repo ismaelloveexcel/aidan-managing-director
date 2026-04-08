@@ -13,6 +13,7 @@ replace the stubs once API credentials are provisioned.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -20,6 +21,8 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -305,20 +308,98 @@ class GitHubClient:
         repo: str,
         workflow_id: str,
         inputs: dict[str, Any],
+        ref: str = "main",
     ) -> bool:
         """
         Trigger a GitHub Actions workflow dispatch event.
+
+        When a valid token is configured, issues a real ``POST`` to the
+        GitHub API.  Falls back to a stub (always returns ``True``) when
+        the token is missing or the API call fails.
 
         Args:
             owner: Repository owner (user or organisation).
             repo: Repository name.
             workflow_id: Workflow file name or ID.
             inputs: Key-value inputs passed to the workflow.
+            ref: Git ref (branch/tag) to run the workflow on.
 
         Returns:
-            ``True`` if the dispatch was accepted (stub always succeeds).
+            ``True`` if the dispatch was accepted.
         """
-        return True
+        if not self.token:
+            logger.warning("dispatch_workflow: no token configured, returning False for local fallback.")
+            return False
+
+        try:
+            response = self._client().post(
+                f"/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
+                json={"ref": ref, "inputs": {k: str(v) for k, v in inputs.items()}},
+            )
+            # GitHub returns 204 No Content on success.
+            if response.status_code == 204:
+                return True
+            # Token is set but dispatch was rejected – report failure.
+            logger.error(
+                "dispatch_workflow: GitHub returned %d for %s/%s/%s.",
+                response.status_code,
+                owner,
+                repo,
+                workflow_id,
+            )
+            return False
+        except Exception:
+            # Network / config error with a real token – report failure.
+            logger.error("dispatch_workflow: HTTP error dispatching to %s/%s.", owner, repo, exc_info=True)
+            return False
+
+    def dispatch_factory_build(
+        self,
+        *,
+        owner: str,
+        repo: str,
+        workflow_id: str,
+        ref: str = "main",
+        project_id: str,
+        correlation_id: str,
+        callback_url: str,
+        build_brief_json: str,
+        dry_run: bool = True,
+    ) -> bool:
+        """Dispatch a factory build workflow with correlation and callback info.
+
+        This is the primary integration point for MD → Factory communication.
+        The workflow receives the full build brief, a correlation_id for
+        end-to-end tracing, and a callback_url for result delivery.
+
+        Args:
+            owner: Factory repository owner.
+            repo: Factory repository name.
+            workflow_id: Workflow file name (e.g. ``factory-build.yml``).
+            ref: Git ref to run the workflow on.
+            project_id: Project identifier from the BuildBrief.
+            correlation_id: Unique ID for end-to-end tracing.
+            callback_url: URL the factory should POST results to.
+            build_brief_json: JSON-serialised BuildBrief payload.
+            dry_run: Whether this is a dry-run execution.
+
+        Returns:
+            ``True`` if the dispatch was accepted.
+        """
+        inputs = {
+            "project_id": project_id,
+            "correlation_id": correlation_id,
+            "callback_url": callback_url,
+            "build_brief_json": build_brief_json,
+            "dry_run": str(dry_run).lower(),
+        }
+        return self.dispatch_workflow(
+            owner=owner,
+            repo=repo,
+            workflow_id=workflow_id,
+            inputs=inputs,
+            ref=ref,
+        )
 
     def create_repo_from_template(
         self,

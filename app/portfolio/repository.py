@@ -10,6 +10,7 @@ from typing import Any
 
 from app.factory.models import BuildBrief, FactoryRunResult
 from app.portfolio.db import PortfolioDB
+from app.portfolio.db_adapter import TursoPortfolioDB
 from app.portfolio.models import (
     BuildBriefRecord,
     FactoryRunRecord,
@@ -25,8 +26,23 @@ from app.portfolio.state_machine import assert_transition_allowed
 class PortfolioRepository:
     """Persistence gateway for controlled project lifecycle operations."""
 
-    def __init__(self, db_path: str = "data/portfolio.sqlite3", db: PortfolioDB | None = None) -> None:
-        self._db = db or PortfolioDB(db_path=db_path)
+    def __init__(
+        self,
+        db_path: str = "data/portfolio.sqlite3",
+        db: PortfolioDB | TursoPortfolioDB | None = None,
+        turso_database_url: str = "",
+        turso_auth_token: str = "",
+    ) -> None:
+        if db is not None:
+            self._db = db
+        elif turso_database_url and turso_auth_token:
+            self._db = TursoPortfolioDB(
+                db_path=db_path,
+                turso_database_url=turso_database_url,
+                turso_auth_token=turso_auth_token,
+            )
+        else:
+            self._db = PortfolioDB(db_path=db_path)
         self._db.init_schema()
 
     # ------------------------------------------------------------------
@@ -277,8 +293,9 @@ class PortfolioRepository:
                 """
                 INSERT OR REPLACE INTO factory_runs (
                     run_id, project_id, idea_id, status, idempotency_key, dry_run,
-                    repo_url, deploy_url, error, events_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    correlation_id, repo_url, deploy_url, error, events_json,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run.run_id,
@@ -287,6 +304,7 @@ class PortfolioRepository:
                     run.status.value if hasattr(run.status, "value") else str(run.status),
                     run.idempotency_key,
                     1 if run.dry_run else 0,
+                    run.correlation_id,
                     run.repo_url,
                     run.deploy_url,
                     run.error,
@@ -344,9 +362,9 @@ class PortfolioRepository:
                 )
 
         run_status = run.status.value if hasattr(run.status, "value") else str(run.status)
-        if run_status == "running":
+        if run_status in ("running", "dispatched", "building"):
             event_type = "build_started"
-        elif run_status == "succeeded":
+        elif run_status in ("succeeded", "deployed"):
             event_type = "deployed"
         else:
             event_type = "build_failed"
@@ -367,7 +385,8 @@ class PortfolioRepository:
                 """
                 SELECT
                     run_id, project_id, idea_id, status, idempotency_key, dry_run,
-                    repo_url, deploy_url, error, events_json, created_at, updated_at
+                    correlation_id, repo_url, deploy_url, error, events_json,
+                    created_at, updated_at
                 FROM factory_runs
                 ORDER BY created_at DESC
                 LIMIT ?
@@ -383,7 +402,8 @@ class PortfolioRepository:
                 """
                 SELECT
                     run_id, project_id, idea_id, status, idempotency_key, dry_run,
-                    repo_url, deploy_url, error, events_json, created_at, updated_at
+                    correlation_id, repo_url, deploy_url, error, events_json,
+                    created_at, updated_at
                 FROM factory_runs
                 WHERE run_id = ?
                 """,
@@ -402,6 +422,22 @@ class PortfolioRepository:
                 WHERE ik.idempotency_key = ?
                 """,
                 (key,),
+            ).fetchone()
+        return self._to_factory_run_record(row) if row is not None else None
+
+    def get_factory_run_by_correlation_id(self, correlation_id: str) -> FactoryRunRecord | None:
+        """Fetch a run by its correlation ID (used for callback/polling lookup)."""
+        with self._db.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    run_id, project_id, idea_id, status, idempotency_key, dry_run,
+                    correlation_id, repo_url, deploy_url, error, events_json,
+                    created_at, updated_at
+                FROM factory_runs
+                WHERE correlation_id = ?
+                """,
+                (correlation_id,),
             ).fetchone()
         return self._to_factory_run_record(row) if row is not None else None
 
@@ -647,6 +683,7 @@ class PortfolioRepository:
             status=row["status"],
             idempotency_key=row["idempotency_key"],
             dry_run=bool(row["dry_run"]),
+            correlation_id=row["correlation_id"],
             repo_url=row["repo_url"],
             deploy_url=row["deploy_url"],
             error=row["error"],

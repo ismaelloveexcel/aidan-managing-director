@@ -7,6 +7,21 @@ on:
         description: "Project identifier used in BuildBrief"
         required: true
         type: string
+      correlation_id:
+        description: "End-to-end correlation ID for tracing"
+        required: false
+        type: string
+        default: ""
+      callback_url:
+        description: "URL to POST build results back to"
+        required: false
+        type: string
+        default: ""
+      build_brief_json:
+        description: "JSON-serialised BuildBrief payload"
+        required: false
+        type: string
+        default: ""
       dry_run:
         description: "Run without side effects"
         required: true
@@ -31,10 +46,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Initialize run context
+        run: |
+          set -euo pipefail
+          echo "CORRELATION_ID=${{ inputs.correlation_id }}" >> "$GITHUB_ENV"
+          echo "CALLBACK_URL=${{ inputs.callback_url }}" >> "$GITHUB_ENV"
+          echo "WORKFLOW_URL=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_ENV"
+          echo "TIMESTAMP_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+          echo "RUN_ID=${{ github.run_id }}" >> "$GITHUB_ENV"
+
       - name: Trigger factory build
         env:
           FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL }}
         run: |
+          set -euo pipefail
           if [ -z "${FACTORY_BASE_URL}" ]; then
             echo "FACTORY_BASE_URL is not set. Configure repository or organization variable FACTORY_BASE_URL to point to a running factory API deployment." >&2
             exit 1
@@ -42,5 +67,48 @@ jobs:
 
           python scripts/run_factory_build.py \
             --project-id "${{ inputs.project_id }}" \
+            --correlation-id "${{ inputs.correlation_id }}" \
+            --callback-url "${{ inputs.callback_url }}" \
             --dry-run "${{ inputs.dry_run }}" \
             --api-base-url "${FACTORY_BASE_URL}"
+
+      - name: Callback to Managing Director
+        if: always()
+        env:
+          CALLBACK_URL: ${{ inputs.callback_url }}
+          FACTORY_SECRET: ${{ secrets.FACTORY_SECRET }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          # Determine build status from job outcome
+          if [ "${{ job.status }}" = "success" ]; then
+            BUILD_STATUS="succeeded"
+          else
+            BUILD_STATUS="failed"
+          fi
+
+          COMPLETED_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          python scripts/factory_callback.py \
+            --project-id "${{ inputs.project_id }}" \
+            --correlation-id "${CORRELATION_ID}" \
+            --callback-url "${CALLBACK_URL}" \
+            --status "$BUILD_STATUS" \
+            --run-id "${RUN_ID}" \
+            --workflow-url "${WORKFLOW_URL}" \
+            --completed-at "$COMPLETED_AT" \
+            --dry-run "${{ inputs.dry_run }}"
+
+      - name: Alert on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          python scripts/factory_alert.py \
+            --project-id "${{ inputs.project_id }}" \
+            --correlation-id "${CORRELATION_ID}" \
+            --run-id "${RUN_ID}" \
+            --workflow-url "${WORKFLOW_URL}" \
+            --alert-webhook-url "${ALERT_WEBHOOK_URL:-}"

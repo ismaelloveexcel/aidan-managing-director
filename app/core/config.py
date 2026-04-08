@@ -69,9 +69,18 @@ class Settings(BaseSettings):
     # --- Factory / Deployment --------------------------------------------------
     vercel_token: str = ""
     vercel_team_id: str = ""
+    factory_ref: str = "main"
+    public_base_url: str = ""
+    factory_callback_secret: str = ""
+    factory_secret: str = ""
+    alert_webhook_url: str = ""
 
     # --- Portfolio Registry ----------------------------------------------------
     portfolio_db_path: str = _default_portfolio_db_path()
+
+    # --- Turso (libSQL) persistence --------------------------------------------
+    turso_database_url: str = ""
+    turso_auth_token: str = ""
 
     # --- API Security ----------------------------------------------------------
     api_key: str = ""

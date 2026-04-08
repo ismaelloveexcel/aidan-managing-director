@@ -18,6 +18,12 @@ permissions:
 jobs:
   pipeline-check:
     runs-on: ubuntu-latest
+    # Guard: skip scheduled runs when FACTORY_BASE_URL is not configured
+    # to prevent no-op runs from consuming CI minutes unnecessarily.
+    # Manual workflow_dispatch runs are always allowed (diagnostic mode).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      vars.FACTORY_BASE_URL != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -30,14 +36,6 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-
-      - name: Validate FACTORY_BASE_URL
-        env:
-          FACTORY_BASE_URL: ${{ vars.FACTORY_BASE_URL }}
-        run: |
-          if [ -z "$FACTORY_BASE_URL" ]; then
-            echo "::warning::FACTORY_BASE_URL not set – pipeline check runs in diagnostic mode only"
-          fi
 
       - name: Run scheduled pipeline check
         env:
