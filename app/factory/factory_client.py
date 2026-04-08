@@ -152,37 +152,59 @@ class FactoryClient:
             run_mode = "dry_run" if dry_run else "live"
             effective_key = f"{build_brief.idempotency_key()}:{run_mode}"
 
-            run = FactoryRunResult(
-                run_id=str(uuid.uuid4()),
-                project_id=build_brief.project_id,
-                idea_id=build_brief.idea_id,
-                status=FactoryRunStatus.DISPATCHED,
-                idempotency_key=effective_key,
-                dry_run=dry_run,
-                correlation_id=correlation_id,
-                events=[
-                    {
-                        "timestamp": _utcnow_iso(),
-                        "step": "validate_build_brief",
-                        "status": "ok" if validation.valid else "failed",
-                        "details": {
-                            "brief_hash": build_brief.brief_hash(),
-                            "idempotency_key": effective_key,
-                            "errors": validation.errors if not validation.valid else [],
+            if not validation.valid:
+                # Validation failed — record immediately as FAILED without
+                # waiting for factory callback.
+                run = FactoryRunResult(
+                    run_id=str(uuid.uuid4()),
+                    project_id=build_brief.project_id,
+                    idea_id=build_brief.idea_id,
+                    status=FactoryRunStatus.FAILED,
+                    idempotency_key=effective_key,
+                    dry_run=dry_run,
+                    correlation_id=correlation_id,
+                    error="; ".join(validation.errors),
+                    events=[
+                        {
+                            "timestamp": _utcnow_iso(),
+                            "step": "validate_build_brief",
+                            "status": "failed",
+                            "details": {"errors": validation.errors},
                         },
-                    },
-                    dispatch_event,
-                    {
-                        "timestamp": _utcnow_iso(),
-                        "step": "awaiting_factory_callback",
-                        "status": "ok",
-                        "details": {
-                            "execution_path": "github_actions",
-                            "callback_url": callback_url,
+                        dispatch_event,
+                    ],
+                )
+            else:
+                run = FactoryRunResult(
+                    run_id=str(uuid.uuid4()),
+                    project_id=build_brief.project_id,
+                    idea_id=build_brief.idea_id,
+                    status=FactoryRunStatus.DISPATCHED,
+                    idempotency_key=effective_key,
+                    dry_run=dry_run,
+                    correlation_id=correlation_id,
+                    events=[
+                        {
+                            "timestamp": _utcnow_iso(),
+                            "step": "validate_build_brief",
+                            "status": "ok",
+                            "details": {
+                                "brief_hash": build_brief.brief_hash(),
+                                "idempotency_key": effective_key,
+                            },
                         },
-                    },
-                ],
-            )
+                        dispatch_event,
+                        {
+                            "timestamp": _utcnow_iso(),
+                            "step": "awaiting_factory_callback",
+                            "status": "ok",
+                            "details": {
+                                "execution_path": "github_actions",
+                                "callback_url": callback_url,
+                            },
+                        },
+                    ],
+                )
 
         run.updated_at = _utcnow_iso()
         self._orchestrator.store.upsert(run)

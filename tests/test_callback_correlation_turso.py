@@ -681,21 +681,16 @@ class TestExecutionPathSeparation:
 
         run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
 
-        # In test/CI environment, dispatch returns False (no valid token for factory),
-        # so local fallback should be used. Run should have immediate output.
+        # In CI, dispatch returns False (token gets 403 for factory repo),
+        # so the local orchestrator fallback path is taken.
         assert run.correlation_id is not None
-        assert run.status in (FactoryRunStatus.SUCCEEDED, FactoryRunStatus.DISPATCHED)
+        assert run.status == FactoryRunStatus.SUCCEEDED
+        assert tracking.workflow_dispatched is False
 
-        # The events should contain either local_orchestrator_fallback or awaiting_factory_callback
         event_steps = [e.get("step") for e in run.events]
         assert "workflow_dispatch" in event_steps
-
-        # If local fallback was used, verify it's explicitly marked
-        if run.status == FactoryRunStatus.SUCCEEDED:
-            assert "local_orchestrator_fallback" in event_steps
-        else:
-            # Production path — status should be DISPATCHED
-            assert "awaiting_factory_callback" in event_steps
+        assert "local_orchestrator_fallback" in event_steps
+        assert "awaiting_factory_callback" not in event_steps
 
     def test_dispatched_status_exists(self) -> None:
         """DISPATCHED is a valid status for production path runs."""
