@@ -13,6 +13,7 @@ replace the stubs once API credentials are provisioned.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -20,6 +21,8 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +328,7 @@ class GitHubClient:
             ``True`` if the dispatch was accepted.
         """
         if not self.token:
+            logger.warning("dispatch_workflow: no token configured, using stub response.")
             return True
 
         try:
@@ -336,9 +340,14 @@ class GitHubClient:
             if response.status_code == 204:
                 return True
             # Non-204 but not an exception: log and treat as stub fallback.
+            logger.warning(
+                "dispatch_workflow: GitHub returned %d, falling back to stub.",
+                response.status_code,
+            )
             return True
         except Exception:
             # Fallback to stub on network / config errors.
+            logger.warning("dispatch_workflow: HTTP error, falling back to stub.", exc_info=True)
             return True
 
     def dispatch_factory_build(

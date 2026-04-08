@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 
 from app.core.dependencies import get_factory_run_store, get_portfolio_repository
@@ -317,12 +319,12 @@ class TestTursoAdapter:
         assert conn is not None
         conn.close()
 
-    def test_schema_init_with_adapter(self, tmp_path: object) -> None:
-        import pathlib
+    def test_schema_init_with_adapter(self, tmp_path: Any) -> None:
+        from pathlib import Path
 
         from app.portfolio.db_adapter import TursoPortfolioDB
 
-        db_file = str(pathlib.Path(str(tmp_path)) / "test_adapter.db")
+        db_file = str(Path(str(tmp_path)) / "test_adapter.db")
         db = TursoPortfolioDB(
             db_path=db_file,
             turso_database_url="",
@@ -339,12 +341,12 @@ class TestTursoAdapter:
             assert "factory_runs" in table_names
             assert "build_briefs" in table_names
 
-    def test_correlation_id_column_exists_after_init(self, tmp_path: object) -> None:
-        import pathlib
+    def test_correlation_id_column_exists_after_init(self, tmp_path: Any) -> None:
+        from pathlib import Path
 
         from app.portfolio.db_adapter import TursoPortfolioDB
 
-        db_file = str(pathlib.Path(str(tmp_path)) / "test_corr_col.db")
+        db_file = str(Path(str(tmp_path)) / "test_corr_col.db")
         db = TursoPortfolioDB(
             db_path=db_file,
             turso_database_url="",

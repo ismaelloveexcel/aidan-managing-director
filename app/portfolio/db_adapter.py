@@ -14,12 +14,13 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import types
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-def _try_import_libsql() -> type | None:
+def _try_import_libsql() -> types.ModuleType | None:
     """Attempt to import the ``libsql_experimental`` package.
 
     Returns the module or ``None`` if it is not installed.
