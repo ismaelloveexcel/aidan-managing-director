@@ -1,21 +1,20 @@
-"""
-middleware.py – API key authentication and rate-limiting middleware.
+"""middleware.py – API key authentication and rate-limiting middleware.
 
 Provides two ASGI middlewares:
-- APIKeyMiddleware: validates the ``X-API-Key`` header (or ``api_key``
-  query parameter) against the ``API_KEY`` environment setting.
+- APIKeyMiddleware: validates the ``X-API-Key`` header
+  against the ``API_KEY`` environment setting.
   Returns HTTP 401 when the key is absent or wrong.
   Public read-only paths (``GET /``, ``GET /health``, ``GET /docs``,
   ``GET /openapi.json``) are always allowed through without a key.
-- RateLimitMiddleware: simple in-memory per-IP sliding-window limiter
-  (default 100 requests per minute). Returns HTTP 429 when the limit is
+- RateLimitMiddleware: Upstash Redis-based sliding-window limiter
+  (default 100 requests per minute). Falls back to allow-all if
+  Upstash is not configured. Returns HTTP 429 when the limit is
   exceeded.
 """
 
 from __future__ import annotations
 
-import time
-from collections import defaultdict, deque
+import os
 from typing import TYPE_CHECKING
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -41,8 +40,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
     - The request method is ``GET`` and the path starts with ``/docs``
       or ``/openapi.json`` (Swagger UI assets).
 
-    The key may be supplied via the ``X-API-Key`` header **or** the
-    ``api_key`` query parameter.
+    The key must be supplied via the ``X-API-Key`` header.
     """
 
     def __init__(self, app: object, *, api_key: str) -> None:
@@ -68,8 +66,9 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
 
-        # Extract candidate key from header or query string.
-        provided = request.headers.get("X-API-Key") or request.query_params.get("api_key", "")
+        # Extract candidate key from header only (no query param — prevents
+        # credential leakage via logs, Referer headers, and browser history).
+        provided = request.headers.get("X-API-Key") or ""
 
         if not provided or provided != self._api_key:
             return JSONResponse(
@@ -81,7 +80,13 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Sliding-window in-memory rate limiter (per client IP).
+    """Upstash Redis-based sliding-window rate limiter (per client IP).
+
+    Uses Upstash Redis for state so it works correctly on serverless
+    platforms like Vercel where in-memory state is lost between cold starts.
+
+    If UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are not set,
+    the middleware passes all requests through (graceful degradation).
 
     Args:
         max_requests: Maximum number of requests allowed per window.
@@ -98,8 +103,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)  # type: ignore[arg-type]
         self._max_requests = max_requests
         self._window_seconds = window_seconds
-        # Maps IP address → deque of request timestamps (float).
-        self._windows: dict[str, deque[float]] = defaultdict(deque)
+        self._limiter = None
+
+        redis_url = os.environ.get("UPSTASH_REDIS_REST_URL", "")
+        redis_token = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
+
+        if redis_url and redis_token:
+            try:
+                from upstash_ratelimit import Ratelimit, SlidingWindow
+                from upstash_redis import Redis
+
+                redis = Redis(url=redis_url, token=redis_token)
+                self._limiter = Ratelimit(
+                    redis=redis,
+                    limiter=SlidingWindow(
+                        max_requests=max_requests,
+                        window=window_seconds,
+                    ),
+                    prefix="ratelimit:md",
+                )
+            except ImportError:
+                pass  # upstash packages not installed — degrade gracefully
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract the real client IP, respecting common proxy headers."""
@@ -110,33 +134,27 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return request.client.host
         return "unknown"
 
-    def reset(self) -> None:
-        """Clear all tracked IP windows.
-
-        This method is intended for use in tests to reset per-IP sliding-window
-        state between test sessions without restarting the application.
-        """
-        self._windows.clear()
-
     async def dispatch(
         self,
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
+        # No limiter configured → pass through.
+        if self._limiter is None:
+            return await call_next(request)
+
         ip = self._get_client_ip(request)
-        now = time.monotonic()
-        window = self._windows[ip]
 
-        # Drop timestamps outside the current window.
-        cutoff = now - self._window_seconds
-        while window and window[0] < cutoff:
-            window.popleft()
+        try:
+            result = self._limiter.limit(ip)
+        except Exception:
+            # If Upstash is unreachable, allow the request through.
+            return await call_next(request)
 
-        if len(window) >= self._max_requests:
+        if not result.allowed:
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Rate limit exceeded. Please slow down."},
             )
 
-        window.append(now)
         return await call_next(request)
