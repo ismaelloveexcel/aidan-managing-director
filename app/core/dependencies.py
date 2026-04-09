@@ -1,9 +1,7 @@
-"""
-dependencies.py – Shared application-level dependency providers.
+"""dependencies.py \u2013 Shared application-level dependency providers.
 
 Centralises the creation of long-lived service clients so that every
-route module shares the same instance (and the same in-memory stub
-storage while the registry is still stubbed).
+route module shares the same instance.
 """
 
 from functools import lru_cache as _lru_cache
@@ -11,7 +9,8 @@ from functools import lru_cache as _lru_cache
 from app.command_center.service import CommandCenterService
 from app.core.config import get_settings
 from app.factory.factory_client import FactoryClient
-from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+from app.factory.orchestrator import FactoryOrchestrator
+from app.factory.persistent_store import PersistentFactoryRunStore
 from app.integrations.ai_provider import AIProvider
 from app.integrations.openai_client import OpenAIClient
 from app.integrations.perplexity_client import PerplexityClient
@@ -38,9 +37,13 @@ def get_registry_client() -> RegistryClient:
 
 
 @_lru_cache(maxsize=1)
-def get_factory_run_store() -> FactoryRunStore:
-    """Return a cached in-memory store for factory run state."""
-    return FactoryRunStore()
+def get_factory_run_store() -> PersistentFactoryRunStore:
+    """Return a persistent factory run store backed by PortfolioRepository.
+
+    Replaces the previous in-memory FactoryRunStore so that run state
+    survives Vercel serverless cold starts.
+    """
+    return PersistentFactoryRunStore(repository=get_portfolio_repository())
 
 
 @_lru_cache(maxsize=1)
