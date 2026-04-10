@@ -101,810 +101,1549 @@ _ROOT_HTML = """\
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AI-DAN Command Center</title>
+<title>AI-DAN | Venture Command Center</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-background:#0a0a0a;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column}
-header{background:#111;border-bottom:1px solid #222;padding:.8rem 1.5rem;
-display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-header h1{font-size:1.1rem;color:#fff;font-weight:700}
-header span{color:#666;font-size:.8rem}
-.nav{display:flex;gap:.2rem;background:#111;padding:.5rem 1.5rem;border-bottom:1px solid #1e1e1e;
-overflow-x:auto;flex-shrink:0}
-.nav button{background:none;border:none;color:#888;padding:.5rem .9rem;border-radius:6px;
-cursor:pointer;font-size:.85rem;font-weight:500;white-space:nowrap;transition:all .15s}
-.nav button:hover{color:#e0e0e0;background:#1e1e1e}
-.nav button.active{color:#fff;background:#1a1a2e;border-bottom:2px solid #5b6ef7}
-.tab{display:none;padding:1.5rem;flex:1}
-.tab.active{display:block}
-.card{background:#111;border:1px solid #222;border-radius:10px;padding:1.2rem;margin-bottom:1.2rem}
-.card-title{font-size:.95rem;font-weight:600;color:#fff;margin-bottom:1rem;
-display:flex;align-items:center;gap:.4rem}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.8rem;margin-bottom:1.2rem}
-.stat-box{background:#111;border:1px solid #222;border-radius:8px;padding:1rem;text-align:center}
-.stat-num{font-size:1.8rem;font-weight:700;color:#5b6ef7}
-.stat-label{font-size:.75rem;color:#888;margin-top:.2rem}
-.health-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:.4rem}
-.health-green{background:#16a34a}
-.health-yellow{background:#d97706}
-.health-red{background:#dc2626}
-label{display:block;font-size:.82rem;color:#aaa;margin-bottom:.3rem;margin-top:.8rem}
-label:first-child{margin-top:0}
-textarea,input,select{width:100%;padding:.55rem .75rem;border-radius:7px;border:1px solid #333;
-background:#0d0d0d;color:#e0e0e0;font-size:.88rem;font-family:inherit}
-textarea{resize:vertical;min-height:80px}
-textarea:focus,input:focus,select:focus{outline:none;border-color:#5b6ef7}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
-.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}
-button.btn{width:100%;padding:.7rem;border:none;border-radius:7px;font-size:.9rem;
-font-weight:600;cursor:pointer;transition:all .2s}
-button.btn-sm{width:auto;padding:.35rem .7rem;font-size:.78rem;font-weight:500;
-border:none;border-radius:5px;cursor:pointer;transition:all .15s}
-.btn-primary{background:#5b6ef7;color:#fff}
-.btn-primary:hover{background:#4a5ce6}
-.btn-primary:disabled{background:#222;color:#555;cursor:not-allowed}
-.btn-success{background:#16a34a;color:#fff}
-.btn-success:hover{background:#15803d}
-.btn-danger{background:#dc2626;color:#fff}
-.btn-danger:hover{background:#b91c1c}
-.btn-secondary{background:#1e1e1e;color:#ccc;border:1px solid #333}
-.btn-secondary:hover{background:#2a2a2a}
-.btn-warning{background:#d97706;color:#fff}
-.btn-warning:hover{background:#b45309}
-table{width:100%;border-collapse:collapse;font-size:.83rem}
-th{text-align:left;padding:.5rem .7rem;border-bottom:1px solid #222;color:#888;font-weight:500;font-size:.78rem}
-td{padding:.5rem .7rem;border-bottom:1px solid #1a1a1a;vertical-align:middle}
-tr:hover td{background:#131313}
-.badge{display:inline-block;padding:.15rem .45rem;border-radius:4px;font-size:.72rem;font-weight:600}
-.badge-approved{background:#14532d;color:#4ade80}
-.badge-building{background:#1e3a5f;color:#60a5fa}
-.badge-launched{background:#4a1d96;color:#c4b5fd}
-.badge-idea{background:#292524;color:#d6d3d1}
-.badge-hold{background:#451a03;color:#fbbf24}
-.badge-rejected{background:#450a0a;color:#fca5a5}
-.badge-killed{background:#450a0a;color:#fca5a5}
-.badge-succeeded{background:#14532d;color:#4ade80}
-.badge-failed{background:#450a0a;color:#fca5a5}
-.badge-pending{background:#292524;color:#d6d3d1}
-.badge-running{background:#1e3a5f;color:#60a5fa}
-.decision-badge{display:inline-block;padding:.3rem .8rem;border-radius:6px;
-font-weight:700;font-size:.9rem;margin:.5rem 0}
-.decision-APPROVED{background:#16a34a;color:#fff}
-.decision-HOLD{background:#d97706;color:#fff}
-.decision-REJECTED{background:#dc2626;color:#fff}
-.score-bar{height:7px;border-radius:4px;background:#1e1e1e;margin:.3rem 0;overflow:hidden}
-.score-fill{height:100%;border-radius:4px;transition:width .5s}
-.score-high{background:#16a34a}
-.score-med{background:#d97706}
-.score-low{background:#dc2626}
-.section{margin-top:1rem;padding-top:1rem;border-top:1px solid #222}
-.section h3{font-size:.9rem;color:#aaa;margin-bottom:.5rem}
-.detail-row{display:flex;justify-content:space-between;padding:.22rem 0;font-size:.83rem}
-.detail-label{color:#777}
-.detail-value{color:#e0e0e0;text-align:right;max-width:60%}
-.error-box{background:#2d1111;border:1px solid #dc2626;border-radius:8px;padding:.9rem;
-color:#fca5a5;margin-top:.8rem;display:none;font-size:.85rem}
-.loading{display:none;text-align:center;padding:1.5rem;color:#888}
-.spinner{display:inline-block;width:22px;height:22px;border:3px solid #222;
-border-top-color:#5b6ef7;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.blocking{color:#fca5a5;font-size:.83rem;margin:.2rem 0}
-.reason{color:#86efac;font-size:.83rem;margin:.2rem 0}
-.share-block{background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;
-padding:.8rem 1rem;margin:.6rem 0}
-.share-platform{font-size:.78rem;font-weight:600;color:#888;margin-bottom:.4rem}
-.share-text{font-size:.82rem;color:#ccc;white-space:pre-wrap;word-break:break-word;
-margin-bottom:.5rem}
-.actions-row{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
-.empty-state{text-align:center;padding:2rem;color:#555;font-size:.88rem}
-/* Toast */
-#toast-container{position:fixed;top:1rem;right:1rem;z-index:9999;
-display:flex;flex-direction:column;gap:.5rem}
-.toast{padding:.65rem 1rem;border-radius:8px;font-size:.83rem;font-weight:500;
-box-shadow:0 4px 12px rgba(0,0,0,.5);animation:fadeIn .25s ease}
-.toast-success{background:#14532d;color:#4ade80;border:1px solid #166534}
-.toast-error{background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d}
-.toast-info{background:#1e3a5f;color:#93c5fd;border:1px solid #1d4ed8}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-footer{padding:.8rem 1.5rem;border-top:1px solid #1a1a1a;color:#444;font-size:.78rem;text-align:center}
-@media(max-width:600px){
-  .row,.row3{grid-template-columns:1fr}
-  .stats-grid{grid-template-columns:1fr 1fr}
-  .tab{padding:1rem}
+:root{
+  --bg:#0a0a0a;--card:#111;--border:#222;--border2:#1e1e1e;
+  --accent:#5b6ef7;--accent-dark:#4a5ce6;
+  --green:#16a34a;--green-t:#4ade80;
+  --amber:#d97706;--amber-t:#fbbf24;
+  --red:#dc2626;--red-t:#fca5a5;
+  --blue-t:#60a5fa;--purple-t:#c4b5fd;
+  --text:#e0e0e0;--text2:#aaa;--text3:#888;--text4:#555;
+  --ai-bubble:#1a1a2e;--user-bubble:#1e1e2e;
 }
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── HEADER ── */
+header{background:var(--card);border-bottom:1px solid var(--border);
+  padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:200;gap:1rem;flex-wrap:wrap}
+.header-left{display:flex;align-items:center;gap:.75rem}
+.header-logo{font-size:1.15rem;font-weight:800;color:#fff;letter-spacing:-.02em}
+.header-logo span{color:var(--accent)}
+.header-ver{font-size:.72rem;color:var(--text4);background:#1a1a1a;
+  padding:.15rem .4rem;border-radius:4px;border:1px solid var(--border)}
+.header-right{display:flex;align-items:center;gap:.6rem}
+.api-key-wrap{display:flex;align-items:center;gap:.4rem}
+.api-key-wrap label{font-size:.75rem;color:var(--text3);white-space:nowrap}
+.api-key-wrap input{width:180px;padding:.3rem .5rem;border-radius:5px;
+  border:1px solid var(--border);background:#0d0d0d;color:var(--text);font-size:.75rem}
+
+/* ── AI BANNER ── */
+#ai-banner{display:none;background:#1c1700;border-bottom:1px solid var(--amber);
+  padding:.5rem 1.5rem;font-size:.82rem;color:var(--amber-t);text-align:center}
+
+/* ── TABS NAV ── */
+.nav{display:flex;gap:.15rem;background:var(--card);padding:.4rem 1.5rem;
+  border-bottom:1px solid var(--border2);overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav button{background:none;border:none;color:var(--text3);padding:.45rem .85rem;
+  border-radius:6px;cursor:pointer;font-size:.83rem;font-weight:500;
+  white-space:nowrap;transition:all .15s;border-bottom:2px solid transparent}
+.nav button:hover{color:var(--text);background:#1a1a1a}
+.nav button.active{color:#fff;background:#1a1a2e;border-bottom-color:var(--accent)}
+
+/* ── TAB PANELS ── */
+.tab{display:none;flex:1;padding:1.5rem;max-width:1100px;margin:0 auto;width:100%}
+.tab.active{display:flex;flex-direction:column}
+@media(max-width:700px){.tab{padding:1rem}}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:1.2rem;margin-bottom:1.2rem}
+.card-title{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:1rem;
+  display:flex;align-items:center;gap:.4rem}
+.card-title small{font-size:.75rem;font-weight:400;color:var(--text3);margin-left:auto}
+
+/* ── FORMS ── */
+label{display:block;font-size:.8rem;color:var(--text2);margin-bottom:.3rem;margin-top:.85rem}
+label:first-child{margin-top:0}
+textarea,input[type=text],input[type=number],input[type=date],input[type=url],select{
+  width:100%;padding:.55rem .75rem;border-radius:7px;border:1px solid #333;
+  background:#0d0d0d;color:var(--text);font-size:.875rem;font-family:inherit;
+  transition:border-color .15s}
+textarea{resize:vertical;min-height:90px}
+textarea:focus,input:focus,select:focus{outline:none;border-color:var(--accent)}
+select option{background:#111}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem}
+@media(max-width:600px){.row2,.row3{grid-template-columns:1fr}}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+  padding:.65rem 1.1rem;border:none;border-radius:7px;font-size:.875rem;
+  font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-sm{padding:.3rem .65rem;font-size:.78rem;font-weight:500;border-radius:5px}
+.btn-xs{padding:.2rem .45rem;font-size:.72rem;font-weight:500;border-radius:4px}
+.btn-full{width:100%}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover:not(:disabled){background:var(--accent-dark)}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover:not(:disabled){background:#15803d}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover:not(:disabled){background:#b91c1c}
+.btn-secondary{background:#1e1e1e;color:var(--text2);border:1px solid #333}
+.btn-secondary:hover:not(:disabled){background:#2a2a2a;color:var(--text)}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-amber:hover:not(:disabled){background:#b45309}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text3)}
+.btn-ghost:hover:not(:disabled){background:#1a1a1a;color:var(--text)}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:.15rem .45rem;border-radius:4px;
+  font-size:.7rem;font-weight:700;letter-spacing:.02em}
+.badge-idea{background:#292524;color:#d6d3d1}
+.badge-approved{background:#14532d;color:var(--green-t)}
+.badge-building{background:#1e3a5f;color:var(--blue-t)}
+.badge-launched{background:#4a1d96;color:var(--purple-t)}
+.badge-hold{background:#451a03;color:var(--amber-t)}
+.badge-rejected,.badge-killed{background:#450a0a;color:var(--red-t)}
+.badge-succeeded,.badge-success{background:#14532d;color:var(--green-t)}
+.badge-failed,.badge-error{background:#450a0a;color:var(--red-t)}
+.badge-pending{background:#292524;color:#d6d3d1}
+.badge-running{background:#1e3a5f;color:var(--blue-t);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.75rem;margin-bottom:1.2rem}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:8px;
+  padding:1rem;text-align:center;cursor:pointer;transition:border-color .15s}
+.stat-box:hover{border-color:var(--accent)}
+.stat-num{font-size:1.8rem;font-weight:800;color:var(--accent)}
+.stat-num.green{color:var(--green-t)}
+.stat-num.amber{color:var(--amber-t)}
+.stat-label{font-size:.72rem;color:var(--text3);margin-top:.2rem;text-transform:uppercase;letter-spacing:.05em}
+
+/* ── VENTURE LOOP ── */
+.loop-flow{display:flex;align-items:center;gap:.4rem;overflow-x:auto;
+  padding:1rem;background:#0d0d0d;border-radius:8px;margin-bottom:1rem;scrollbar-width:none}
+.loop-flow::-webkit-scrollbar{display:none}
+.loop-step{display:flex;flex-direction:column;align-items:center;gap:.3rem;
+  min-width:80px;cursor:pointer;padding:.4rem;border-radius:6px;transition:background .15s}
+.loop-step:hover{background:#1a1a1a}
+.loop-step-icon{font-size:1.3rem}
+.loop-step-label{font-size:.68rem;color:var(--text3);font-weight:600;text-align:center;text-transform:uppercase;letter-spacing:.04em}
+.loop-step-count{font-size:1.1rem;font-weight:800;color:var(--text)}
+.loop-arrow{color:var(--text4);font-size:1.1rem;flex-shrink:0}
+
+/* ── TABLES ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{text-align:left;padding:.5rem .7rem;border-bottom:1px solid var(--border);
+  color:var(--text3);font-weight:600;font-size:.73rem;text-transform:uppercase;letter-spacing:.05em}
+td{padding:.55rem .7rem;border-bottom:1px solid var(--border2);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#0f0f0f}
+
+/* ── ALERTS ── */
+.alert{border-radius:8px;padding:.85rem 1rem;margin:.5rem 0;font-size:.85rem}
+.alert-error{background:#2d1111;border:1px solid var(--red);color:var(--red-t)}
+.alert-warn{background:#1c1700;border:1px solid var(--amber);color:var(--amber-t)}
+.alert-success{background:#0d2217;border:1px solid var(--green);color:var(--green-t)}
+.alert-info{background:#0d1a3a;border:1px solid #1e3a5f;color:var(--blue-t)}
+
+/* ── LOADING ── */
+.spinner{display:inline-block;width:18px;height:18px;border:2.5px solid #333;
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-row{text-align:center;padding:2rem;color:var(--text3);font-size:.85rem}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text4);font-size:.88rem}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:.75rem}
+
+/* ── SCORE BARS ── */
+.score-row{margin:.4rem 0}
+.score-label-row{display:flex;justify-content:space-between;font-size:.78rem;color:var(--text2);margin-bottom:.2rem}
+.score-bar{height:8px;border-radius:4px;background:#1e1e1e;overflow:hidden}
+.score-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.score-high{background:var(--green)}
+.score-med{background:var(--amber)}
+.score-low{background:var(--red)}
+
+/* ── DECISION BADGE ── */
+.decision-badge{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem 1rem;
+  border-radius:8px;font-weight:800;font-size:1rem;margin:.5rem 0}
+.decision-APPROVED{background:var(--green);color:#fff}
+.decision-HOLD{background:var(--amber);color:#fff}
+.decision-REJECTED{background:var(--red);color:#fff}
+
+/* ── CHAT ── */
+#tab-chat{padding:0;display:none;flex-direction:column;height:calc(100vh - 100px)}
+#tab-chat.active{display:flex}
+.chat-layout{display:flex;flex:1;overflow:hidden;gap:0}
+.chat-main{display:flex;flex-direction:column;flex:1;min-width:0}
+.chat-history{flex:1;overflow-y:auto;padding:1.2rem;display:flex;flex-direction:column;gap:.75rem;scrollbar-width:thin;scrollbar-color:#333 transparent}
+.chat-history::-webkit-scrollbar{width:5px}
+.chat-history::-webkit-scrollbar-track{background:transparent}
+.chat-history::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+.chat-msg{display:flex;gap:.6rem;max-width:85%;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.user{align-self:flex-end;flex-direction:row-reverse}
+.chat-msg.ai{align-self:flex-start}
+.chat-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.9rem;flex-shrink:0;margin-top:.1rem}
+.chat-avatar.ai-av{background:#1a1a2e;border:1px solid #2a2a4e}
+.chat-avatar.user-av{background:#1e1e2e;border:1px solid #2a2a3e}
+.chat-bubble{padding:.65rem .9rem;border-radius:12px;font-size:.875rem;line-height:1.55;max-width:100%}
+.chat-msg.ai .chat-bubble{background:var(--ai-bubble);border:1px solid #2a2a4e;
+  border-radius:12px 12px 12px 4px;white-space:pre-wrap;word-break:break-word}
+.chat-msg.user .chat-bubble{background:var(--user-bubble);border:1px solid #2a2a3e;
+  border-radius:12px 12px 4px 12px;color:var(--text)}
+.chat-meta{font-size:.68rem;color:var(--text4);margin-top:.25rem;padding:0 .2rem}
+.chat-msg.user .chat-meta{text-align:right}
+.typing-dots{display:inline-flex;gap:3px;align-items:center;padding:.5rem 0}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--text3);
+  animation:dotBounce 1.2s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}
+.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dotBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+.chat-starters{display:flex;flex-wrap:wrap;gap:.5rem;padding:.75rem 1.2rem;
+  border-top:1px solid var(--border2);background:var(--card)}
+.starter-chip{background:none;border:1px solid #333;color:var(--text2);padding:.35rem .75rem;
+  border-radius:20px;font-size:.78rem;cursor:pointer;transition:all .15s;white-space:nowrap}
+.starter-chip:hover{border-color:var(--accent);color:var(--text);background:#1a1a2e}
+.chat-input-area{padding:.85rem 1.2rem;border-top:1px solid var(--border);
+  background:var(--card);display:flex;gap:.5rem;align-items:flex-end}
+.chat-input-area textarea{flex:1;min-height:42px;max-height:150px;resize:none;
+  border-radius:8px;padding:.55rem .8rem;font-size:.875rem;line-height:1.4}
+.chat-send{flex-shrink:0;height:42px;padding:0 1rem;align-self:flex-end}
+.chat-sidebar{width:200px;border-left:1px solid var(--border);background:var(--card);
+  padding:1rem;display:flex;flex-direction:column;gap:.5rem;flex-shrink:0}
+.chat-sidebar h3{font-size:.78rem;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.06em;margin-bottom:.25rem}
+.chat-sidebar .btn{font-size:.78rem;padding:.45rem .7rem;justify-content:flex-start}
+@media(max-width:700px){.chat-sidebar{display:none}#tab-chat{height:calc(100vh - 120px)}}
+
+/* ── LAUNCH KIT CONTENT ── */
+.content-block{background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px;padding:.85rem 1rem;margin:.6rem 0}
+.content-platform{font-size:.72rem;font-weight:700;color:var(--text3);margin-bottom:.4rem;
+  text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
+.content-text{font-size:.82rem;color:var(--text2);white-space:pre-wrap;word-break:break-word;line-height:1.5}
+
+/* ── CHECKLIST ── */
+.checklist{list-style:none;padding:0}
+.checklist li{display:flex;align-items:flex-start;gap:.5rem;padding:.35rem 0;
+  border-bottom:1px solid var(--border2);font-size:.83rem}
+.checklist li:last-child{border-bottom:none}
+.checklist input[type=checkbox]{width:auto;margin-top:2px;accent-color:var(--accent)}
+
+/* ── TOASTS ── */
+#toasts{position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;
+  flex-direction:column;gap:.5rem;pointer-events:none}
+.toast{background:#1a1a1a;border:1px solid var(--border);border-radius:8px;
+  padding:.7rem 1rem;font-size:.83rem;color:var(--text);min-width:220px;max-width:320px;
+  animation:toastIn .25s ease;pointer-events:all;display:flex;align-items:center;gap:.5rem}
+.toast.success{border-color:var(--green);color:var(--green-t)}
+.toast.error{border-color:var(--red);color:var(--red-t)}
+.toast.warn{border-color:var(--amber);color:var(--amber-t)}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── MISC ── */
+.section-sep{border:none;border-top:1px solid var(--border);margin:1rem 0}
+.detail-grid{display:grid;grid-template-columns:auto 1fr;gap:.25rem .75rem;font-size:.83rem}
+.detail-key{color:var(--text3)}
+.detail-val{color:var(--text)}
+.copy-btn-icon{cursor:pointer;opacity:.6;transition:opacity .15s;font-size:.85rem}
+.copy-btn-icon:hover{opacity:1}
+.health-row{display:flex;align-items:center;gap:.5rem;padding:.35rem 0;font-size:.83rem;border-bottom:1px solid var(--border2)}
+.health-row:last-child{border-bottom:none}
+.health-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green)}
+.dot-amber{background:var(--amber)}
+.dot-red{background:var(--red)}
+.dot-grey{background:#555}
+.quick-actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.2rem}
+.quick-actions .btn{flex:1;min-width:120px}
+.revenue-total{font-size:3rem;font-weight:900;color:var(--green-t);
+  text-align:center;padding:1.5rem 0;letter-spacing:-.03em}
+.revenue-total small{font-size:1rem;color:var(--text3);font-weight:400}
+.loop-insight{background:#0d1a0d;border:1px solid #1a3a1a;border-radius:8px;
+  padding:1rem;font-size:.85rem;color:var(--green-t);line-height:1.6}
+
+/* ── ACTIVITY FEED ── */
+.activity-item{display:flex;gap:.6rem;align-items:flex-start;padding:.5rem 0;
+  border-bottom:1px solid var(--border2);font-size:.82rem}
+.activity-item:last-child{border-bottom:none}
+.activity-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);margin-top:.35rem;flex-shrink:0}
+.activity-text{color:var(--text2);flex:1}
+.activity-time{color:var(--text4);font-size:.72rem;white-space:nowrap}
+
+/* ── SYSTEM CHECKS ── */
+.checks-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+@media(max-width:600px){.checks-grid{grid-template-columns:1fr}}
+.check-item{background:#0d0d0d;border:1px solid var(--border);border-radius:6px;
+  padding:.6rem .8rem;display:flex;align-items:center;gap:.5rem;font-size:.82rem}
 </style>
 </head>
 <body>
+
+<!-- ── HEADER ── -->
 <header>
-  <h1>&#x1F9E0; AI-DAN Command Center</h1>
-  <span id="headerStatus">&#x1F7E2; System Ready</span>
+  <div class="header-left">
+    <div class="header-logo">AI-<span>DAN</span></div>
+    <span class="header-ver">v{version}</span>
+  </div>
+  <div class="header-right">
+    <div class="api-key-wrap">
+      <label for="api-key-input">API Key</label>
+      <input type="text" id="api-key-input" placeholder="sk-..." autocomplete="off"/>
+    </div>
+  </div>
 </header>
 
+<!-- ── AI NOT CONFIGURED BANNER ── -->
+<div id="ai-banner">
+  &#9888; AI not configured. Add <strong>ANTHROPIC_API_KEY</strong>, <strong>OPENAI_API_KEY</strong>, or <strong>GROQ_API_KEY</strong> to your Vercel environment variables to activate AI-DAN.
+</div>
+
+<!-- ── NAV TABS ── -->
 <nav class="nav" role="tablist">
-  <button class="active" onclick="switchTab('dashboard',this)" role="tab">&#x1F4CA; Dashboard</button>
-  <button onclick="switchTab('analyze',this)" role="tab">&#x1F4A1; Analyze Idea</button>
-  <button onclick="switchTab('portfolio',this)" role="tab">&#x1F4E6; Portfolio</button>
-  <button onclick="switchTab('factory',this)" role="tab">&#x1F3ED; Factory</button>
-  <button onclick="switchTab('distribution',this)" role="tab">&#x1F4E3; Distribution</button>
-  <button onclick="switchTab('revenue',this)" role="tab">&#x1F4B0; Revenue</button>
+  <button class="active" onclick="showTab('chat')" id="nav-chat">&#129504; AI-DAN</button>
+  <button onclick="showTab('dashboard')" id="nav-dashboard">&#128202; Dashboard</button>
+  <button onclick="showTab('analyze')" id="nav-analyze">&#128161; Analyze Idea</button>
+  <button onclick="showTab('factory')" id="nav-factory">&#127981; Factory</button>
+  <button onclick="showTab('launch')" id="nav-launch">&#128227; Launch Kit</button>
+  <button onclick="showTab('revenue')" id="nav-revenue">&#128176; Revenue Loop</button>
 </nav>
 
-<div id="toast-container"></div>
-
-<!-- ====== TAB 1: DASHBOARD ====== -->
-<div id="tab-dashboard" class="tab active">
-  <div class="stats-grid" id="dashStats">
-    <div class="stat-box"><div class="stat-num" id="st-total">—</div><div class="stat-label">Total Projects</div></div>
-    <div class="stat-box"><div class="stat-num" id="st-approved" style="color:#4ade80">—</div><div class="stat-label">Approved</div></div>
-    <div class="stat-box"><div class="stat-num" id="st-building" style="color:#60a5fa">—</div><div class="stat-label">Building</div></div>
-    <div class="stat-box"><div class="stat-num" id="st-launched" style="color:#c4b5fd">—</div><div class="stat-label">Launched</div></div>
-  </div>
-  <div class="card">
-    <div class="card-title">&#x1F4CC; System Health <span id="healthIndicator"></span></div>
-    <div id="dashProjects"><div class="loading" style="display:block"><div class="spinner"></div></div></div>
-    <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap">
-      <button class="btn btn-primary" style="width:auto;padding:.5rem 1rem" onclick="loadDashboard()">&#x1F504; Refresh</button>
-      <button class="btn btn-secondary" style="width:auto;padding:.5rem 1rem" onclick="switchTab('analyze',document.querySelector('.nav button[onclick*=\\'analyze\\']'))">&#x2795; New Idea</button>
-      <button class="btn btn-secondary" style="width:auto;padding:.5rem 1rem" onclick="switchTab('portfolio',document.querySelector('.nav button[onclick*=\\'portfolio\\']'))">&#x1F4CB; Portfolio</button>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     TAB 1 — AI-DAN CHAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab active" id="tab-chat" role="tabpanel">
+  <div class="chat-layout">
+    <div class="chat-main">
+      <div class="chat-history" id="chat-history"></div>
+      <div class="chat-starters" id="chat-starters">
+        <button class="starter-chip" onclick="sendStarter('Score my latest idea')">Score my latest idea</button>
+        <button class="starter-chip" onclick="sendStarter('What should I build next?')">What should I build next?</button>
+        <button class="starter-chip" onclick="sendStarter('Generate launch content')">Generate launch content</button>
+        <button class="starter-chip" onclick="sendStarter('Show my project status')">Show my project status</button>
+      </div>
+      <div class="chat-input-area">
+        <textarea id="chat-input" placeholder="Ask AI-DAN anything... (Ctrl+Enter to send)" rows="1"></textarea>
+        <button class="btn btn-primary chat-send" id="chat-send-btn" onclick="sendChatMessage()">Send &#10148;</button>
+      </div>
+    </div>
+    <div class="chat-sidebar">
+      <h3>Quick Actions</h3>
+      <button class="btn btn-ghost" onclick="showTab('analyze')">&#128161; Analyze Idea</button>
+      <button class="btn btn-ghost" onclick="showTab('dashboard')">&#128202; Dashboard</button>
+      <button class="btn btn-ghost" onclick="showTab('factory')">&#127981; Factory</button>
+      <button class="btn btn-ghost" onclick="showTab('launch')">&#128227; Launch Kit</button>
+      <hr class="section-sep"/>
+      <button class="btn btn-ghost btn-sm" onclick="clearChat()">&#128465; Clear chat</button>
     </div>
   </div>
 </div>
 
-<!-- ====== TAB 2: ANALYZE IDEA ====== -->
-<div id="tab-analyze" class="tab">
-<div class="card">
-<label for="idea">Your Idea *</label>
-<textarea id="idea" placeholder="Describe your idea in detail..."></textarea>
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     TAB 2 — DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab" id="tab-dashboard" role="tabpanel">
 
-<div class="row">
-<div>
-<label for="problem">Problem</label>
-<input id="problem" placeholder="What problem does it solve?"/>
-</div>
-<div>
-<label for="target_user">Target User</label>
-<input id="target_user" placeholder="Who is this for?"/>
-</div>
-</div>
+  <!-- Quick Actions -->
+  <div class="quick-actions">
+    <button class="btn btn-primary" onclick="showTab('analyze')">&#10133; New Idea</button>
+    <button class="btn btn-secondary" onclick="showTab('factory')">&#127981; Check Factory</button>
+    <button class="btn btn-secondary" onclick="showTab('launch')">&#128227; Launch Content</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadDashboard()" style="margin-left:auto">&#8635; Refresh</button>
+  </div>
 
-<div class="row">
-<div>
-<label for="monetization_model">Monetization Model</label>
-<select id="monetization_model">
-<option value="">Select...</option>
-<option value="subscription">Subscription/SaaS</option>
-<option value="freemium">Freemium</option>
-<option value="marketplace">Marketplace</option>
-<option value="one-time">One-time Purchase</option>
-<option value="api">API Usage-based</option>
-<option value="ads">Advertising</option>
-<option value="affiliate">Affiliate</option>
-</select>
-</div>
-<div>
-<label for="competition_level">Competition Level</label>
-<select id="competition_level">
-<option value="">Select...</option>
-<option value="low">Low</option>
-<option value="medium">Medium</option>
-<option value="high">High</option>
-</select>
-</div>
-</div>
-
-<div class="row">
-<div>
-<label for="difficulty">Build Difficulty</label>
-<select id="difficulty">
-<option value="">Select...</option>
-<option value="easy">Easy</option>
-<option value="medium">Medium</option>
-<option value="hard">Hard</option>
-</select>
-</div>
-<div>
-<label for="time_to_revenue">Time to Revenue</label>
-<select id="time_to_revenue">
-<option value="">Select...</option>
-<option value="days">Days</option>
-<option value="weeks">Weeks</option>
-<option value="months">Months</option>
-</select>
-</div>
-</div>
-
-<label for="differentiation">Differentiation</label>
-<input id="differentiation" placeholder="What makes this unique?"/>
-
-<button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">&#x1F50D; Analyze Idea</button>
-</div>
-
-<div class="loading" id="loading">
-<div class="spinner"></div>
-<p style="margin-top:.8rem">Running full pipeline analysis...</p>
-</div>
-
-<div class="error-box" id="errorBox"></div>
-
-<div id="result" class="card" style="display:none"></div>
-</div>
-
-<!-- ====== TAB 3: PORTFOLIO ====== -->
-<div id="tab-portfolio" class="tab">
+  <!-- Venture Loop Flow -->
   <div class="card">
-    <div class="card-title" style="justify-content:space-between">
-      <span>&#x1F4CB; Projects</span>
-      <button class="btn btn-sm btn-primary" onclick="loadPortfolio()">&#x1F504; Refresh</button>
+    <div class="card-title">&#9889; Venture Loop <small id="dash-last-refresh"></small></div>
+    <div class="loop-flow" id="loop-flow">
+      <div class="loop-step" onclick="showTab('analyze')" title="Total ideas analyzed">
+        <div class="loop-step-icon">&#128161;</div>
+        <div class="loop-step-count" id="loop-ideas">–</div>
+        <div class="loop-step-label">Ideas</div>
+      </div>
+      <div class="loop-arrow">&#8594;</div>
+      <div class="loop-step" title="Ideas scored &amp; reviewed">
+        <div class="loop-step-icon">&#128203;</div>
+        <div class="loop-step-count" id="loop-scored">–</div>
+        <div class="loop-step-label">Scored</div>
+      </div>
+      <div class="loop-arrow">&#8594;</div>
+      <div class="loop-step" onclick="showTab('factory')" title="Approved to build">
+        <div class="loop-step-icon">&#9989;</div>
+        <div class="loop-step-count" id="loop-approved">–</div>
+        <div class="loop-step-label">Approved</div>
+      </div>
+      <div class="loop-arrow">&#8594;</div>
+      <div class="loop-step" onclick="showTab('factory')" title="Currently building">
+        <div class="loop-step-icon">&#9881;</div>
+        <div class="loop-step-count" id="loop-building">–</div>
+        <div class="loop-step-label">Building</div>
+      </div>
+      <div class="loop-arrow">&#8594;</div>
+      <div class="loop-step" onclick="showTab('launch')" title="Launched products">
+        <div class="loop-step-icon">&#128640;</div>
+        <div class="loop-step-count" id="loop-launched">–</div>
+        <div class="loop-step-label">Launched</div>
+      </div>
+      <div class="loop-arrow">&#8594;</div>
+      <div class="loop-step" onclick="showTab('revenue')" title="Generating revenue">
+        <div class="loop-step-icon">&#128176;</div>
+        <div class="loop-step-count" id="loop-revenue-count">–</div>
+        <div class="loop-step-label">Revenue</div>
+      </div>
     </div>
-    <div id="portfolioTable"><div class="loading" style="display:block"><div class="spinner"></div></div></div>
   </div>
-  <div class="card">
-    <div class="card-title">&#x2795; Add Project</div>
-    <label for="pName">Name *</label>
-    <input id="pName" placeholder="Project name"/>
-    <label for="pDesc">Description *</label>
-    <textarea id="pDesc" placeholder="What does this project do?" style="min-height:60px"></textarea>
-    <button class="btn btn-primary" style="margin-top:.8rem" onclick="createProject()">Create Project</button>
-  </div>
-</div>
 
-<!-- ====== TAB 4: FACTORY ====== -->
-<div id="tab-factory" class="tab">
-  <div class="card">
-    <div class="card-title" style="justify-content:space-between">
-      <span>&#x1F6E0; Build Runs</span>
-      <button class="btn btn-sm btn-primary" onclick="loadRuns()">&#x1F504; Refresh</button>
+  <!-- Stats Row -->
+  <div class="stats-grid">
+    <div class="stat-box" onclick="showTab('analyze')"><div class="stat-num" id="stat-ideas">0</div><div class="stat-label">Total Ideas</div></div>
+    <div class="stat-box" onclick="showTab('factory')"><div class="stat-num" id="stat-approved">0</div><div class="stat-label">Approved</div></div>
+    <div class="stat-box" onclick="showTab('factory')"><div class="stat-num amber" id="stat-building">0</div><div class="stat-label">Building</div></div>
+    <div class="stat-box" onclick="showTab('launch')"><div class="stat-num green" id="stat-live">0</div><div class="stat-label">Live</div></div>
+    <div class="stat-box" onclick="showTab('revenue')"><div class="stat-num green" id="stat-revenue">$0</div><div class="stat-label">Revenue</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+    <!-- Active Builds -->
+    <div class="card">
+      <div class="card-title">&#9881; Active Builds</div>
+      <div id="dash-builds"><div class="loading-row"><span class="spinner"></span></div></div>
     </div>
-    <div id="runsTable"><div class="loading" style="display:block"><div class="spinner"></div></div></div>
+    <!-- Recent Activity -->
+    <div class="card">
+      <div class="card-title">&#9889; Recent Activity</div>
+      <div id="dash-activity"><div class="loading-row"><span class="spinner"></span></div></div>
+    </div>
   </div>
+
+  <!-- System Health -->
   <div class="card">
-    <div class="card-title">&#x1F680; Verify Deployment</div>
-    <label for="vProjectId">Project ID *</label>
-    <input id="vProjectId" placeholder="e.g. prj-abc123"/>
-    <label for="vDeployUrl">Deploy URL</label>
-    <input id="vDeployUrl" placeholder="https://my-project.vercel.app"/>
-    <label for="vRepoUrl">Repo URL</label>
-    <input id="vRepoUrl" placeholder="https://github.com/org/repo"/>
-    <button class="btn btn-primary" style="margin-top:.8rem" onclick="verifyDeployment()">&#x1F50E; Verify Deployment</button>
-    <div id="verifyResult" style="margin-top:.8rem"></div>
+    <div class="card-title">&#128308; System Health</div>
+    <div id="dash-health"><div class="loading-row"><span class="spinner"></span></div></div>
+  </div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     TAB 3 — ANALYZE IDEA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab" id="tab-analyze" role="tabpanel">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
+
+    <!-- Form -->
+    <div class="card">
+      <div class="card-title">&#128161; Score Your Idea</div>
+      <div id="analyze-form-area">
+        <label for="idea-desc">Idea Description <span style="color:var(--red)">*</span></label>
+        <textarea id="idea-desc" rows="4" placeholder="Describe your idea in 1-3 sentences..."></textarea>
+
+        <label for="idea-problem">Problem it solves</label>
+        <textarea id="idea-problem" rows="2" placeholder="What painful problem does this fix?"></textarea>
+
+        <label for="idea-user">Target user</label>
+        <input type="text" id="idea-user" placeholder="e.g. solo founders, freelance designers"/>
+
+        <div class="row2">
+          <div>
+            <label for="idea-mono">Monetization model</label>
+            <select id="idea-mono">
+              <option value="">Select...</option>
+              <option>SaaS subscription</option>
+              <option>One-time purchase</option>
+              <option>Marketplace / commission</option>
+              <option>Freemium + upsell</option>
+              <option>Service / done-for-you</option>
+              <option>Affiliate / referral</option>
+              <option>Usage-based / pay-per-use</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="idea-comp">Competition level</label>
+            <select id="idea-comp">
+              <option value="">Select...</option>
+              <option>Crowded (many players)</option>
+              <option>Moderate</option>
+              <option>Low (few direct competitors)</option>
+              <option>Blue ocean (none)</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="idea-ttr">Time to first revenue</label>
+        <select id="idea-ttr">
+          <option value="">Select...</option>
+          <option>Under 1 week</option>
+          <option>1-2 weeks</option>
+          <option>2-4 weeks</option>
+          <option>1-3 months</option>
+          <option>3-6 months</option>
+          <option>6+ months</option>
+        </select>
+
+        <label for="idea-diff">Differentiation (optional)</label>
+        <textarea id="idea-diff" rows="2" placeholder="What makes this different or better?"></textarea>
+
+        <div style="margin-top:1rem;display:flex;gap:.6rem">
+          <button class="btn btn-primary" style="flex:1" id="analyze-btn" onclick="submitAnalysis()">
+            &#9889; Score This Idea
+          </button>
+          <button class="btn btn-ghost" onclick="clearAnalyzeForm()">Clear</button>
+        </div>
+        <div id="analyze-error" class="alert alert-error" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="analyze-results-col">
+      <div class="card" style="text-align:center;color:var(--text4);padding:3rem 1rem">
+        <div style="font-size:2rem;margin-bottom:.75rem">&#128202;</div>
+        <div>Submit an idea to see your score</div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ====== TAB 5: DISTRIBUTION ====== -->
-<div id="tab-distribution" class="tab">
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     TAB 4 — FACTORY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab" id="tab-factory" role="tabpanel">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+    <h2 style="font-size:1rem;font-weight:700;color:#fff">&#127981; Build Factory</h2>
+    <button class="btn btn-ghost btn-sm" onclick="loadFactory()">&#8635; Refresh</button>
+  </div>
+
+  <!-- System Checks -->
   <div class="card">
-    <div class="card-title">&#x1F4E3; Generate Share Messages</div>
-    <label for="shareTitle">Product Title *</label>
-    <input id="shareTitle" placeholder="My Awesome SaaS"/>
-    <label for="shareUrl">Deploy URL *</label>
-    <input id="shareUrl" placeholder="https://myproduct.vercel.app"/>
-    <label for="shareDesc">Description *</label>
-    <textarea id="shareDesc" placeholder="A one-sentence description of what this product does." style="min-height:60px"></textarea>
-    <div class="row">
+    <div class="card-title">&#9989; System Checks</div>
+    <div id="factory-checks">
+      <div class="loading-row"><span class="spinner"></span></div>
+    </div>
+  </div>
+
+  <!-- Build Runs -->
+  <div class="card">
+    <div class="card-title">&#9654; Build Runs</div>
+    <div id="factory-runs">
+      <div class="loading-row"><span class="spinner"></span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     TAB 5 — LAUNCH KIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab" id="tab-launch" role="tabpanel">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
+
+    <!-- Form -->
     <div>
-    <label for="shareTarget">Target User *</label>
-    <input id="shareTarget" placeholder="e.g. freelance developers"/>
+      <div class="card">
+        <div class="card-title">&#128227; Generate Launch Content</div>
+
+        <label for="launch-project">Project</label>
+        <select id="launch-project">
+          <option value="">&#8212; Select project or enter below &#8212;</option>
+        </select>
+
+        <label for="launch-title">Product title</label>
+        <input type="text" id="launch-title" placeholder="e.g. Waitlist Wizard"/>
+
+        <label for="launch-url">Product URL</label>
+        <input type="url" id="launch-url" placeholder="https://yourproduct.com"/>
+
+        <label for="launch-desc">One-sentence description</label>
+        <textarea id="launch-desc" rows="2" placeholder="The fastest way for solo founders to..."></textarea>
+
+        <label for="launch-user">Target user</label>
+        <input type="text" id="launch-user" placeholder="e.g. solo SaaS founders"/>
+
+        <label for="launch-cta">Call to action</label>
+        <input type="text" id="launch-cta" placeholder="e.g. Get early access free"/>
+
+        <div style="margin-top:1rem">
+          <button class="btn btn-primary btn-full" id="launch-btn" onclick="generateLaunch()">
+            &#9889; Generate All Content
+          </button>
+        </div>
+        <div id="launch-error" class="alert alert-error" style="display:none"></div>
+      </div>
+
+      <!-- Payment Link Generator -->
+      <div class="card">
+        <div class="card-title">&#128179; Payment Link</div>
+        <div class="alert alert-info" style="margin-bottom:.8rem;font-size:.8rem">
+          &#128161; <strong>Recommended:</strong> Set up <a href="https://lemonsqueezy.com" target="_blank">LemonSqueezy</a> — free, global, no business registration needed.
+        </div>
+        <label for="payment-url">Your LemonSqueezy checkout URL</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="url" id="payment-url" placeholder="https://yourstore.lemonsqueezy.com/checkout/..."/>
+          <button class="btn btn-secondary" onclick="savePaymentLink()">Save</button>
+        </div>
+        <div id="saved-payment-link" style="margin-top:.6rem;font-size:.8rem;color:var(--text3)"></div>
+      </div>
     </div>
+
+    <!-- Output -->
+    <div id="launch-output">
+      <div class="card" style="text-align:center;color:var(--text4);padding:3rem 1rem">
+        <div style="font-size:2rem;margin-bottom:.75rem">&#128227;</div>
+        <div>Fill in your product details and hit Generate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     TAB 6 — REVENUE LOOP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="tab" id="tab-revenue" role="tabpanel">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
+
+    <!-- Left: Total + Add Revenue -->
     <div>
-    <label for="shareCta">Call to Action</label>
-    <input id="shareCta" placeholder="Try it free" value="Try it free"/>
+      <div class="card" style="text-align:center">
+        <div class="card-title" style="justify-content:center">&#128176; Total Revenue</div>
+        <div class="revenue-total" id="rev-total">$0<small>.00</small></div>
+        <div style="font-size:.78rem;color:var(--text3)" id="rev-sub">across all projects</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#10133; Log Revenue</div>
+        <label for="rev-project">Project name</label>
+        <input type="text" id="rev-project" placeholder="e.g. Waitlist Wizard"/>
+        <label for="rev-amount">Amount (USD)</label>
+        <input type="number" id="rev-amount" placeholder="0.00" step="0.01" min="0"/>
+        <label for="rev-date">Date</label>
+        <input type="date" id="rev-date"/>
+        <label for="rev-source">Source</label>
+        <input type="text" id="rev-source" placeholder="e.g. Product Hunt, cold email"/>
+        <div style="margin-top:.8rem">
+          <button class="btn btn-success btn-full" onclick="addRevenue()">Log Revenue</button>
+        </div>
+      </div>
+
+      <!-- Pipeline Score -->
+      <div class="card">
+        <div class="card-title">&#127919; Pipeline Score</div>
+        <div class="loop-insight" id="pipeline-insight">Loading your venture loop stats...</div>
+      </div>
     </div>
+
+    <!-- Right: Tables + Learning Log -->
+    <div>
+      <div class="card">
+        <div class="card-title">&#128200; Revenue by Project</div>
+        <div id="rev-table"><div class="empty-state"><div class="empty-icon">&#128200;</div>No revenue logged yet. Time to change that.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">&#128214; Learning Log</div>
+        <label for="learn-project">Project</label>
+        <input type="text" id="learn-project" placeholder="Project name"/>
+        <label for="learn-worked">What worked</label>
+        <textarea id="learn-worked" rows="2" placeholder="What channels, messages, or tactics got results?"></textarea>
+        <label for="learn-didnt">What didn't work</label>
+        <textarea id="learn-didnt" rows="2" placeholder="What flopped? Be honest."></textarea>
+        <div style="margin-top:.8rem;display:flex;gap:.5rem">
+          <button class="btn btn-secondary" style="flex:1" onclick="saveLearning()">Save Note</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadLearnings()">View All</button>
+        </div>
+        <div id="learnings-list" style="margin-top:.8rem"></div>
+      </div>
     </div>
-    <button class="btn btn-primary" style="margin-top:.8rem" id="shareBtn" onclick="generateShare()">&#x2728; Generate Share Messages</button>
   </div>
-  <div class="loading" id="shareLoading">
-    <div class="spinner"></div>
-    <p style="margin-top:.8rem">Generating messages...</p>
-  </div>
-  <div id="shareResults"></div>
 </div>
 
-<!-- ====== TAB 6: REVENUE ====== -->
-<div id="tab-revenue" class="tab">
-  <div class="card">
-    <div class="card-title">&#x1F4B0; Learning Report</div>
-    <label for="revProjectId">Project ID *</label>
-    <div style="display:flex;gap:.6rem;margin-top:.3rem">
-      <input id="revProjectId" placeholder="e.g. prj-abc123" style="flex:1"/>
-      <button class="btn btn-sm btn-primary" onclick="loadRevenueReport()">View Report</button>
-    </div>
-  </div>
-  <div class="loading" id="revLoading">
-    <div class="spinner"></div>
-    <p style="margin-top:.8rem">Loading report...</p>
-  </div>
-  <div id="revResult"></div>
-</div>
+<!-- ── TOASTS ── -->
+<div id="toasts"></div>
 
-<footer>AI-DAN Command Center v{version} &mdash; Monetization-first decision engine</footer>
+<!-- ── FOOTER ── -->
+<footer style="text-align:center;padding:.6rem;font-size:.72rem;color:var(--text4);
+  border-top:1px solid var(--border2);background:var(--card);margin-top:auto">
+  AI-DAN Managing Director &nbsp;&#183;&nbsp; v{version}
+</footer>
 
 <script>
-/* ── utilities ── */
-function esc(s){if(s==null)return'';var d=document.createElement('div');
-  d.appendChild(document.createTextNode(String(s)));return d.innerHTML}
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UTILITIES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-function jsStr(s){if(s==null)return'';
-  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"')
-    .replace(/`/g,'\\x60').replace(/</g,'\\x3c').replace(/>/g,'\\x3e')
-    .replace(/&/g,'\\x26').replace(/\r/g,'\\r').replace(/\n/g,'\\n')}
-
-function toast(msg,type){
-  type=type||'info';
-  var c=document.getElementById('toast-container');
-  var t=document.createElement('div');
-  t.className='toast toast-'+type;
-  t.textContent=msg;
-  c.appendChild(t);
-  setTimeout(function(){t.style.opacity='0';t.style.transform='translateY(-8px)';
-    t.style.transition='all .3s';setTimeout(function(){c.removeChild(t)},300)},3000);
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 
-function statusBadge(s){
-  var m={approved:'badge-approved',building:'badge-building',launched:'badge-launched',
-    idea:'badge-idea',hold:'badge-hold',killed:'badge-killed',
-    succeeded:'badge-succeeded',failed:'badge-failed',pending:'badge-pending',running:'badge-running'};
-  var cls=m[(s||'').toLowerCase()]||'badge-idea';
-  return '<span class="badge '+cls+'">'+esc(s)+'</span>';
+function jsStr(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/\\\\/g,'\\\\\\\\')
+    .replace(/"/g,'\\\\"')
+    .replace(/\\n/g,'\\\\n');
 }
 
-/* ── API client with optional API key ── */
-function apiFetch(path,opts){
-  opts=opts||{};
-  opts.headers=opts.headers||{};
-  var key=localStorage.getItem('aidan_api_key')||'';
-  if(key)opts.headers['X-API-Key']=key;
-  return fetch(path,opts);
-}
-
-/* ── tab switching ── */
-function switchTab(id,btn){
-  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
-  document.querySelectorAll('.nav button').forEach(function(b){b.classList.remove('active')});
-  document.getElementById('tab-'+id).classList.add('active');
-  if(btn)btn.classList.add('active');
-  if(id==='dashboard')loadDashboard();
-  if(id==='portfolio')loadPortfolio();
-  if(id==='factory')loadRuns();
-}
-
-/* ── TAB 1: DASHBOARD ── */
-async function loadDashboard(){
-  document.getElementById('dashProjects').innerHTML=
-    '<div class="loading" style="display:block"><div class="spinner"></div></div>';
-  try{
-    var resp=await apiFetch('/portfolio/projects');
-    if(!resp.ok)throw new Error(resp.statusText);
-    var projects=await resp.json();
-    renderDashStats(projects);
-    renderDashProjects(projects);
-  }catch(e){
-    document.getElementById('dashProjects').innerHTML=
-      '<div class="empty-state">Could not load projects: '+esc(e.message)+'</div>';
-    document.getElementById('healthIndicator').innerHTML=
-      '<span class="health-dot health-red"></span><span style="font-size:.8rem;color:#888">Error</span>';
-  }
-}
-
-function renderDashStats(projects){
-  var total=projects.length;
-  var approved=projects.filter(function(p){return(p.status||'').toLowerCase()==='approved'}).length;
-  var building=projects.filter(function(p){return(p.status||'').toLowerCase()==='building'}).length;
-  var launched=projects.filter(function(p){return(p.status||'').toLowerCase()==='launched'}).length;
-  document.getElementById('st-total').textContent=total;
-  document.getElementById('st-approved').textContent=approved;
-  document.getElementById('st-building').textContent=building;
-  document.getElementById('st-launched').textContent=launched;
-  var health=total===0?'yellow':launched>0?'green':'yellow';
-  document.getElementById('healthIndicator').innerHTML=
-    '<span class="health-dot health-'+health+'"></span>';
-  document.getElementById('headerStatus').textContent=
-    health==='green'?'🟢 '+launched+' Live':'🟡 '+total+' Projects';
-}
-
-function renderDashProjects(projects){
-  if(!projects.length){
-    document.getElementById('dashProjects').innerHTML=
-      '<div class="empty-state">No projects yet. Go to Analyze Idea to get started.</div>';
-    return;
-  }
-  var recent=projects.slice(-5).reverse();
-  var h='<table><thead><tr><th>Name</th><th>Status</th><th>Created</th></tr></thead><tbody>';
-  recent.forEach(function(p){
-    h+='<tr><td>'+esc(p.name)+'</td><td>'+statusBadge(p.status)+'</td>';
-    h+='<td style="color:#555;font-size:.78rem">'+(p.created_at||'').substring(0,10)+'</td></tr>';
-  });
-  h+='</tbody></table>';
-  document.getElementById('dashProjects').innerHTML=h;
-}
-
-/* ── TAB 2: ANALYZE ── */
-async function analyze(){
-  var btn=document.getElementById('analyzeBtn');
-  var loading=document.getElementById('loading');
-  var result=document.getElementById('result');
-  var errorBox=document.getElementById('errorBox');
-  var idea=document.getElementById('idea').value.trim();
-  if(!idea){errorBox.textContent='Please enter an idea.';errorBox.style.display='block';return}
-  btn.disabled=true;loading.style.display='block';result.style.display='none';
-  errorBox.style.display='none';
-  var body={
-    idea:idea,
-    problem:document.getElementById('problem').value.trim(),
-    target_user:document.getElementById('target_user').value.trim(),
-    monetization_model:document.getElementById('monetization_model').value,
-    competition_level:document.getElementById('competition_level').value,
-    difficulty:document.getElementById('difficulty').value,
-    time_to_revenue:document.getElementById('time_to_revenue').value,
-    differentiation:document.getElementById('differentiation').value.trim()
+function apiFetch(path, opts) {
+  const key = (document.getElementById('api-key-input') || {}).value || localStorage.getItem('api_key') || '';
+  const defaultOpts = {
+    headers: {'Content-Type':'application/json','X-API-Key':key},
   };
-  try{
-    var resp=await apiFetch('/api/analyze/',{method:'POST',
-      headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!resp.ok){var e=await resp.json();throw new Error(e.detail||resp.statusText)}
-    var d=await resp.json();
-    renderResult(d);
-    toast('Analysis complete: '+d.final_decision,
-      d.final_decision==='APPROVED'?'success':d.final_decision==='HOLD'?'info':'error');
-  }catch(err){
-    errorBox.textContent='Error: '+err.message;errorBox.style.display='block';
-    toast('Analysis failed: '+err.message,'error');
-  }finally{btn.disabled=false;loading.style.display='none'}
+  const mergedOpts = Object.assign({}, defaultOpts, opts || {});
+  if (opts && opts.headers) {
+    mergedOpts.headers = Object.assign({}, defaultOpts.headers, opts.headers);
+  }
+  return fetch(path, mergedOpts).then(function(r) {
+    if (r.status === 401) throw new Error('Authentication required. Set your API key above.');
+    if (r.status === 429) throw new Error('Rate limit hit. Wait a moment and try again.');
+    if (r.status >= 500) throw new Error('Server error. Check the Factory tab for details.');
+    if (!r.ok) return r.json().then(function(d){ throw new Error(d.detail || d.message || 'Request failed ('+r.status+')'); });
+    return r.json();
+  }).catch(function(e) {
+    if (e.message === 'Failed to fetch') throw new Error("Can't reach the server. Check your internet connection.");
+    throw e;
+  });
 }
 
-function renderResult(d){
-  var r=document.getElementById('result');
-  var sc=d.total_score||0;
-  var pct=(sc/10*100).toFixed(0);
-  var cls=sc>=8?'high':sc>=6?'med':'low';
-  var dec=d.final_decision||'UNKNOWN';
-  var h='<div style="display:flex;justify-content:space-between;align-items:center">';
-  h+='<div><span class="decision-badge decision-'+dec+'">'+dec+'</span></div>';
-  h+='<div style="text-align:right;font-size:1.5rem;font-weight:700">'+sc.toFixed(1);
-  h+='<span style="font-size:.9rem;color:#888">/10</span></div></div>';
-  h+='<div class="score-bar"><div class="score-fill score-'+cls+'" style="width:'+pct+'%"></div></div>';
-  h+='<p style="font-size:.85rem;color:#aaa;margin-top:.3rem">'+(d.score_decision_reason||d.next_step||'')+'</p>';
-  if(d.validation_blocking&&d.validation_blocking.length){
-    h+='<div class="section"><h3>&#x1F6D1; Blocking Issues</h3>';
-    d.validation_blocking.forEach(function(b){h+='<p class="blocking">• '+esc(b)+'</p>'});
-    h+='</div>';
-  }
-  if(d.validation_reasons&&d.validation_reasons.length){
-    h+='<div class="section"><h3>&#x2705; Validation</h3>';
-    d.validation_reasons.forEach(function(v){h+='<p class="reason">• '+esc(v)+'</p>'});
-    h+='</div>';
-  }
-  if(d.score_dimensions&&d.score_dimensions.length){
-    h+='<div class="section"><h3>&#x1F4CA; Score Breakdown</h3>';
-    d.score_dimensions.forEach(function(dim){
-      var dp=(dim.score/2*100).toFixed(0);
-      var dc=dim.score>=1.5?'high':dim.score>=1?'med':'low';
-      h+='<div class="detail-row"><span class="detail-label">'+esc(dim.name)+
-        '</span><span class="detail-value">'+dim.score.toFixed(1)+'/2</span></div>';
-      h+='<div class="score-bar"><div class="score-fill score-'+dc+'" style="width:'+dp+'%"></div></div>';
-      h+='<p style="font-size:.8rem;color:#777;margin-bottom:.3rem">'+esc(dim.reason)+'</p>';
-    });
-    h+='</div>';
-  }
-  var o=d.offer||{};
-  if(o.decision==='generated'){
-    h+='<div class="section"><h3>&#x1F4B0; Offer</h3>';
-    h+=detailRow('Pricing',o.pricing);h+=detailRow('Model',o.pricing_model);
-    h+=detailRow('Delivery',o.delivery_method);h+=detailRow('Value',o.value_proposition);
-    h+=detailRow('CTA',o.cta);h+='</div>';
-  }
-  var di=d.distribution||{};
-  if(di.decision==='generated'){
-    h+='<div class="section"><h3>&#x1F680; Distribution</h3>';
-    h+=detailRow('Channel',di.primary_channel);h+=detailRow('Acquisition',di.acquisition_method);
-    h+=detailRow('First 10 Users',di.first_10_users_plan);h+=detailRow('Messaging',di.messaging);
-    if(di.execution_steps&&di.execution_steps.length){
-      h+='<p style="font-size:.85rem;color:#aaa;margin-top:.4rem">Steps:</p>';
-      di.execution_steps.forEach(function(s,i){
-        h+='<p style="font-size:.8rem;color:#ccc;margin-left:.5rem">'+(i+1)+'. '+esc(s)+'</p>'
-      });
+let _toastId = 0;
+function toast(msg, type) {
+  const id = ++_toastId;
+  const icons = {success:'&#10003;', error:'&#10007;', warn:'&#9888;', info:'&#8505;'};
+  const wrap = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type||'info');
+  el.innerHTML = '<span>' + (icons[type]||icons.info) + '</span><span>' + esc(msg) + '</span>';
+  wrap.appendChild(el);
+  setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 4000);
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.nav button').forEach(function(b){ b.classList.remove('active'); });
+  const panel = document.getElementById('tab-'+name);
+  const btn = document.getElementById('nav-'+name);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'factory') loadFactory();
+  if (name === 'launch') loadLaunchProjects();
+  if (name === 'revenue') loadRevenue();
+}
+
+function relTime(ts) {
+  if (!ts) return '–';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts;
+  const diff = Math.floor((Date.now() - d) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(function(){
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function(){ btn.textContent = orig; }, 1500);
+    toast('Copied to clipboard', 'success');
+  }).catch(function(){ toast('Copy failed', 'error'); });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// API KEY PERSISTENCE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(function initApiKey() {
+  const inp = document.getElementById('api-key-input');
+  const saved = localStorage.getItem('api_key') || '';
+  if (saved) inp.value = saved;
+  inp.addEventListener('change', function(){ localStorage.setItem('api_key', inp.value.trim()); });
+  inp.addEventListener('blur', function(){ localStorage.setItem('api_key', inp.value.trim()); });
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CHAT MODULE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let chatHistory = [];
+let chatBusy = false;
+
+function initChat() {
+  appendAIMessage(
+    "Hey. I'm AI-DAN — your venture-loop advisor. No fluff, no flattery. Tell me an idea, ask what to build next, or ask me anything about your projects. Let's make some money.",
+    null
+  );
+
+  const inp = document.getElementById('chat-input');
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      sendChatMessage();
     }
-    h+='</div>';
-  }
-  h+='<div class="section"><h3>&#x27A1;&#xFE0F; Next Step</h3>';
-  h+='<p style="font-size:.9rem">'+esc(d.next_step||'Awaiting analysis.')+'</p>';
-  h+='<p style="font-size:.8rem;color:#666;margin-top:.3rem">Stage: '+esc(d.pipeline_stage||'unknown')+'</p>';
-  h+='</div>';
-  r.innerHTML=h;r.style.display='block';
+    // Auto-resize
+    setTimeout(function(){
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 150) + 'px';
+    }, 0);
+  });
 }
 
-function detailRow(l,v){if(!v)return'';
-  return'<div class="detail-row"><span class="detail-label">'+esc(l)+
-    '</span><span class="detail-value">'+esc(v)+'</span></div>'}
+function appendAIMessage(text, model) {
+  const hist = document.getElementById('chat-history');
+  const starters = document.getElementById('chat-starters');
+  if (starters && chatHistory.length > 0) starters.style.display = 'none';
 
-/* ── TAB 3: PORTFOLIO ── */
-async function loadPortfolio(){
-  document.getElementById('portfolioTable').innerHTML=
-    '<div class="loading" style="display:block"><div class="spinner"></div></div>';
-  try{
-    var resp=await apiFetch('/portfolio/projects');
-    if(!resp.ok)throw new Error(resp.statusText);
-    var projects=await resp.json();
-    renderPortfolioTable(projects);
-  }catch(e){
-    document.getElementById('portfolioTable').innerHTML=
-      '<div class="empty-state">Could not load: '+esc(e.message)+'</div>';
-  }
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg ai';
+  wrap.innerHTML = '<div class="chat-avatar ai-av">&#129504;</div>' +
+    '<div>' +
+    '<div class="chat-bubble">' + esc(text) + '</div>' +
+    (model ? '<div class="chat-meta">' + esc(model) + '</div>' : '') +
+    '</div>';
+  hist.appendChild(wrap);
+  hist.scrollTop = hist.scrollHeight;
+  return wrap;
 }
 
-function renderPortfolioTable(projects){
-  if(!projects.length){
-    document.getElementById('portfolioTable').innerHTML=
-      '<div class="empty-state">No projects yet. Use Analyze Idea to create your first one.</div>';
+function appendUserMessage(text) {
+  const hist = document.getElementById('chat-history');
+  const starters = document.getElementById('chat-starters');
+  if (starters) starters.style.display = 'none';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg user';
+  wrap.innerHTML = '<div class="chat-avatar user-av">&#128100;</div>' +
+    '<div><div class="chat-bubble">' + esc(text) + '</div></div>';
+  hist.appendChild(wrap);
+  hist.scrollTop = hist.scrollHeight;
+}
+
+function showTypingIndicator() {
+  const hist = document.getElementById('chat-history');
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg ai';
+  wrap.id = 'typing-indicator';
+  wrap.innerHTML = '<div class="chat-avatar ai-av">&#129504;</div>' +
+    '<div><div class="chat-bubble"><div class="typing-dots"><span></span><span></span><span></span></div>' +
+    '<div style="font-size:.72rem;color:var(--text4);margin-top:.2rem">AI-DAN is thinking...</div></div></div>';
+  hist.appendChild(wrap);
+  hist.scrollTop = hist.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.parentNode.removeChild(el);
+}
+
+function sendStarter(text) {
+  document.getElementById('chat-input').value = text;
+  sendChatMessage();
+}
+
+function sendChatMessage() {
+  if (chatBusy) return;
+  const inp = document.getElementById('chat-input');
+  const msg = inp.value.trim();
+  if (!msg) return;
+
+  inp.value = '';
+  inp.style.height = 'auto';
+  chatBusy = true;
+  document.getElementById('chat-send-btn').disabled = true;
+
+  appendUserMessage(msg);
+  chatHistory.push({role:'user', content:msg});
+
+  showTypingIndicator();
+
+  apiFetch('/chat/talk', {
+    method: 'POST',
+    body: JSON.stringify({message: msg, history: chatHistory.slice(-20)})
+  }).then(function(data) {
+    removeTypingIndicator();
+    const reply = data.reply || data.message || data.response || JSON.stringify(data);
+    const model = data.model || null;
+    appendAIMessage(reply, model);
+    chatHistory.push({role:'assistant', content:reply});
+  }).catch(function(err) {
+    removeTypingIndicator();
+    appendAIMessage('Error: ' + err.message, null);
+  }).finally(function() {
+    chatBusy = false;
+    document.getElementById('chat-send-btn').disabled = false;
+    inp.focus();
+  });
+}
+
+function clearChat() {
+  chatHistory = [];
+  const hist = document.getElementById('chat-history');
+  hist.innerHTML = '';
+  const starters = document.getElementById('chat-starters');
+  if (starters) starters.style.display = 'flex';
+  initChat();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DASHBOARD MODULE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let _dashProjects = [];
+
+function loadDashboard() {
+  const refreshEl = document.getElementById('dash-last-refresh');
+  if (refreshEl) refreshEl.textContent = 'Loading...';
+
+  Promise.all([
+    apiFetch('/portfolio/projects').catch(function(){ return []; }),
+    apiFetch('/api/dashboard/health').catch(function(){ return {}; }),
+    apiFetch('/api/dashboard/tokens').catch(function(){ return {}; })
+  ]).then(function(results) {
+    const projects = Array.isArray(results[0]) ? results[0] : (results[0].projects || []);
+    const health = results[1] || {};
+    const tokens = results[2] || {};
+    _dashProjects = projects;
+
+    renderDashStats(projects);
+    renderDashBuilds(projects);
+    renderDashActivity(projects);
+    renderDashHealth(health, tokens);
+    loadLaunchProjects();
+
+    if (refreshEl) refreshEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+  }).catch(function(err) {
+    toast('Dashboard error: ' + err.message, 'error');
+  });
+}
+
+function renderDashStats(projects) {
+  const total = projects.length;
+  const approved = projects.filter(function(p){ return p.status === 'approved'; }).length;
+  const building = projects.filter(function(p){ return p.status === 'building' || p.status === 'in_progress'; }).length;
+  const live = projects.filter(function(p){ return p.status === 'launched' || p.status === 'live'; }).length;
+
+  document.getElementById('stat-ideas').textContent = total;
+  document.getElementById('stat-approved').textContent = approved;
+  document.getElementById('stat-building').textContent = building;
+  document.getElementById('stat-live').textContent = live;
+
+  document.getElementById('loop-ideas').textContent = total;
+  document.getElementById('loop-scored').textContent = projects.filter(function(p){ return p.status && p.status !== 'idea'; }).length;
+  document.getElementById('loop-approved').textContent = approved + building + live;
+  document.getElementById('loop-building').textContent = building;
+  document.getElementById('loop-launched').textContent = live;
+  document.getElementById('loop-revenue-count').textContent = live > 0 ? live : '0';
+
+  const revEntries = JSON.parse(localStorage.getItem('revenue_entries') || '[]');
+  const totalRev = revEntries.reduce(function(s,e){ return s + (parseFloat(e.amount)||0); }, 0);
+  document.getElementById('stat-revenue').textContent = '$' + totalRev.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+}
+
+function renderDashBuilds(projects) {
+  const el = document.getElementById('dash-builds');
+  const active = projects.filter(function(p){ return p.status === 'building' || p.status === 'in_progress' || p.status === 'approved'; });
+  if (!active.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">&#9881;</div>No active builds. <a href="#" onclick="showTab(\'analyze\');return false">Analyze an idea</a> to get started.</div>';
     return;
   }
-  var h='<table><thead><tr><th>Name</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
-  projects.forEach(function(p){
-    h+='<tr><td><strong>'+esc(p.name)+'</strong><br><span style="color:#555;font-size:.75rem">'+esc(p.project_id)+'</span></td>';
-    h+='<td>'+statusBadge(p.status)+'</td>';
-    h+='<td style="color:#555;font-size:.78rem">'+(p.created_at||'').substring(0,10)+'</td>';
-    h+='<td><div class="actions-row">';
-    var s=(p.status||'').toLowerCase();
-    if(s==='idea'||s==='hold'){
-      h+='<button class="btn btn-sm btn-success" onclick="approveProject(\''+jsStr(p.project_id)+'\')">&#x2705; Approve</button>';
-      h+='<button class="btn btn-sm btn-danger" onclick="rejectProject(\''+jsStr(p.project_id)+'\')">&#x274C; Reject</button>';
-    }
-    if(s==='approved'){
-      h+='<button class="btn btn-sm btn-warning" onclick="buildProject(\''+jsStr(p.project_id)+'\',\''+jsStr(p.name)+'\')">&#x1F680; Build</button>';
-    }
-    h+='<button class="btn btn-sm btn-secondary" onclick="shareProject(\''+jsStr(p.project_id)+'\',\''+jsStr(p.name)+'\')">&#x1F4E3; Share</button>';
-    h+='</div></td></tr>';
+  let html = '';
+  active.forEach(function(p) {
+    const statusCls = 'badge-' + (p.status||'idea').toLowerCase();
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--border2)">' +
+      '<div>' +
+        '<div style="font-size:.85rem;font-weight:600;color:var(--text)">' + esc(p.name||'Unnamed') + '</div>' +
+        '<div style="font-size:.72rem;color:var(--text3)">' + relTime(p.created_at) + '</div>' +
+      '</div>' +
+      '<span class="badge ' + esc(statusCls) + '">' + esc((p.status||'').toUpperCase()) + '</span>' +
+    '</div>';
   });
-  h+='</tbody></table>';
-  document.getElementById('portfolioTable').innerHTML=h;
+  el.innerHTML = html;
 }
 
-async function approveProject(id){
-  try{
-    var resp=await apiFetch('/portfolio/projects/'+encodeURIComponent(id)+'/transition',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({new_state:'approved',event_type:'manual_approve'})
-    });
-    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
-    toast('Project approved','success');loadPortfolio();loadDashboard();
-  }catch(e){toast('Approve failed: '+e.message,'error')}
-}
-
-async function rejectProject(id){
-  try{
-    var resp=await apiFetch('/portfolio/projects/'+encodeURIComponent(id)+'/transition',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({new_state:'killed',event_type:'manual_reject'})
-    });
-    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
-    toast('Project rejected','info');loadPortfolio();
-  }catch(e){toast('Reject failed: '+e.message,'error')}
-}
-
-async function buildProject(id,name){
-  try{
-    var resp=await apiFetch('/factory/runs',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({project_id:id,dry_run:false})
-    });
-    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
-    toast('Build triggered for '+name,'success');
-    var factoryBtn=document.querySelector('.nav button[onclick*="factory"]');
-    if(factoryBtn)switchTab('factory',factoryBtn);
-    else toast('Navigate to Factory tab to view run','info');
-  }catch(e){toast('Build failed: '+e.message,'error')}
-}
-
-function shareProject(id,name){
-  var distBtn=document.querySelector('.nav button[onclick*="distribution"]');
-  if(!distBtn){toast('Distribution tab unavailable','error');return}
-  switchTab('distribution',distBtn);
-  var shareTitle=document.getElementById('shareTitle');
-  if(!shareTitle){toast('Distribution form unavailable','error');return}
-  shareTitle.value=name;
-}
-
-async function createProject(){
-  var name=document.getElementById('pName').value.trim();
-  var desc=document.getElementById('pDesc').value.trim();
-  if(!name||!desc){toast('Name and description are required','error');return}
-  try{
-    var resp=await apiFetch('/portfolio/projects',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name:name,description:desc})
-    });
-    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
-    toast('Project created','success');
-    document.getElementById('pName').value='';document.getElementById('pDesc').value='';
-    loadPortfolio();
-  }catch(e){toast('Create failed: '+e.message,'error')}
-}
-
-/* ── TAB 4: FACTORY ── */
-async function loadRuns(){
-  document.getElementById('runsTable').innerHTML=
-    '<div class="loading" style="display:block"><div class="spinner"></div></div>';
-  try{
-    var resp=await apiFetch('/factory/runs');
-    if(!resp.ok)throw new Error(resp.statusText);
-    var runs=await resp.json();
-    renderRunsTable(runs);
-  }catch(e){
-    document.getElementById('runsTable').innerHTML=
-      '<div class="empty-state">Could not load runs: '+esc(e.message)+'</div>';
-  }
-}
-
-function renderRunsTable(runs){
-  if(!runs.length){
-    document.getElementById('runsTable').innerHTML=
-      '<div class="empty-state">No factory runs yet.</div>';
+function renderDashActivity(projects) {
+  const el = document.getElementById('dash-activity');
+  const sorted = projects.slice().sort(function(a,b){
+    return new Date(b.updated_at||b.created_at||0) - new Date(a.updated_at||a.created_at||0);
+  }).slice(0, 5);
+  if (!sorted.length) {
+    el.innerHTML = '<div class="empty-state">No activity yet.</div>';
     return;
   }
-  var h='<table><thead><tr><th>Run ID</th><th>Project</th><th>Status</th><th>Dry Run</th><th>Created</th></tr></thead><tbody>';
-  runs.slice().reverse().forEach(function(r){
-    h+='<tr><td style="font-size:.75rem;font-family:monospace;color:#777">'+esc(r.run_id).substring(0,12)+'…</td>';
-    h+='<td>'+esc(r.project_id)+'</td>';
-    h+='<td>'+statusBadge(r.status)+'</td>';
-    h+='<td style="font-size:.78rem;color:#777">'+(r.dry_run?'Yes':'No')+'</td>';
-    h+='<td style="font-size:.78rem;color:#555">'+(r.created_at||'').substring(0,16)+'</td>';
-    h+='</tr>';
+  let html = '';
+  sorted.forEach(function(p) {
+    const statusVerbs = {idea:'created idea',approved:'approved',building:'started building',launched:'launched',killed:'killed'};
+    const verb = statusVerbs[p.status] || p.status || 'updated';
+    html += '<div class="activity-item">' +
+      '<div class="activity-dot"></div>' +
+      '<div class="activity-text"><strong>' + esc(p.name||'Unnamed') + '</strong> — ' + esc(verb) + '</div>' +
+      '<div class="activity-time">' + relTime(p.updated_at||p.created_at) + '</div>' +
+    '</div>';
   });
-  h+='</tbody></table>';
-  document.getElementById('runsTable').innerHTML=h;
+  el.innerHTML = html;
 }
 
-async function verifyDeployment(){
-  var pid=document.getElementById('vProjectId').value.trim();
-  var url=document.getElementById('vDeployUrl').value.trim();
-  var repo=document.getElementById('vRepoUrl').value.trim();
-  if(!pid){toast('Project ID is required','error');return}
-  var div=document.getElementById('verifyResult');
-  div.innerHTML='<div class="loading" style="display:block"><div class="spinner"></div></div>';
-  try{
-    var resp=await apiFetch('/factory/verify-deployment',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({project_id:pid,deploy_url:url,repo_url:repo})
-    });
-    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
-    var d=await resp.json();
-    var color=d.status==='healthy'?'#4ade80':d.status==='degraded'?'#fbbf24':'#fca5a5';
-    var h='<div style="padding:.8rem;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:8px">';
-    h+='<div style="font-weight:600;color:'+color+'">'+esc(d.status.toUpperCase())+'</div>';
-    if(d.issues&&d.issues.length){
-      h+='<ul style="margin-top:.5rem;padding-left:1rem">';
-      d.issues.forEach(function(i){h+='<li style="font-size:.82rem;color:#fca5a5">'+esc(i)+'</li>'});
-      h+='</ul>';
-    } else {
-      h+='<p style="font-size:.82rem;color:#86efac;margin-top:.3rem">No issues detected.</p>';
-    }
-    h+='</div>';
-    div.innerHTML=h;
-    toast('Verification: '+d.status,d.status==='healthy'?'success':d.status==='degraded'?'info':'error');
-  }catch(e){
-    div.innerHTML='<div class="error-box" style="display:block">'+esc(e.message)+'</div>';
-    toast('Verify failed: '+e.message,'error');
-  }
-}
+function renderDashHealth(health, tokens) {
+  const el = document.getElementById('dash-health');
+  const model = health.ai_model || health.model || tokens.model || 'Unknown';
+  const ghOk = health.github_token !== false;
+  const aiOk = health.ai_configured !== false && model !== 'Unknown';
+  const factOk = health.factory_connected !== false;
+  const lastDeploy = health.last_deploy || null;
 
-/* ── TAB 5: DISTRIBUTION ── */
-async function generateShare(){
-  var btn=document.getElementById('shareBtn');
-  var loading=document.getElementById('shareLoading');
-  var results=document.getElementById('shareResults');
-  var title=document.getElementById('shareTitle').value.trim();
-  var url=document.getElementById('shareUrl').value.trim();
-  var desc=document.getElementById('shareDesc').value.trim();
-  var target=document.getElementById('shareTarget').value.trim();
-  var cta=document.getElementById('shareCta').value.trim()||'Try it free';
-  if(!title||!url||!desc||!target){
-    toast('Title, URL, description and target user are required','error');return;
-  }
-  btn.disabled=true;loading.style.display='block';results.innerHTML='';
-  try{
-    var resp=await apiFetch('/api/distribution/share-messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({title:title,url:url,description:desc,target_user:target,cta:cta})
-    });
-    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
-    var d=await resp.json();
-    renderShareResults(d);
-    toast('Share messages generated','success');
-  }catch(e){
-    results.innerHTML='<div class="error-box" style="display:block">'+esc(e.message)+'</div>';
-    toast('Generate failed: '+e.message,'error');
-  }finally{btn.disabled=false;loading.style.display='none'}
-}
-
-function renderShareResults(d){
-  var platforms=[
-    ['twitter','&#x1D54F; Twitter/X',d.twitter],
-    ['linkedin','&#x1F516; LinkedIn',d.linkedin],
-    ['whatsapp','&#x1F4F1; WhatsApp',d.whatsapp],
-    ['email','&#x1F4E7; Email Subject',d.email_subject],
-    ['sms','&#x1F4AC; SMS',d.sms],
-    ['reddit','&#x1F4DD; Reddit',d.reddit],
-    ['product_hunt','&#x1F431; Product Hunt',d.product_hunt]
+  const checks = [
+    [ghOk, 'GitHub Token', ghOk ? 'Connected' : 'Not configured — check GITHUB_TOKEN'],
+    [factOk, 'Factory Repo', factOk ? 'Connected' : 'Not connected — check factory settings'],
+    [aiOk, 'AI Model', aiOk ? model : 'Not configured — add API key to env vars'],
+    [true, 'Last Deploy', lastDeploy ? relTime(lastDeploy) : 'No deploys yet'],
   ];
-  var h='';
-  platforms.forEach(function(p){
-    if(!p[2])return;
-    h+='<div class="share-block">';
-    h+='<div class="share-platform">'+p[1]+'</div>';
-    h+='<div class="share-text" id="sb-'+p[0]+'">'+esc(p[2])+'</div>';
-    h+='<button class="btn btn-sm btn-secondary" onclick="copyShare(\''+jsStr(p[0])+'\')">&#x1F4CB; Copy</button>';
-    h+='</div>';
+
+  let html = '<div class="checks-grid">';
+  checks.forEach(function(c) {
+    const dotCls = c[0] ? 'dot-green' : 'dot-red';
+    html += '<div class="check-item"><div class="health-dot ' + dotCls + '"></div><div><strong>' + esc(c[1]) + '</strong><br><span style="color:var(--text3);font-size:.75rem">' + esc(c[2]) + '</span></div></div>';
   });
-  document.getElementById('shareResults').innerHTML=h||'<div class="empty-state">No messages generated.</div>';
-}
+  html += '</div>';
 
-function copyShare(id){
-  var el=document.getElementById('sb-'+id);
-  if(!el)return;
-  navigator.clipboard.writeText(el.textContent).then(function(){
-    toast('Copied to clipboard','success');
-  }).catch(function(){toast('Copy failed – please select and copy manually','error')});
-}
-
-/* ── TAB 6: REVENUE ── */
-async function loadRevenueReport(){
-  var pid=document.getElementById('revProjectId').value.trim();
-  if(!pid){toast('Enter a project ID','error');return}
-  var loading=document.getElementById('revLoading');
-  var result=document.getElementById('revResult');
-  loading.style.display='block';result.innerHTML='';
-  try{
-    var resp=await apiFetch('/revenue/projects/'+encodeURIComponent(pid)+'/learning-report');
-    if(!resp.ok)throw new Error((await resp.json()).detail||resp.statusText);
-    var d=await resp.json();
-    renderRevenueReport(d);
-    toast('Report loaded','success');
-  }catch(e){
-    result.innerHTML='<div class="error-box" style="display:block">'+esc(e.message)+'</div>';
-    toast('Load failed: '+e.message,'error');
-  }finally{loading.style.display='none'}
-}
-
-function renderRevenueReport(d){
-  var h='<div class="card">';
-  h+='<div class="card-title">&#x1F4CA; Learning Report — '+esc(d.project_id)+'</div>';
-  h+=detailRow('Total Outcomes',d.total_outcomes);
-  h+=detailRow('Success Rate',d.success_rate!=null?(d.success_rate*100).toFixed(1)+'%':null);
-  h+=detailRow('Recommendation',d.recommendation);
-  if(d.insights&&d.insights.length){
-    h+='<div class="section"><h3>Insights</h3>';
-    d.insights.forEach(function(i){h+='<p class="reason">• '+esc(i)+'</p>'});
-    h+='</div>';
+  if (!aiOk) {
+    document.getElementById('ai-banner').style.display = 'block';
   }
-  if(d.risks&&d.risks.length){
-    h+='<div class="section"><h3>Risks</h3>';
-    d.risks.forEach(function(r){h+='<p class="blocking">• '+esc(r)+'</p>'});
-    h+='</div>';
+
+  if (tokens.used !== undefined) {
+    html += '<div style="margin-top:.8rem;font-size:.78rem;color:var(--text3)">Token usage: <strong style="color:var(--text)">' + (tokens.used||0).toLocaleString() + '</strong> / ' + (tokens.limit ? tokens.limit.toLocaleString() : '&#8734;') + '</div>';
   }
-  h+='</div>';
-  document.getElementById('revResult').innerHTML=h;
+  el.innerHTML = html;
 }
 
-/* ── init ── */
-async function loadHealthTheme(){
-  try{
-    var resp=await apiFetch('/api/dashboard/health');
-    if(!resp.ok)return;
-    var h=await resp.json();
-    var hdr=document.querySelector('header');
-    var status=document.getElementById('headerStatus');
-    var gradients={GREEN:'linear-gradient(135deg,#0a2a0a,#1a1a2e)',
-      AMBER:'linear-gradient(135deg,#2a2a0a,#1a1a2e)',
-      RED:'linear-gradient(135deg,#2a0a0a,#1a1a2e)'};
-    var dots={GREEN:'🟢',AMBER:'🟡',RED:'🔴'};
-    var s=h.health_status||'RED';
-    if(hdr)hdr.style.background=gradients[s]||gradients.RED;
-    if(status)status.textContent=(dots[s]||'🔴')+' '+(h.summary||s);
-  }catch(e){/* health theming is best-effort */}
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ANALYZE MODULE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function submitAnalysis() {
+  const desc = document.getElementById('idea-desc').value.trim();
+  if (!desc) { toast('Please enter your idea description', 'warn'); return; }
+
+  const btn = document.getElementById('analyze-btn');
+  const errEl = document.getElementById('analyze-error');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Scoring...';
+  errEl.style.display = 'none';
+
+  const payload = {
+    description: desc,
+    problem: document.getElementById('idea-problem').value.trim(),
+    target_user: document.getElementById('idea-user').value.trim(),
+    monetization: document.getElementById('idea-mono').value,
+    competition: document.getElementById('idea-comp').value,
+    time_to_revenue: document.getElementById('idea-ttr').value,
+    differentiation: document.getElementById('idea-diff').value.trim(),
+  };
+
+  apiFetch('/api/analyze', {method:'POST', body: JSON.stringify(payload)})
+    .then(function(data) { renderAnalysisResult(data); })
+    .catch(function(err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      toast('Analysis failed: ' + err.message, 'error');
+    })
+    .finally(function() {
+      btn.disabled = false;
+      btn.innerHTML = '&#9889; Score This Idea';
+    });
 }
-loadHealthTheme();
-loadDashboard();
-setInterval(loadDashboard,30000);
+
+function clearAnalyzeForm() {
+  ['idea-desc','idea-problem','idea-user','idea-diff'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['idea-mono','idea-comp','idea-ttr'].forEach(function(id){ document.getElementById(id).selectedIndex=0; });
+  document.getElementById('analyze-error').style.display = 'none';
+  document.getElementById('analyze-results-col').innerHTML =
+    '<div class="card" style="text-align:center;color:var(--text4);padding:3rem 1rem"><div style="font-size:2rem;margin-bottom:.75rem">&#128202;</div><div>Submit an idea to see your score</div></div>';
+}
+
+function scoreColor(s) {
+  if (s >= 7) return 'score-high';
+  if (s >= 4) return 'score-med';
+  return 'score-low';
+}
+
+function renderAnalysisResult(d) {
+  const decision = (d.decision || d.verdict || 'HOLD').toUpperCase();
+  const scores = d.scores || {};
+  const overall = scores.overall || d.overall_score || 0;
+
+  const scoreFields = [
+    ['Overall','overall', overall],
+    ['Feasibility','feasibility', scores.feasibility || d.feasibility_score || 0],
+    ['Profitability','profitability', scores.profitability || d.profitability_score || 0],
+    ['Speed to Revenue','speed', scores.speed || d.speed_score || 0],
+    ['Competition','competition', scores.competition || d.competition_score || 0],
+  ];
+
+  const lowScores = scoreFields.filter(function(s){ return parseFloat(s[2]) < 5; });
+
+  let barsHtml = '';
+  scoreFields.forEach(function(sf) {
+    const val = parseFloat(sf[2]) || 0;
+    const pct = (val / 10) * 100;
+    const cls = scoreColor(val);
+    barsHtml += '<div class="score-row">' +
+      '<div class="score-label-row"><span>' + esc(sf[0]) + '</span><span>' + val.toFixed(1) + '/10</span></div>' +
+      '<div class="score-bar"><div class="score-fill ' + cls + '" style="width:' + pct + '%"></div></div>' +
+    '</div>';
+  });
+
+  let warnHtml = '';
+  if (lowScores.length > 0) {
+    warnHtml = '<div class="alert alert-warn">&#9888; Low scores: ' +
+      lowScores.map(function(s){ return esc(s[0]) + ' (' + parseFloat(s[2]).toFixed(1) + ')'; }).join(', ') +
+    '. Consider these risks carefully.</div>';
+  }
+
+  const brief = d.business_brief || d.brief || {};
+  let briefHtml = '';
+  if (brief.title || d.title) {
+    briefHtml = '<div class="section-sep"></div><div style="font-size:.85rem">' +
+      '<div style="font-weight:700;color:#fff;margin-bottom:.4rem">' + esc(brief.title || d.title || '') + '</div>' +
+      (brief.target_user ? '<div style="color:var(--text3);margin-bottom:.2rem">&#127989; ' + esc(brief.target_user) + '</div>' : '') +
+      (brief.problem ? '<div style="color:var(--text2);margin-bottom:.2rem">Problem: ' + esc(brief.problem) + '</div>' : '') +
+      (brief.solution ? '<div style="color:var(--text2)">Solution: ' + esc(brief.solution) + '</div>' : '') +
+    '</div>';
+  }
+
+  const nextMoves = {
+    APPROVED: (d.next_move || 'Start building the MVP immediately.'),
+    HOLD: (d.next_move || 'Validate the idea with 5 real users before building.'),
+    REJECTED: (d.next_move || 'Move on. Your time is too valuable for this one.'),
+  };
+
+  let actionHtml = '';
+  if (decision === 'APPROVED') {
+    const projName = (d.title || brief.title || 'New Project').replace(/[^a-zA-Z0-9 -]/g,'').substring(0,40);
+    actionHtml = '<button class="btn btn-success btn-full" onclick="triggerBuild(' + "'" + esc(projName) + "'" + ')">&#128640; BUILD THIS</button>';
+  } else if (decision === 'HOLD') {
+    actionHtml = '<button class="btn btn-amber btn-full" onclick="toast(\'Saved to your idea pipeline\',\'success\')">&#128203; Save for Later</button>';
+  }
+
+  let detailHtml = '';
+  const details = [
+    ['Pricing suggestion', d.pricing || d.price_suggestion],
+    ['Distribution plan', d.distribution],
+    ['First 10 customers', d.first_customers || d.acquisition],
+    ['Main risk', d.main_risk || d.risk],
+    ['Next move', nextMoves[decision] || d.next_move],
+  ];
+  details.forEach(function(det) {
+    if (det[1]) {
+      detailHtml += '<div style="margin:.5rem 0;font-size:.83rem"><span style="color:var(--text3)">' + esc(det[0]) + ': </span><span style="color:var(--text)">' + esc(det[1]) + '</span></div>';
+    }
+  });
+
+  const col = document.getElementById('analyze-results-col');
+  col.innerHTML = '<div class="card">' +
+    '<div class="card-title">&#128202; Analysis Result</div>' +
+    '<div class="decision-badge decision-' + esc(decision) + '">' +
+      (decision === 'APPROVED' ? '&#9989; APPROVED' : decision === 'HOLD' ? '&#9203; HOLD' : '&#10060; REJECTED') +
+    '</div>' +
+    warnHtml +
+    barsHtml +
+    briefHtml +
+    (detailHtml ? '<div class="section-sep"></div>' + detailHtml : '') +
+    (actionHtml ? '<div style="margin-top:1rem">' + actionHtml + '</div>' : '') +
+  '</div>';
+}
+
+function triggerBuild(projName) {
+  const name = prompt('Project name (used for your repo):', projName);
+  if (!name) return;
+  apiFetch('/factory/trigger', {method:'POST', body: JSON.stringify({project_name: name})})
+    .then(function(){ toast('Build triggered for: ' + name, 'success'); showTab('factory'); })
+    .catch(function(err){ toast('Could not trigger build: ' + err.message, 'error'); });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FACTORY MODULE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function loadFactory() {
+  document.getElementById('factory-checks').innerHTML = '<div class="loading-row"><span class="spinner"></span></div>';
+  document.getElementById('factory-runs').innerHTML = '<div class="loading-row"><span class="spinner"></span></div>';
+
+  Promise.all([
+    apiFetch('/portfolio/projects').catch(function(){ return []; }),
+    apiFetch('/factory/runs').catch(function(){ return []; }),
+    apiFetch('/api/dashboard/health').catch(function(){ return {}; }),
+  ]).then(function(res) {
+    const projects = Array.isArray(res[0]) ? res[0] : (res[0].projects || []);
+    const runs = Array.isArray(res[1]) ? res[1] : (res[1].runs || []);
+    const health = res[2] || {};
+    renderFactoryChecks(health);
+    renderFactoryRuns(projects, runs);
+  }).catch(function(err) { toast('Factory load error: ' + err.message, 'error'); });
+}
+
+function renderFactoryChecks(health) {
+  const el = document.getElementById('factory-checks');
+  const ghOk = health.github_token !== false;
+  const aiOk = health.ai_configured !== false;
+  const factOk = health.factory_connected !== false;
+  const model = health.ai_model || health.model || 'Not configured';
+  const lastDeploy = health.last_deploy;
+
+  const checks = [
+    [ghOk, 'GitHub Token', ghOk ? 'Valid and connected' : 'Missing or expired. Check GITHUB_TOKEN in Vercel.'],
+    [factOk, 'Factory Repo', factOk ? 'Connected' : 'Not found. Check factory repo settings.'],
+    [aiOk, 'AI Model', aiOk ? model : 'No AI key found. Add ANTHROPIC_API_KEY / OPENAI_API_KEY / GROQ_API_KEY.'],
+    [!!lastDeploy, 'Last Deploy', lastDeploy ? relTime(lastDeploy) : 'No successful deploys yet'],
+  ];
+
+  let html = '<div class="checks-grid">';
+  checks.forEach(function(c) {
+    const icon = c[0] ? '&#9989;' : '&#10060;';
+    const dotCls = c[0] ? 'dot-green' : 'dot-red';
+    html += '<div class="check-item"><div class="health-dot ' + dotCls + '"></div><div><strong>' + icon + ' ' + esc(c[1]) + '</strong><br><span style="font-size:.75rem;color:var(--text3)">' + esc(c[2]) + '</span></div></div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderFactoryRuns(projects, runs) {
+  const el = document.getElementById('factory-runs');
+  const buildable = projects.filter(function(p){
+    return p.status === 'building' || p.status === 'in_progress' || p.status === 'launched' || p.status === 'approved';
+  });
+  const allItems = runs.length ? runs : buildable;
+
+  if (!allItems.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">&#127981;</div>No builds yet. <a href="#" onclick="showTab(\'analyze\');return false">Score an idea</a> to get started.</div>';
+    return;
+  }
+
+  let html = '';
+  allItems.forEach(function(item) {
+    const status = (item.status || item.conclusion || 'pending').toLowerCase();
+    const name = item.name || item.project_name || item.repository || 'Build';
+    const started = item.started_at || item.created_at || item.run_started_at;
+    const url = item.deployed_url || item.html_url || item.url || null;
+    const error = item.error || item.failure_reason || null;
+
+    let statusBadge = 'badge-pending';
+    if (status === 'success' || status === 'succeeded' || status === 'launched') statusBadge = 'badge-succeeded';
+    else if (status === 'failure' || status === 'failed' || status === 'error') statusBadge = 'badge-failed';
+    else if (status === 'in_progress' || status === 'running' || status === 'building') statusBadge = 'badge-running';
+    else if (status === 'approved') statusBadge = 'badge-approved';
+
+    let errorHtml = '';
+    if ((status === 'failure' || status === 'failed' || status === 'error') && error) {
+      let msg = error;
+      if (error.toLowerCase().includes('github') || error.toLowerCase().includes('token')) {
+        msg = 'Build failed: The GitHub token may be expired. Check your GITHUB_TOKEN secret in Vercel.';
+      } else if (error.toLowerCase().includes('workflow') || error.toLowerCase().includes('action')) {
+        msg = 'Build failed: Could not find the factory workflow. Make sure GitHub Actions is enabled.';
+      } else if (error.toLowerCase().includes('permission') || error.toLowerCase().includes('403')) {
+        msg = 'Build failed: Permission denied. Check your GitHub token has the right scopes.';
+      } else {
+        msg = 'Build failed: ' + error.substring(0, 200);
+      }
+      errorHtml = '<div class="alert alert-error" style="margin-top:.5rem;font-size:.8rem">&#10060; ' + esc(msg) + '</div>';
+    }
+
+    let deployLink = '';
+    if (url && (status === 'success' || status === 'succeeded' || status === 'launched')) {
+      deployLink = '<div style="margin-top:.4rem;display:flex;gap:.5rem;align-items:center">' +
+        '<a href="' + esc(url) + '" target="_blank" class="btn btn-sm btn-success">&#128640; View Live</a>' +
+        '<button class="btn btn-sm btn-ghost" onclick="prefillLaunch(\'' + jsStr(name) + '\',\'' + jsStr(url) + '\')">&#128227; Launch Content</button>' +
+      '</div>';
+    }
+
+    let progress = '';
+    if (status === 'in_progress' || status === 'running' || status === 'building') {
+      progress = '<div style="height:3px;border-radius:2px;background:#1e1e1e;overflow:hidden;margin-top:.4rem">' +
+        '<div style="height:100%;width:60%;background:var(--accent);border-radius:2px;animation:progressPulse 2s ease-in-out infinite"></div></div>';
+    }
+
+    html += '<div style="padding:.75rem 0;border-bottom:1px solid var(--border2)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between">' +
+        '<div><div style="font-weight:600;font-size:.9rem;color:#fff">' + esc(name) + '</div>' +
+          '<div style="font-size:.72rem;color:var(--text3);margin-top:.15rem">Started ' + relTime(started) + '</div></div>' +
+        '<span class="badge ' + esc(statusBadge) + '">' + esc(status.toUpperCase()) + '</span>' +
+      '</div>' +
+      progress + errorHtml + deployLink +
+    '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function prefillLaunch(name, url) {
+  document.getElementById('launch-title').value = name;
+  document.getElementById('launch-url').value = url;
+  showTab('launch');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LAUNCH KIT MODULE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function loadLaunchProjects() {
+  apiFetch('/portfolio/projects').then(function(data) {
+    const projects = Array.isArray(data) ? data : (data.projects || []);
+    const sel = document.getElementById('launch-project');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">&#8212; Select project or enter below &#8212;</option>';
+    projects.forEach(function(p) {
+      const opt = document.createElement('option');
+      opt.value = p.id || p.name;
+      opt.textContent = (p.name || p.id) + (p.status ? ' (' + p.status + ')' : '');
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  }).catch(function(){});
+
+  const saved = localStorage.getItem('payment_link');
+  if (saved) {
+    document.getElementById('payment-url').value = saved;
+    document.getElementById('saved-payment-link').innerHTML = '&#128279; Saved: <a href="' + esc(saved) + '" target="_blank">' + esc(saved) + '</a>';
+  }
+}
+
+function savePaymentLink() {
+  const url = document.getElementById('payment-url').value.trim();
+  if (!url) return;
+  localStorage.setItem('payment_link', url);
+  document.getElementById('saved-payment-link').innerHTML = '&#10003; Saved: <a href="' + esc(url) + '" target="_blank">' + esc(url) + '</a>';
+  toast('Payment link saved!', 'success');
+}
+
+function generateLaunch() {
+  const title = document.getElementById('launch-title').value.trim();
+  const url = document.getElementById('launch-url').value.trim();
+  const desc = document.getElementById('launch-desc').value.trim();
+  if (!title || !desc) { toast('Product title and description are required', 'warn'); return; }
+
+  const btn = document.getElementById('launch-btn');
+  const errEl = document.getElementById('launch-error');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Generating...';
+  errEl.style.display = 'none';
+
+  const projId = document.getElementById('launch-project').value;
+  const payload = {
+    project_id: projId || null,
+    title: title,
+    url: url,
+    description: desc,
+    target_user: document.getElementById('launch-user').value.trim(),
+    cta: document.getElementById('launch-cta').value.trim(),
+  };
+
+  apiFetch('/api/distribution/generate', {method:'POST', body: JSON.stringify(payload)})
+    .then(function(data) { renderLaunchContent(data, title, url); })
+    .catch(function(err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      toast('Generation failed: ' + err.message, 'error');
+    })
+    .finally(function() {
+      btn.disabled = false;
+      btn.innerHTML = '&#9889; Generate All Content';
+    });
+}
+
+function renderLaunchContent(data, title, url) {
+  const paymentLink = localStorage.getItem('payment_link') || '';
+  const content = data.content || data;
+
+  const platforms = [
+    {key:'twitter', label:'&#120143; X / Twitter', text: content.twitter || content.tweet || content.x || ''},
+    {key:'linkedin', label:'&#128188; LinkedIn', text: content.linkedin || ''},
+    {key:'email', label:'&#128140; Cold Outreach Email', text: content.email || content.cold_email || ''},
+    {key:'producthunt', label:'&#128049; Product Hunt Tagline', text: content.product_hunt || content.ph_tagline || content.tagline || ''},
+    {key:'reddit', label:'&#128257; Reddit Post', text: content.reddit || ''},
+  ];
+
+  let blocksHtml = '';
+  platforms.forEach(function(p) {
+    if (!p.text) return;
+    const btnId = 'copy-' + p.key;
+    blocksHtml += '<div class="content-block">' +
+      '<div class="content-platform">' + p.label +
+        '<button class="btn btn-xs btn-ghost" id="' + btnId + '" onclick="copyText(this.getAttribute(\'data-text\'),this)" data-text="' + esc(p.text) + '">Copy</button>' +
+      '</div>' +
+      '<div class="content-text">' + esc(p.text) + '</div>' +
+    '</div>';
+  });
+
+  const checklist = data.checklist || [
+    'Publish to Product Hunt',
+    'Post on X/Twitter',
+    'Post in relevant subreddits',
+    'Send cold outreach emails',
+    'Post in LinkedIn feed',
+    'Share in Slack/Discord communities',
+    'DM top 10 potential users personally',
+    'Set up payment link (' + (paymentLink ? paymentLink : 'add LemonSqueezy link above') + ')',
+    'Reply to every comment within 1 hour',
+    'Measure signups at 24h mark',
+    'Write a "lessons learned" note',
+    'Decide: iterate, pivot, or kill',
+  ];
+
+  let checkHtml = '<ul class="checklist">';
+  checklist.forEach(function(item) {
+    const label = typeof item === 'string' ? item : (item.text || item.label || item);
+    checkHtml += '<li><input type="checkbox"/><span>' + esc(String(label)) + '</span></li>';
+  });
+  checkHtml += '</ul>';
+
+  document.getElementById('launch-output').innerHTML =
+    '<div class="card"><div class="card-title">&#128227; Launch Content — ' + esc(title) + '</div>' +
+    (url ? '<div style="font-size:.78rem;color:var(--text3);margin-bottom:.8rem">&#127758; ' + esc(url) + '</div>' : '') +
+    blocksHtml + '</div>' +
+    '<div class="card"><div class="card-title">&#9989; 48-Hour Launch Checklist</div>' + checkHtml + '</div>';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// REVENUE MODULE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function loadRevenue() {
+  const entries = JSON.parse(localStorage.getItem('revenue_entries') || '[]');
+  renderRevenueTable(entries);
+  updateRevTotal(entries);
+  updatePipelineInsight();
+  loadLearnings();
+
+  // Default date to today
+  const dateInp = document.getElementById('rev-date');
+  if (!dateInp.value) dateInp.value = new Date().toISOString().substring(0,10);
+}
+
+function addRevenue() {
+  const project = document.getElementById('rev-project').value.trim();
+  const amount = parseFloat(document.getElementById('rev-amount').value);
+  const date = document.getElementById('rev-date').value;
+  const source = document.getElementById('rev-source').value.trim();
+
+  if (!project || isNaN(amount) || amount <= 0) {
+    toast('Enter project name and valid amount', 'warn');
+    return;
+  }
+  const entries = JSON.parse(localStorage.getItem('revenue_entries') || '[]');
+  entries.push({id: Date.now(), project, amount, date: date||new Date().toISOString().substring(0,10), source});
+  localStorage.setItem('revenue_entries', JSON.stringify(entries));
+
+  document.getElementById('rev-project').value = '';
+  document.getElementById('rev-amount').value = '';
+  document.getElementById('rev-source').value = '';
+
+  renderRevenueTable(entries);
+  updateRevTotal(entries);
+  updatePipelineInsight();
+  toast('Revenue logged: $' + amount.toFixed(2), 'success');
+}
+
+function renderRevenueTable(entries) {
+  const el = document.getElementById('rev-table');
+  if (!entries.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128200;</div>No revenue logged yet. Time to change that.</div>';
+    return;
+  }
+
+  const byProject = {};
+  entries.forEach(function(e) {
+    if (!byProject[e.project]) byProject[e.project] = {total:0, count:0, last:e.date};
+    byProject[e.project].total += parseFloat(e.amount)||0;
+    byProject[e.project].count += 1;
+    if (e.date > byProject[e.project].last) byProject[e.project].last = e.date;
+  });
+
+  let html = '<div class="table-wrap"><table><thead><tr><th>Project</th><th>Revenue</th><th>Payments</th><th>Last</th></tr></thead><tbody>';
+  Object.keys(byProject).sort(function(a,b){ return byProject[b].total - byProject[a].total; }).forEach(function(proj) {
+    const p = byProject[proj];
+    html += '<tr><td><strong>' + esc(proj) + '</strong></td><td style="color:var(--green-t);font-weight:700">$' +
+      p.total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td><td>' + p.count + '</td><td>' + esc(p.last) + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function updateRevTotal(entries) {
+  const total = entries.reduce(function(s,e){ return s + (parseFloat(e.amount)||0); }, 0);
+  const whole = Math.floor(total);
+  const cents = (total - whole).toFixed(2).substring(1);
+  document.getElementById('rev-total').innerHTML = '$' + whole.toLocaleString() + '<small>' + cents + '</small>';
+  const count = new Set(entries.map(function(e){ return e.project; })).size;
+  document.getElementById('rev-sub').textContent = 'across ' + count + (count === 1 ? ' project' : ' projects');
+}
+
+function updatePipelineInsight() {
+  const projects = _dashProjects;
+  const entries = JSON.parse(localStorage.getItem('revenue_entries') || '[]');
+  const total = entries.reduce(function(s,e){ return s + (parseFloat(e.amount)||0); }, 0);
+  const ideas = projects.length;
+  const building = projects.filter(function(p){ return p.status === 'building' || p.status === 'in_progress'; }).length;
+  const live = projects.filter(function(p){ return p.status === 'launched' || p.status === 'live'; }).length;
+
+  let insight = "You've analyzed " + ideas + " idea" + (ideas!==1?'s':'') + ", built " + building + ", and launched " + live + ".";
+  if (total > 0) {
+    insight += " You've made $" + total.toFixed(2) + " — real money. Keep shipping.";
+  } else if (live > 0) {
+    insight += " You have live products. Focus on distribution: find 10 paying customers before building anything new.";
+  } else if (building > 0) {
+    insight += " You're building. Ship in the next 7 days, then sell before you improve.";
+  } else if (ideas > 0) {
+    insight += " You've scored ideas but haven't built yet. Pick the best one and start today.";
+  } else {
+    insight += " Start by analyzing your first idea. The loop doesn't move until you do.";
+  }
+
+  const el = document.getElementById('pipeline-insight');
+  if (el) el.textContent = insight;
+}
+
+function saveLearning() {
+  const project = document.getElementById('learn-project').value.trim();
+  const worked = document.getElementById('learn-worked').value.trim();
+  const didnt = document.getElementById('learn-didnt').value.trim();
+  if (!project) { toast('Enter a project name', 'warn'); return; }
+
+  const logs = JSON.parse(localStorage.getItem('learning_logs') || '[]');
+  logs.unshift({id:Date.now(), project, worked, didnt, date: new Date().toLocaleDateString()});
+  localStorage.setItem('learning_logs', JSON.stringify(logs.slice(0, 50)));
+
+  document.getElementById('learn-project').value = '';
+  document.getElementById('learn-worked').value = '';
+  document.getElementById('learn-didnt').value = '';
+  toast('Learning saved!', 'success');
+  loadLearnings();
+}
+
+function loadLearnings() {
+  const logs = JSON.parse(localStorage.getItem('learning_logs') || '[]');
+  const el = document.getElementById('learnings-list');
+  if (!logs.length) { el.innerHTML = ''; return; }
+  let html = '';
+  logs.slice(0,5).forEach(function(l) {
+    html += '<div style="border-top:1px solid var(--border);padding:.6rem 0;font-size:.8rem">' +
+      '<div style="font-weight:700;color:var(--text)">' + esc(l.project) + ' <span style="color:var(--text4);font-weight:400">' + esc(l.date) + '</span></div>' +
+      (l.worked ? '<div style="color:var(--green-t);margin-top:.2rem">&#10003; ' + esc(l.worked) + '</div>' : '') +
+      (l.didnt ? '<div style="color:var(--red-t);margin-top:.2rem">&#10007; ' + esc(l.didnt) + '</div>' : '') +
+    '</div>';
+  });
+  el.innerHTML = html;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// INIT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(function init() {
+  initChat();
+  apiFetch('/api/dashboard/health').then(function(h) {
+    if (h.ai_configured === false || h.ai_model === null) {
+      document.getElementById('ai-banner').style.display = 'block';
+    }
+  }).catch(function(){});
+  setInterval(function(){ loadDashboard(); }, 30000);
+})();
 </script>
 </body>
 </html>
