@@ -1,14 +1,21 @@
 """
 ai_provider.py – Unified AI provider for AI-DAN.
 
-Coordinates OpenAI (reasoning/output) and Perplexity (research) to provide
-a single interface for AI-powered operations across the system.
+Coordinates multiple AI models (Claude, OpenAI, Groq, Deepseek, Grok)
+and Perplexity for research.  Provides a single interface for all
+AI-powered operations across the system.
+
+Model priority for reasoning tasks:
+  Claude (best quality) > OpenAI > Groq (fast/free) > Deepseek (cheap)
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
+
+import httpx
 
 from app.integrations.openai_client import OpenAIClient
 from app.integrations.perplexity_client import PerplexityClient
@@ -19,7 +26,7 @@ logger = logging.getLogger(__name__)
 APPROVE_THRESHOLD = 8
 HOLD_THRESHOLD = 6
 
-# System prompt for AI-DAN's reasoning engine
+# System prompt for idea analysis / scoring
 _AIDAN_SYSTEM = (
     "You are AI-DAN, an AI Managing Director that evaluates business ideas.\n"
     "You are direct, data-driven, and commercially focused.\n"
@@ -29,9 +36,38 @@ _AIDAN_SYSTEM = (
     "Think like a sharp venture investor with execution capability."
 )
 
+# System prompt for the conversational AI-DAN advisor
+_AIDAN_CHAT_SYSTEM = """\
+You are AI-DAN, a no-bullshit venture-loop advisor to a solo founder.
+
+PERSONALITY:
+- Brutally honest. Never flatter or say what people want to hear.
+- Push back hard on weak ideas. Get genuinely excited about good ones.
+- Think like a sharp investor who can also build fast.
+- One focus: make money FAST with MINIMUM complexity.
+- The founder is currently between jobs. Urgency is REAL. Treat it that way.
+- Short punchy answers unless depth is needed.
+- Specific beats generic always: "post to r/SaaS" not "consider social media."
+- Celebrate real wins. Call out bad ideas clearly and offer a better alternative.
+- Occasional humor is fine. Stay real, stay direct.
+
+EVALUATION FRAMEWORK (apply mentally to every idea):
+\u2192 Who EXACTLY pays? \u2192 How much per month? \u2192 How fast to first sale?
+\u2192 How hard to build in days (not months)? \u2192 What kills this?
+
+CAPABILITIES:
+- Score and dissect any business idea ruthlessly
+- Suggest fastest path to first dollar
+- Generate launch content (X posts, outreach, landing page copy)
+- Review project status and give ONE clear next action
+- Prioritize and kill ideas in the pipeline
+
+GOLDEN RULE: Every response must end with a specific next step or a direct question.
+Never end with vague advice. End with \"So: [specific action]\" or ask something pointed."""
+
 
 class AIProvider:
-    """Unified AI provider coordinating OpenAI and Perplexity."""
+    """Unified AI provider coordinating multiple models."""
 
     def __init__(
         self,
@@ -56,25 +92,180 @@ class AIProvider:
         self.openai.close()
         self.perplexity.close()
 
-    # -- High-level operations -----------------------------------------------
+    # -- Conversational AI-DAN ---------------------------------------------------
+
+    def aidan_chat(
+        self,
+        message: str,
+        history: list[dict[str, str]] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> tuple[str, str]:
+        """Chat with AI-DAN using the best available model.
+
+        Returns (reply_text, model_name_used).
+        Tries models in order: Claude > OpenAI > Groq > Deepseek > Grok > Stub.
+        """
+        from app.core.config import get_settings
+        settings = get_settings()
+
+        # Build message list
+        msgs: list[dict[str, str]] = []
+        if context:
+            ctx_snippet = json.dumps(context, indent=2)[:800]
+            msgs.append({"role": "user", "content": f"Context: {ctx_snippet}"})
+            msgs.append({"role": "assistant", "content": "Got it, I have your context."})
+
+        for h in (history or []):
+            if h.get("role") and h.get("content"):
+                msgs.append({"role": h["role"], "content": h["content"]})
+
+        msgs.append({"role": "user", "content": message})
+
+        # 1. Claude (Anthropic)
+        if settings.anthropic_api_key:
+            reply = self._call_anthropic(
+                msgs,
+                settings.anthropic_api_key,
+                settings.anthropic_model,
+            )
+            if reply:
+                return reply, f"claude ({settings.anthropic_model})"
+
+        # 2. OpenAI
+        if self.openai.is_configured:
+            try:
+                reply_raw = self.openai.chat(
+                    prompt=message,
+                    system=_AIDAN_CHAT_SYSTEM,
+                    temperature=0.8,
+                    max_tokens=1000,
+                )
+                if reply_raw and not str(reply_raw).startswith("[stub"):
+                    return str(reply_raw), f"openai ({self.openai.model})"
+            except Exception as exc:
+                logger.warning("OpenAI chat failed: %s", exc)
+
+        # 3. Groq (fast, generous free tier)
+        if settings.groq_api_key:
+            reply = self._call_openai_compatible(
+                msgs,
+                settings.groq_api_key,
+                "https://api.groq.com/openai/v1/chat/completions",
+                settings.groq_model,
+            )
+            if reply:
+                return reply, f"groq ({settings.groq_model})"
+
+        # 4. Deepseek (cheap, great for coding / analysis)
+        if settings.deepseek_api_key:
+            reply = self._call_openai_compatible(
+                msgs,
+                settings.deepseek_api_key,
+                "https://api.deepseek.com/v1/chat/completions",
+                settings.deepseek_model,
+            )
+            if reply:
+                return reply, f"deepseek ({settings.deepseek_model})"
+
+        # 5. xAI Grok (real-time web access)
+        if settings.grok_api_key:
+            reply = self._call_openai_compatible(
+                msgs,
+                settings.grok_api_key,
+                "https://api.x.ai/v1/chat/completions",
+                settings.grok_model,
+            )
+            if reply:
+                return reply, f"grok ({settings.grok_model})"
+
+        # Fallback stub
+        return (
+            "\u26a0\ufe0f No AI model is configured yet.\n\n"
+            "To activate me, add ONE of these to your Vercel environment variables:\n"
+            "\u2022 ANTHROPIC_API_KEY (recommended \u2014 Claude)\n"
+            "\u2022 OPENAI_API_KEY (GPT-4o)\n"
+            "\u2022 GROQ_API_KEY (free tier, fast)\n"
+            "\u2022 DEEPSEEK_API_KEY (cheapest option)\n\n"
+            "Once added, redeploy and I'll be fully operational.",
+            "stub",
+        )
+
+    def _call_anthropic(
+        self,
+        messages: list[dict[str, str]],
+        api_key: str,
+        model: str,
+    ) -> str | None:
+        """Call Anthropic Claude API and return the reply text."""
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "max_tokens": 1024,
+                        "system": _AIDAN_CHAT_SYSTEM,
+                        "messages": messages,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                return data["content"][0]["text"]
+        except Exception as exc:
+            logger.warning("Anthropic call failed: %s", exc)
+            return None
+
+    def _call_openai_compatible(
+        self,
+        messages: list[dict[str, str]],
+        api_key: str,
+        endpoint: str,
+        model: str,
+    ) -> str | None:
+        """Call any OpenAI-compatible API (Groq, Deepseek, xAI)."""
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    endpoint,
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": _AIDAN_CHAT_SYSTEM},
+                            *messages,
+                        ],
+                        "max_tokens": 1024,
+                        "temperature": 0.8,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+        except Exception as exc:
+            logger.warning("OpenAI-compatible call failed (%s): %s", endpoint, exc)
+            return None
+
+    # -- Idea analysis (existing public API) -----------------------------------
 
     def analyze_idea(
         self,
         user_input: str,
         research_context: str = "",
     ) -> dict[str, Any]:
-        """Run AI-powered idea analysis and return structured output.
-
-        Uses Perplexity for research context (if available), then OpenAI
-        for reasoning and structured output generation.
-        """
-        # Step 1: Research via Perplexity (if configured)
+        """Run AI-powered idea analysis and return structured output."""
         if not research_context and self.research_enabled:
             research_context = self.perplexity.research(
                 f"Market research and competitive analysis for this business idea: {user_input}"
             )
 
-        # Step 2: Structured analysis via OpenAI
         prompt = self._build_analysis_prompt(user_input, research_context)
         result = self.openai.chat_json(
             prompt=prompt,
@@ -95,12 +286,7 @@ class AIProvider:
         problem: str,
         monetization_path: str,
     ) -> dict[str, Any]:
-        """Enrich an existing idea with AI-generated insights.
-
-        Adds market context, refined pricing, distribution strategy,
-        and competitive positioning.
-        """
-        # Research
+        """Enrich an existing idea with AI-generated insights."""
         research = ""
         if self.research_enabled:
             research_data = self.perplexity.market_research(title, target_user)
@@ -119,13 +305,13 @@ class AIProvider:
 
         prompt += (
             "Return a JSON object with these fields:\n"
-            "- market_insight: string (key market finding)\n"
-            "- refined_pricing: string (specific pricing recommendation)\n"
-            "- distribution_channel: string (best channel to reach target users)\n"
-            "- first_10_users: string (specific plan to get first 10 paying users)\n"
-            "- competitive_edge: string (what makes this different)\n"
-            "- revenue_timeline: string (realistic timeline to first revenue)\n"
-            "- risk_assessment: string (top risk and mitigation)\n"
+            "- market_insight: string\n"
+            "- refined_pricing: string\n"
+            "- distribution_channel: string\n"
+            "- first_10_users: string\n"
+            "- competitive_edge: string\n"
+            "- revenue_timeline: string\n"
+            "- risk_assessment: string\n"
         )
 
         result = self.openai.chat_json(prompt=prompt, system=_AIDAN_SYSTEM)
@@ -162,12 +348,12 @@ class AIProvider:
         prompt += (
             "Return a JSON object with:\n"
             "- verdict: 'APPROVE' | 'HOLD' | 'REJECT'\n"
-            "- why_now: string (why this is or isn't the right time)\n"
-            "- main_risk: string (biggest risk)\n"
-            "- recommended_next_move: string (specific action)\n"
-            "- monetization_method: string (best revenue approach)\n"
-            "- pricing_suggestion: string (specific price point)\n"
-            "- distribution_plan: string (how to reach users)\n"
+            "- why_now: string\n"
+            "- main_risk: string\n"
+            "- recommended_next_move: string\n"
+            "- monetization_method: string\n"
+            "- pricing_suggestion: string\n"
+            "- distribution_plan: string\n"
         )
 
         result = self.openai.chat_json(prompt=prompt, system=_AIDAN_SYSTEM)
@@ -181,7 +367,7 @@ class AIProvider:
                 verdict = "REJECT"
             return {
                 "verdict": verdict,
-                "why_now": f"Score {score}/10 — {'strong enough to proceed' if score >= APPROVE_THRESHOLD else 'needs improvement'}.",
+                "why_now": f"Score {score}/10 \u2014 {'strong enough to proceed' if score >= APPROVE_THRESHOLD else 'needs improvement'}.",
                 "main_risk": "Market validation still required.",
                 "recommended_next_move": "Validate with 5 potential customers before building.",
                 "monetization_method": "SaaS subscription",
@@ -191,11 +377,10 @@ class AIProvider:
 
         return result
 
-    # -- private helpers -----------------------------------------------------
+    # -- Private helpers -------------------------------------------------------
 
     @staticmethod
     def _build_analysis_prompt(user_input: str, research: str) -> str:
-        """Build the full analysis prompt."""
         prompt = (
             f"Analyze this business idea and provide a complete assessment:\n\n"
             f"User Input: {user_input}\n\n"
@@ -233,7 +418,6 @@ class AIProvider:
 
     @staticmethod
     def _stub_analysis(user_input: str) -> dict[str, Any]:
-        """Return a deterministic stub analysis."""
         return {
             "title": f"Business idea from: {user_input[:50]}",
             "problem": "Problem identified from user input",
