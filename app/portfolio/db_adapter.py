@@ -23,13 +23,14 @@ logger = logging.getLogger(__name__)
 def _try_import_libsql() -> types.ModuleType | None:
     """Attempt to import the ``libsql_experimental`` package.
 
-    Returns the module or ``None`` if it is not installed.
+    Returns the module or ``None`` if it is not installed or cannot be
+    loaded (e.g. binary incompatibility on the current platform).
     """
     try:
         import libsql_experimental  # type: ignore[import-untyped]
 
         return libsql_experimental
-    except ImportError:
+    except Exception:  # ImportError or OSError on binary incompatibility
         return None
 
 
@@ -84,13 +85,19 @@ class TursoPortfolioDB:
         API-compatible with ``sqlite3.Connection``.
         """
         if self._use_turso and self._libsql is not None:
-            connection = self._libsql.connect(
-                self._turso_url,
-                auth_token=self._turso_token,
-            )
-            connection.row_factory = sqlite3.Row
-            connection.execute("PRAGMA foreign_keys = ON")
-            return connection
+            try:
+                connection = self._libsql.connect(
+                    self._turso_url,
+                    auth_token=self._turso_token,
+                )
+                connection.row_factory = sqlite3.Row
+                connection.execute("PRAGMA foreign_keys = ON")
+                return connection
+            except Exception:
+                # Turso connection failed — fall back to local SQLite.
+                logger.warning("TursoPortfolioDB: Turso connection failed, falling back to SQLite")
+                self._use_turso = False
+                self._ensure_parent_dir()
 
         connection = sqlite3.connect(self.db_path, check_same_thread=False)
         connection.row_factory = sqlite3.Row
@@ -99,7 +106,11 @@ class TursoPortfolioDB:
 
     def init_schema(self) -> None:
         """Initialise database schema if not already present."""
-        schema = Path(self.schema_path).read_text(encoding="utf-8")
+        try:
+            schema = Path(self.schema_path).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            logger.warning("TursoPortfolioDB: schema.sql not found at %s", self.schema_path)
+            return
         with self.connect() as conn:
             conn.executescript(schema)
             self._apply_migrations(conn)

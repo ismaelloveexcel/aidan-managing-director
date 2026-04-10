@@ -52,13 +52,29 @@ class Settings(BaseSettings):
     perplexity_api_key: str = ""
     perplexity_model: str = "sonar"
 
+    # --- Anthropic (Claude) ----------------------------------------------------
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-3-5-sonnet-20241022"
+
+    # --- Groq (fast inference) -------------------------------------------------
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+
+    # --- Deepseek (code + cost) -----------------------------------------------
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-chat"
+
+    # --- xAI Grok (real-time trends) ------------------------------------------
+    grok_api_key: str = ""
+    grok_model: str = "grok-3-mini"
+
     # --- GitHub Integration ----------------------------------------------------
     github_token: str = ""
     github_api_base_url: str = "https://api.github.com"
-    github_factory_owner: str = "ai-dan"
+    github_factory_owner: str = "ismaelloveexcel"
     github_factory_template_repo: str = "saas-template"
     # External factory workflow dispatch target.
-    factory_owner: str = "ai-dan"
+    factory_owner: str = "ismaelloveexcel"
     factory_repo: str = "ai-dan-factory"
     factory_workflow_id: str = "factory-build.yml"
 
@@ -87,6 +103,14 @@ class Settings(BaseSettings):
 
     # --- Memory / Learning -----------------------------------------------------
     memory_max_events: int = 2000
+
+    # --- Notifications (Telegram) ---------------------------------------------
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
+    # --- Payments (LemonSqueezy) ----------------------------------------------
+    lemonsqueezy_api_key: str = ""
+    lemonsqueezy_store_id: str = ""
 
 
 @_lru_cache(maxsize=1)
