@@ -1,4 +1,4 @@
-"""dependencies.py \u2013 Shared application-level dependency providers.
+"""dependencies.py – Shared application-level dependency providers.
 
 Centralises the creation of long-lived service clients so that every
 route module shares the same instance.
@@ -14,6 +14,7 @@ from app.factory.persistent_store import PersistentFactoryRunStore
 from app.integrations.ai_provider import AIProvider
 from app.integrations.openai_client import OpenAIClient
 from app.integrations.perplexity_client import PerplexityClient
+from app.integrations.telegram_client import TelegramClient
 from app.memory.auto_learner import AutoLearner
 from app.memory.store import MemoryStore
 from app.observability.control import ControlPlaneService
@@ -63,6 +64,16 @@ def get_vercel_client() -> VercelClient:
     return VercelClient(
         token=settings.vercel_token,
         team_id=settings.vercel_team_id or None,
+    )
+
+
+@_lru_cache(maxsize=1)
+def get_telegram_client() -> TelegramClient:
+    """Return a cached Telegram client for founder notifications."""
+    settings = get_settings()
+    return TelegramClient(
+        bot_token=settings.telegram_bot_token,
+        chat_id=settings.telegram_chat_id,
     )
 
 
