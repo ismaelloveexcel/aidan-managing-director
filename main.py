@@ -602,7 +602,92 @@ select option{background:var(--bg3)}
         </div>
       </div>
     </div>
+  
+
+  <!-- SOCIAL CARD GENERATOR -->
+  <div class="card" style="margin-top:1.2rem">
+    <div class="card-title">&#127912; Animated Social Card Generator</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
+      <div>
+        <label for="card-size">Card Size</label>
+        <select id="card-size" onchange="updateCardPreview()">
+          <option value="square">Instagram Square (1080x1080)</option>
+          <option value="landscape">Twitter/LinkedIn (1200x630)</option>
+          <option value="story">Story / TikTok (1080x1920)</option>
+        </select>
+        <label for="card-style">Background Style</label>
+        <select id="card-style" onchange="updateCardPreview()">
+          <option value="purple">Gradient Purple</option>
+          <option value="dark">Gradient Dark</option>
+          <option value="sunset">Gradient Sunset</option>
+          <option value="ocean">Gradient Ocean</option>
+          <option value="black">Solid Black</option>
+        </select>
+        <label for="card-name">Product Name</label>
+        <input type="text" id="card-name" placeholder="e.g. GameForge" oninput="updateCardPreview()"/>
+        <label for="card-tagline">Tagline (max 60 chars)</label>
+        <input type="text" id="card-tagline" maxlength="60" placeholder="e.g. Send games, not just gifts" oninput="updateCardPreview()"/>
+        <label for="card-url">URL (short)</label>
+        <input type="text" id="card-url" placeholder="e.g. gameforge.app" oninput="updateCardPreview()"/>
+        <label for="card-accent">Accent Colour</label>
+        <input type="color" id="card-accent" value="#5b6ef7" oninput="updateCardPreview()" style="width:60px;height:32px;padding:2px;cursor:pointer"/>
+        <div style="margin-top:.8rem;display:flex;gap:.5rem">
+          <button class="btn btn-secondary" style="flex:1" onclick="updateCardPreview()">&#128065; Preview</button>
+          <button class="btn btn-success" style="flex:1" onclick="downloadSocialCard()">&#11123; Download PNG</button>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <canvas id="social-card-canvas" width="300" height="300"
+          style="border-radius:12px;width:100%;max-width:300px;border:1px solid var(--border2);cursor:pointer"
+          onclick="downloadSocialCard()" title="Click to download full-size PNG"></canvas>
+        <div style="font-size:.72rem;color:var(--text4);margin-top:.4rem">Click to download full-size PNG</div>
+        <div style="margin-top:.5rem;font-size:.72rem;color:var(--text3)">&#128039; AI-DAN Dodo mascot included</div>
+      </div>
+    </div>
   </div>
+
+  <!-- PROMO VIDEO GENERATOR -->
+  <div class="card" style="margin-top:1.2rem">
+    <div class="card-title">&#127916; AI Promo Video Generator <span style="font-size:.7rem;color:var(--text3);font-weight:400;margin-left:.5rem">Free &bull; GitHub Actions &bull; ~3 min</span></div>
+    <div class="alert alert-info" style="font-size:.78rem;margin-bottom:.8rem">
+      &#128161; AI writes a creative video script (Grok/OpenAI), then renders a free MP4 via GitHub Actions.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+      <div>
+        <label for="vid-product">Product Name</label>
+        <input type="text" id="vid-product" placeholder="e.g. GameForge"/>
+        <label for="vid-tagline">Tagline</label>
+        <input type="text" id="vid-tagline" placeholder="e.g. Send games, not just gifts"/>
+        <label for="vid-url">Product URL</label>
+        <input type="url" id="vid-url" placeholder="https://..."/>
+      </div>
+      <div>
+        <label for="vid-region">Target Region</label>
+        <select id="vid-region">
+          <option value="global">&#127758; Global</option>
+          <option value="mena">MENA</option>
+          <option value="africa">Africa</option>
+          <option value="south_asia">South Asia</option>
+          <option value="southeast_asia">Southeast Asia</option>
+          <option value="latam">Latin America</option>
+          <option value="europe">Europe</option>
+          <option value="north_america">North America</option>
+        </select>
+        <div style="margin-top:.6rem">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:normal;font-size:.85rem">
+            <input type="checkbox" id="vid-ai-concept" checked style="width:auto;margin:0"/>
+            &#10024; Use AI to write video script
+          </label>
+        </div>
+        <div style="margin-top:.8rem">
+          <button class="btn btn-primary btn-full" id="vid-btn" onclick="triggerVideoGeneration()">
+            &#127916; Generate Free Promo Video
+          </button>
+        </div>
+        <div id="vid-result" style="margin-top:.6rem;font-size:.78rem"></div>
+      </div>
+    </div>
+  </div></div>
 </div>
 
 <!-- TAB 6: REVENUE LOOP -->
