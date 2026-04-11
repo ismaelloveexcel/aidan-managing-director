@@ -16,36 +16,36 @@
 <!-- ═══════ SIDEBAR ═══════ -->
 <aside class="sidebar">
   <div class="sidebar-brand">
-    <div class="sidebar-brand-logo">&#128039; AI-DAN</div>
-    <div class="sidebar-brand-sub">Founder Dashboard</div>
+    <div class="sidebar-brand-logo">AI-DAN</div>
+    <div class="sidebar-brand-sub">Managing Director</div>
   </div>
 
   <nav class="sidebar-nav">
     <div class="nav-section-label">Core</div>
     <div class="nav-item active" data-view="home">
-      <span class="nav-item-icon">&#127968;</span>
+      <span class="nav-item-icon">&mdash;</span>
       <span>Command Center</span>
     </div>
     <div class="nav-item" data-view="analyze">
-      <span class="nav-item-icon">&#9889;</span>
+      <span class="nav-item-icon">&bull;</span>
       <span>Analyze</span>
     </div>
     <div class="nav-item" data-view="builds">
-      <span class="nav-item-icon">&#127981;</span>
+      <span class="nav-item-icon">&bull;</span>
       <span>Build &amp; Deploy</span>
     </div>
 
     <div class="nav-section-label">Manage</div>
     <div class="nav-item" data-view="projects">
-      <span class="nav-item-icon">&#128218;</span>
+      <span class="nav-item-icon">&bull;</span>
       <span>Projects</span>
     </div>
     <div class="nav-item" data-view="issues">
-      <span class="nav-item-icon">&#128680;</span>
+      <span class="nav-item-icon">&bull;</span>
       <span>Issues</span>
     </div>
     <div class="nav-item" data-view="launch">
-      <span class="nav-item-icon">&#128640;</span>
+      <span class="nav-item-icon">&bull;</span>
       <span>Launch</span>
     </div>
   </nav>
@@ -66,29 +66,29 @@
 <div class="view-panel active" id="view-home">
   <div class="command-hero">
     <div class="command-hero-title">What do you want to build?</div>
-    <div class="command-hero-sub">Describe an idea, a tool, or an app — AI-DAN will analyze and score it for you.</div>
+    <div class="command-hero-sub">Describe an idea, tool, or app &mdash; AI-DAN will analyze and score it.</div>
 
     <div class="mode-toggle">
-      <button class="mode-btn active" data-mode="venture">&#128176; Venture</button>
-      <button class="mode-btn" data-mode="personal">&#128296; Personal</button>
+      <button class="mode-btn active" data-mode="venture">Venture</button>
+      <button class="mode-btn" data-mode="personal">Personal</button>
     </div>
 
     <div class="command-input-wrap">
       <input type="text" class="command-input" id="command-input"
-        placeholder="e.g. A tool that converts PDF invoices to spreadsheets automatically..."
+        placeholder="A tool that converts PDF invoices to spreadsheets automatically..."
         autocomplete="off"/>
-      <button class="command-submit" id="command-submit">&#9889; Analyze</button>
+      <button class="command-submit" id="command-submit">Analyze</button>
     </div>
 
     <div class="quick-actions">
       <div class="quick-action" onclick="document.getElementById('command-input').value='AI tool that finds the best freelancers for any project';document.getElementById('command-input').focus()">
-        <span class="quick-action-icon">&#128161;</span> Freelancer finder
+        <span class="quick-action-icon">&rarr;</span> Freelancer finder
       </div>
       <div class="quick-action" onclick="document.getElementById('command-input').value='Personal habit tracker with AI coaching';document.getElementById('command-input').focus()">
-        <span class="quick-action-icon">&#128296;</span> Habit tracker
+        <span class="quick-action-icon">&rarr;</span> Habit tracker
       </div>
       <div class="quick-action" onclick="document.getElementById('command-input').value='SaaS dashboard for tracking SaaS metrics';document.getElementById('command-input').focus()">
-        <span class="quick-action-icon">&#128200;</span> SaaS metrics
+        <span class="quick-action-icon">&rarr;</span> SaaS metrics
       </div>
     </div>
   </div>
@@ -103,9 +103,9 @@
       <!-- Recent Projects -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">&#128218; Recent Projects</div>
+          <div class="card-title">Recent Projects</div>
           <div class="card-actions">
-            <button class="btn btn-sm btn-ghost" onclick="AIDAN.navigate('projects')">View all &#8594;</button>
+            <button class="btn btn-sm btn-ghost" onclick="AIDAN.navigate('projects')">View all &rarr;</button>
           </div>
         </div>
         <div class="card-body" id="home-recent-projects">
@@ -116,9 +116,9 @@
       <!-- Recent Builds -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">&#127981; Recent Builds</div>
+          <div class="card-title">Recent Builds</div>
           <div class="card-actions">
-            <button class="btn btn-sm btn-ghost" onclick="AIDAN.navigate('builds')">View all &#8594;</button>
+            <button class="btn btn-sm btn-ghost" onclick="AIDAN.navigate('builds')">View all &rarr;</button>
           </div>
         </div>
         <div class="card-body" id="home-recent-builds">
@@ -138,7 +138,7 @@
 <div class="view-panel" id="view-analyze">
   <div class="page-header">
     <div>
-      <div class="page-title">&#9889; Analyze Idea</div>
+      <div class="page-title">Analyze Idea</div>
       <div class="page-subtitle">Score your idea across demand, monetization, complexity, and speed to revenue</div>
     </div>
   </div>
@@ -206,11 +206,11 @@
           </div>
 
           <button class="btn btn-ghost btn-sm" id="analyze-advanced-toggle" style="margin-bottom:1rem">
-            &#9654; Show advanced fields
+            Show advanced fields
           </button>
 
           <button class="btn btn-primary btn-full" id="analyze-submit">
-            &#9889; Analyze Idea
+            Analyze Idea
           </button>
         </div>
       </div>
@@ -218,7 +218,7 @@
       <!-- Results -->
       <div id="analyze-results">
         <div class="empty-state">
-          <div class="empty-state-icon">&#128202;</div>
+          <div class="empty-state-icon">&mdash;</div>
           <div class="empty-state-title">Ready to analyze</div>
           <div class="empty-state-desc">Fill in your idea and click Analyze to see the score</div>
         </div>
@@ -233,7 +233,7 @@
 <div class="view-panel" id="view-builds">
   <div class="page-header">
     <div>
-      <div class="page-title">&#127981; Build &amp; Deploy</div>
+      <div class="page-title">Build &amp; Deploy</div>
       <div class="page-subtitle">Track builds, deployments, and system health</div>
     </div>
   </div>
@@ -241,7 +241,7 @@
     <!-- System Checks -->
     <div class="card" style="margin-bottom:1rem">
       <div class="card-header">
-        <div class="card-title">&#128268; System Checks</div>
+        <div class="card-title">System Checks</div>
       </div>
       <div class="card-body" id="system-checks">
         <div class="loading-state"><span class="spinner"></span></div>
@@ -251,9 +251,9 @@
     <!-- Build Runs -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">&#9881; Build Runs</div>
+        <div class="card-title">Build Runs</div>
         <div class="card-actions">
-          <button class="btn btn-sm btn-secondary" onclick="AIDAN.navigate('builds')">&#8635; Refresh</button>
+          <button class="btn btn-sm btn-secondary" onclick="AIDAN.navigate('builds')">Refresh</button>
         </div>
       </div>
       <div class="card-body-flush" id="builds-list">
@@ -269,14 +269,14 @@
 <div class="view-panel" id="view-projects">
   <div class="page-header">
     <div>
-      <div class="page-title">&#128218; Projects</div>
-      <div class="page-subtitle">Manage your portfolio — ventures and personal tools</div>
+      <div class="page-title">Projects</div>
+      <div class="page-subtitle">Manage your portfolio &mdash; ventures and personal tools</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:0.5rem;align-items:center">
-      <select class="form-select" id="projects-filter-type" style="width:auto;margin-bottom:0;font-size:0.8rem;padding:0.4rem 0.7rem">
+      <select class="form-select" id="projects-filter-type" style="width:auto;margin-bottom:0;font-size:0.75rem;padding:0.38rem 0.65rem">
         <option value="all">All Types</option>
-        <option value="venture">&#128176; Venture</option>
-        <option value="personal">&#128296; Personal</option>
+        <option value="venture">Venture</option>
+        <option value="personal">Personal</option>
       </select>
       <button class="btn btn-primary btn-sm" onclick="AIDAN.navigate('analyze')">+ New Idea</button>
     </div>
@@ -292,7 +292,7 @@
 <div class="view-panel" id="view-issues">
   <div class="page-header">
     <div>
-      <div class="page-title">&#128680; Issues &amp; Health</div>
+      <div class="page-title">Issues &amp; Health</div>
       <div class="page-subtitle">Flagged gaps, warnings, and recommended actions</div>
     </div>
   </div>
@@ -311,7 +311,7 @@
 <div class="view-panel" id="view-launch">
   <div class="page-header">
     <div>
-      <div class="page-title">&#128640; Launch &amp; Outputs</div>
+      <div class="page-title">Launch &amp; Outputs</div>
       <div class="page-subtitle" id="launch-subtitle">Launch assets and deployment status for your projects</div>
     </div>
   </div>

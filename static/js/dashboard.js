@@ -161,16 +161,18 @@
         return state.mode === 'all' || p.project_type === state.mode;
       });
       if (!filtered.length) {
-        recentEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">\uD83D\uDCA1</div>' +
+        recentEl.innerHTML = '<div class="empty-state">' +
+          '<div class="empty-state-icon">&mdash;</div>' +
           '<div class="empty-state-title">No projects yet</div>' +
           '<div class="empty-state-desc">Use the input above to analyze your first idea</div></div>';
       } else {
         var html = '';
         filtered.slice(0, 5).forEach(function (p) {
-          html += '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0;border-bottom:1px solid var(--border)">' +
-            '<span style="font-size:1.1rem">' + (p.status === 'launched' ? '\u2705' : p.status === 'building' ? '\uD83C\uDFED' : '\uD83D\uDCA1') + '</span>' +
-            '<div style="flex:1"><div style="font-size:0.85rem;font-weight:600">' + esc(p.name) + '</div>' +
-            '<div style="font-size:0.72rem;color:var(--text-muted)">' + esc(p.status) + '</div></div>' +
+          var dotColor = p.status === 'launched' ? 'var(--success)' : p.status === 'building' ? 'var(--accent)' : 'var(--text-faint)';
+          html += '<div style="display:flex;align-items:center;gap:0.75rem;padding:0.55rem 0;border-bottom:1px solid var(--border)">' +
+            '<span style="width:6px;height:6px;border-radius:50%;background:' + dotColor + ';flex-shrink:0"></span>' +
+            '<div style="flex:1"><div style="font-size:0.8rem;font-weight:600;color:var(--text-secondary)">' + esc(p.name) + '</div>' +
+            '<div style="font-size:0.65rem;color:var(--text-faint)">' + esc(p.status) + '</div></div>' +
             '<span class="badge ' + (p.project_type === 'personal' ? 'badge-personal' : 'badge-venture') + '">' + esc(p.project_type) + '</span>' +
           '</div>';
         });
@@ -182,17 +184,17 @@
     var buildsEl = $('home-recent-builds');
     if (buildsEl) {
       if (!state.builds.length) {
-        buildsEl.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:0.82rem">No builds yet</div>';
+        buildsEl.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text-faint);font-size:0.75rem">No builds yet</div>';
       } else {
         var bhtml = '';
         state.builds.slice(0, 5).forEach(function (b) {
           bhtml += '<div class="build-progress">' +
             '<span class="badge ' + statusBadgeClass(b.status) + '">' + esc(b.status) + '</span>' +
             '<div class="build-progress-info">' +
-            '<div class="build-progress-name">' + esc(b.project_id || '—') + '</div>' +
+            '<div class="build-progress-name">' + esc(b.project_id || '\u2014') + '</div>' +
             '<div class="build-progress-time">' + esc(b.created_at || '') + '</div>' +
             '</div>' +
-            (b.deploy_url ? '<a href="' + esc(b.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">\u2197 Live</a>' : '') +
+            (b.deploy_url ? '<a href="' + esc(b.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">Live \u2197</a>' : '') +
           '</div>';
         });
         buildsEl.innerHTML = bhtml;
@@ -204,13 +206,13 @@
     if (nextEl) {
       var action = '';
       if (!state.projects.length) {
-        action = '<div class="alert alert-info">\uD83D\uDCA1 <strong>Get started:</strong> Describe what you want to build above and click Analyze.</div>';
+        action = '<div class="alert alert-info"><strong>Get started:</strong> Describe what you want to build above and click Analyze.</div>';
       } else if (state.issues.length) {
         var topIssue = state.issues[0];
         action = '<div class="alert alert-' + (topIssue.severity === 'critical' ? 'danger' : topIssue.severity === 'warning' ? 'warning' : 'info') + '">' +
           '<strong>' + esc(topIssue.title) + ':</strong> ' + esc(topIssue.recommended_action) + '</div>';
       } else {
-        action = '<div class="alert alert-success">\u2705 Everything looks good. Keep building!</div>';
+        action = '<div class="alert alert-success">Everything looks good. Keep building.</div>';
       }
       nextEl.innerHTML = action;
     }
@@ -245,7 +247,7 @@
         toast('Analysis failed: ' + err.message, 'error');
       })
       .finally(function () {
-        if (btn) { btn.disabled = false; btn.innerHTML = '\u26A1 Analyze Idea'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Analyze Idea'; }
       });
   }
 
@@ -267,8 +269,8 @@
     // Blockers
     var blockers = d.validation_blocking || [];
     if (blockers.length) {
-      html += '<div class="alert alert-danger"><strong>\u26A0 Blockers:</strong><ul style="margin:0.3rem 0 0 1rem;padding:0">';
-      blockers.forEach(function (b) { html += '<li>' + esc(b) + '</li>'; });
+      html += '<div class="alert alert-danger"><strong>Blockers:</strong><ul style="margin:0.3rem 0 0 1rem;padding:0;list-style:none">';
+      blockers.forEach(function (b) { html += '<li style="margin-bottom:0.15rem">\u2022 ' + esc(b) + '</li>'; });
       html += '</ul></div>';
     }
 
@@ -292,8 +294,8 @@
     // Personal mode: show utility instead of monetization
     if (isPersonal) {
       html += '<div class="section-sep"></div>';
-      html += '<div style="font-size:0.82rem;color:var(--text-secondary)">' +
-        '<strong>\uD83D\uDD27 Personal Utility:</strong> This idea would save you time and serve as a useful internal tool.' +
+      html += '<div style="font-size:0.78rem;color:var(--text-muted)">' +
+        '<strong>Personal Utility:</strong> This idea would save you time and serve as a useful internal tool.' +
         '</div>';
     }
 
@@ -301,22 +303,22 @@
     var brief = d.offer || {};
     if (brief.title) {
       html += '<div class="section-sep"></div>';
-      html += '<div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);margin-bottom:0.3rem">' + esc(brief.title) + '</div>';
-      if (brief.target_user) html += '<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.15rem">\uD83C\uDFAF ' + esc(brief.target_user) + '</div>';
-      if (brief.problem) html += '<div style="font-size:0.78rem;color:var(--text-secondary)">Problem: ' + esc(brief.problem) + '</div>';
+      html += '<div style="font-size:0.82rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.3rem">' + esc(brief.title) + '</div>';
+      if (brief.target_user) html += '<div style="font-size:0.72rem;color:var(--text-faint);margin-bottom:0.15rem">Target: ' + esc(brief.target_user) + '</div>';
+      if (brief.problem) html += '<div style="font-size:0.72rem;color:var(--text-faint)">Problem: ' + esc(brief.problem) + '</div>';
     }
 
     // Next step
     html += '<div class="section-sep"></div>';
-    html += '<div style="font-size:0.82rem;color:var(--text-secondary)">' + esc(d.next_step || 'Review the scores above and decide your next move.') + '</div>';
+    html += '<div style="font-size:0.75rem;color:var(--text-faint)">' + esc(d.next_step || 'Review the scores above and decide your next move.') + '</div>';
 
     // Action buttons
-    html += '<div style="display:flex;gap:0.5rem;margin-top:1rem">';
+    html += '<div style="display:flex;gap:0.5rem;margin-top:1.2rem">';
     if (decision === 'APPROVED') {
-      html += '<button class="btn btn-success" onclick="window.AIDAN.triggerBuild()">\uD83C\uDFED Build Now</button>';
+      html += '<button class="btn btn-success" onclick="window.AIDAN.triggerBuild()">Build Now</button>';
     }
-    html += '<button class="btn btn-secondary" onclick="window.AIDAN.saveForLater()">\uD83D\uDCBE Save</button>';
-    html += '<button class="btn btn-ghost" onclick="window.AIDAN.clearAnalysis()">\u2715 Clear</button>';
+    html += '<button class="btn btn-secondary" onclick="window.AIDAN.saveForLater()">Save</button>';
+    html += '<button class="btn btn-ghost" onclick="window.AIDAN.clearAnalysis()">Clear</button>';
     html += '</div>';
 
     html += '</div></div>';
@@ -333,7 +335,7 @@
     var resultsEl = $('analyze-results');
     if (resultsEl) {
       resultsEl.innerHTML = '<div class="empty-state">' +
-        '<div class="empty-state-icon">\uD83D\uDCCA</div>' +
+        '<div class="empty-state-icon">&mdash;</div>' +
         '<div class="empty-state-title">Ready to analyze</div>' +
         '<div class="empty-state-desc">Fill in your idea and click Analyze to see the score</div></div>';
     }
@@ -346,7 +348,7 @@
       var visible = el.style.display !== 'none';
       el.style.display = visible ? 'none' : 'block';
       var toggle = $('analyze-advanced-toggle');
-      if (toggle) toggle.textContent = visible ? '\u25B6 Show advanced fields' : '\u25BC Hide advanced fields';
+      if (toggle) toggle.textContent = visible ? 'Show advanced fields' : 'Hide advanced fields';
     }
   }
 
@@ -367,7 +369,7 @@
 
     if (!filtered.length) {
       container.innerHTML = '<div class="empty-state">' +
-        '<div class="empty-state-icon">\uD83D\uDCDA</div>' +
+        '<div class="empty-state-icon">&mdash;</div>' +
         '<div class="empty-state-title">No projects found</div>' +
         '<div class="empty-state-desc">Score an idea to create your first project</div></div>';
       return;
@@ -385,15 +387,15 @@
       html += '</div></div>';
       html += '<div class="project-card-desc">' + esc(p.description) + '</div>';
       html += '<div class="project-card-meta">';
-      if (p.repo_url) html += '<span>\uD83D\uDD17 <a href="' + esc(p.repo_url) + '" target="_blank">Repo</a></span>';
-      if (p.deploy_url) html += '<span>\uD83D\uDE80 <a href="' + esc(p.deploy_url) + '" target="_blank">Live</a></span>';
-      if (!isPersonal && p.revenue > 0) html += '<span>\uD83D\uDCB0 $' + p.revenue.toLocaleString() + '</span>';
-      html += '<span>\uD83D\uDCC5 ' + esc((p.created_at || '').split('T')[0]) + '</span>';
+      if (p.repo_url) html += '<span><a href="' + esc(p.repo_url) + '" target="_blank">Repo</a></span>';
+      if (p.deploy_url) html += '<span><a href="' + esc(p.deploy_url) + '" target="_blank">Live</a></span>';
+      if (!isPersonal && p.revenue > 0) html += '<span>$' + p.revenue.toLocaleString() + '</span>';
+      html += '<span>' + esc((p.created_at || '').split('T')[0]) + '</span>';
       html += '</div>';
       html += '<div class="project-card-actions">';
-      if (p.repo_url) html += '<a href="' + esc(p.repo_url) + '" target="_blank" class="btn btn-sm btn-secondary">\uD83D\uDCC2 Open Repo</a>';
-      if (p.deploy_url) html += '<a href="' + esc(p.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">\u2197 Open App</a>';
-      html += '<button class="btn btn-sm btn-ghost" onclick="window.AIDAN.toggleProjectType(\'' + esc(p.project_id) + '\',\'' + (isPersonal ? 'venture' : 'personal') + '\')">\u21C4 ' + (isPersonal ? 'To Venture' : 'To Personal') + '</button>';
+      if (p.repo_url) html += '<a href="' + esc(p.repo_url) + '" target="_blank" class="btn btn-sm btn-secondary">Open Repo</a>';
+      if (p.deploy_url) html += '<a href="' + esc(p.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">Open App \u2197</a>';
+      html += '<button class="btn btn-sm btn-ghost" onclick="window.AIDAN.toggleProjectType(\'' + esc(p.project_id) + '\',\'' + (isPersonal ? 'venture' : 'personal') + '\')">' + (isPersonal ? 'To Venture' : 'To Personal') + '</button>';
       html += '</div></div>';
     });
     html += '</div>';
@@ -423,7 +425,7 @@
 
     if (!state.builds.length) {
       container.innerHTML = '<div class="empty-state">' +
-        '<div class="empty-state-icon">\uD83C\uDFED</div>' +
+        '<div class="empty-state-icon">&mdash;</div>' +
         '<div class="empty-state-title">No builds yet</div>' +
         '<div class="empty-state-desc">Approve an idea and trigger a build to see it here</div></div>';
       return;
@@ -433,10 +435,10 @@
       '<th>Project</th><th>Status</th><th>Deployment</th><th>Created</th></tr></thead><tbody>';
     state.builds.forEach(function (b) {
       html += '<tr>';
-      html += '<td style="font-weight:600">' + esc(b.project_id || '—') + '</td>';
-      html += '<td><span class="badge ' + statusBadgeClass(b.status) + '">' + esc(b.status || '—') + '</span></td>';
-      html += '<td>' + (b.deploy_url ? '<a href="' + esc(b.deploy_url) + '" target="_blank" class="badge badge-success">\u2197 Live</a>' : '<span class="badge badge-muted">—</span>') + '</td>';
-      html += '<td style="color:var(--text-muted);font-size:0.75rem">' + esc(b.created_at || '') + '</td>';
+      html += '<td style="font-weight:600">' + esc(b.project_id || '\u2014') + '</td>';
+      html += '<td><span class="badge ' + statusBadgeClass(b.status) + '">' + esc(b.status || '\u2014') + '</span></td>';
+      html += '<td>' + (b.deploy_url ? '<a href="' + esc(b.deploy_url) + '" target="_blank" class="badge badge-success">Live \u2197</a>' : '<span class="badge badge-muted">\u2014</span>') + '</td>';
+      html += '<td style="color:var(--text-faint);font-size:0.7rem">' + esc(b.created_at || '') + '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -461,8 +463,8 @@
     checks.forEach(function (c) {
       html += '<div style="display:flex;align-items:center;gap:0.6rem;padding:0.5rem 0;border-bottom:1px solid var(--border)">' +
         '<span class="health-dot ' + (c.ok ? 'green' : 'red') + '"></span>' +
-        '<span style="flex:1;font-size:0.82rem;color:var(--text-secondary)">' + esc(c.label) + '</span>' +
-        '<span style="font-size:0.78rem;color:var(--text-muted)">' + esc(c.info) + '</span>' +
+        '<span style="flex:1;font-size:0.78rem;color:var(--text-muted)">' + esc(c.label) + '</span>' +
+        '<span style="font-size:0.72rem;color:var(--text-faint)">' + esc(c.info) + '</span>' +
       '</div>';
     });
     container.innerHTML = html;
@@ -479,22 +481,22 @@
 
     if (!state.issues.length) {
       container.innerHTML = '<div class="empty-state">' +
-        '<div class="empty-state-icon">\u2705</div>' +
+        '<div class="empty-state-icon">&mdash;</div>' +
         '<div class="empty-state-title">All clear</div>' +
-        '<div class="empty-state-desc">No issues or warnings detected. Nice work!</div></div>';
+        '<div class="empty-state-desc">No issues or warnings detected</div></div>';
       return;
     }
 
     var html = '';
     state.issues.forEach(function (issue) {
       var iconClass = issue.severity === 'critical' ? 'critical' : issue.severity === 'warning' ? 'warning' : 'info';
-      var icon = issue.severity === 'critical' ? '\u26A0\uFE0F' : issue.severity === 'warning' ? '\u26A0' : '\u2139\uFE0F';
+      var icon = issue.severity === 'critical' ? '!' : issue.severity === 'warning' ? '!' : 'i';
       html += '<div class="issue-item">';
       html += '<div class="issue-icon ' + iconClass + '">' + icon + '</div>';
       html += '<div>';
       html += '<div class="issue-title">' + esc(issue.title) + '</div>';
       html += '<div class="issue-desc">' + esc(issue.description) + '</div>';
-      html += '<div class="issue-action">\u2192 ' + esc(issue.recommended_action) + '</div>';
+      html += '<div class="issue-action">' + esc(issue.recommended_action) + '</div>';
       html += '</div></div>';
     });
     container.innerHTML = html;
@@ -516,7 +518,7 @@
 
     if (!projects.length) {
       container.innerHTML = '<div class="empty-state">' +
-        '<div class="empty-state-icon">' + (isPersonal ? '\uD83D\uDD27' : '\uD83D\uDE80') + '</div>' +
+        '<div class="empty-state-icon">&mdash;</div>' +
         '<div class="empty-state-title">No ' + (isPersonal ? 'personal' : 'venture') + ' projects yet</div>' +
         '<div class="empty-state-desc">Create and approve a project first</div></div>';
       return;
@@ -530,23 +532,23 @@
       html += '<div class="card-body">';
 
       if (isPersonal) {
-        html += '<div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.75rem">' +
-          '<strong>\uD83D\uDD27 Purpose:</strong> ' + esc(p.description) + '</div>';
-        html += '<div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.5rem">' +
-          '\u2705 Private deployment — no public launch needed</div>';
+        html += '<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem">' +
+          '<strong>Purpose:</strong> ' + esc(p.description) + '</div>';
+        html += '<div style="font-size:0.75rem;color:var(--text-faint);margin-bottom:0.5rem">' +
+          'Private deployment \u2014 no public launch needed</div>';
         if (p.deploy_url) {
-          html += '<div style="margin-bottom:0.5rem"><a href="' + esc(p.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">\u2197 Open App</a></div>';
+          html += '<div style="margin-bottom:0.5rem"><a href="' + esc(p.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">Open App \u2197</a></div>';
         }
-        html += '<div style="font-size:0.78rem;color:var(--text-muted)">Status: ' + esc(p.status) + ' | Created: ' + esc((p.created_at || '').split('T')[0]) + '</div>';
+        html += '<div style="font-size:0.7rem;color:var(--text-faint)">Status: ' + esc(p.status) + ' \u00B7 Created: ' + esc((p.created_at || '').split('T')[0]) + '</div>';
       } else {
-        html += '<div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.75rem">' + esc(p.description) + '</div>';
+        html += '<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem">' + esc(p.description) + '</div>';
         if (p.deploy_url) {
-          html += '<div style="margin-bottom:0.5rem"><a href="' + esc(p.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">\u2197 Live Site</a></div>';
+          html += '<div style="margin-bottom:0.5rem"><a href="' + esc(p.deploy_url) + '" target="_blank" class="btn btn-sm btn-success">Live Site \u2197</a></div>';
         }
         if (p.revenue > 0) {
-          html += '<div style="font-size:0.82rem;color:var(--success);margin-bottom:0.5rem">\uD83D\uDCB0 Revenue: $' + p.revenue.toLocaleString() + '</div>';
+          html += '<div style="font-size:0.78rem;color:var(--success);margin-bottom:0.5rem">Revenue: $' + p.revenue.toLocaleString() + '</div>';
         } else {
-          html += '<div class="alert alert-warning" style="font-size:0.78rem">\uD83D\uDCB0 No revenue recorded yet. Set up payment collection to track revenue.</div>';
+          html += '<div class="alert alert-warning" style="font-size:0.72rem">No revenue recorded yet. Set up payment collection to track revenue.</div>';
         }
       }
 
