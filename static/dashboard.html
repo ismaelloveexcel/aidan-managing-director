@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AI-DAN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/static/css/dashboard.css"/>
+</head>
+<body>
+
+<div class="engine">
+
+  <!-- ═══ HERO: The one action ═══ -->
+  <section class="hero" id="hero-section">
+    <div class="hero-brand">AI-DAN</div>
+    <h1 class="hero-title">What do you want to build?</h1>
+    <p class="hero-sub">Describe it. AI-DAN scores, decides, and builds it.</p>
+
+    <div class="hero-input-area">
+      <div class="hero-mode-row">
+        <button class="mode-btn active" data-mode="venture">Venture</button>
+        <button class="mode-btn" data-mode="personal">Personal</button>
+      </div>
+      <div class="hero-input-wrap">
+        <textarea class="hero-input" id="hero-input" rows="2"
+          placeholder="A tool that converts PDF invoices to spreadsheets automatically..."
+          autocomplete="off"></textarea>
+        <button class="hero-submit" id="hero-submit">Analyze</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ RESULTS: Inline analysis ═══ -->
+  <section class="results-section" id="results-section" style="display:none">
+    <div class="results-inner" id="results-inner"></div>
+  </section>
+
+  <!-- ═══ PIPELINE: Secondary context ═══ -->
+  <section class="pipeline-section" id="pipeline-section">
+    <div class="pipeline-inner">
+      <div class="status-bar" id="status-bar">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text">Loading...</span>
+      </div>
+      <div id="pipeline-list">
+        <div class="pipeline-empty">Analyze an idea to start your pipeline</div>
+      </div>
+      <div id="issues-section" style="display:none">
+        <div class="pipeline-divider"></div>
+        <div id="issues-list"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>

@@ -5,11 +5,13 @@ Registers all route modules, serves the root UI, and configures the application.
 """
 
 import logging
+import pathlib
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.middleware import APIKeyMiddleware, RateLimitMiddleware
@@ -93,6 +95,26 @@ app.include_router(control.router, prefix="/control")
 app.include_router(distribution.router, prefix="/api/distribution")
 app.include_router(dashboard.router, prefix="/api/dashboard")
 app.include_router(ops.router, prefix="/ops")
+
+# Static files
+_STATIC_DIR = pathlib.Path(__file__).resolve().parent / "static"
+if _STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+# ---------------------------------------------------------------------------
+# Premium Dashboard
+# ---------------------------------------------------------------------------
+
+_DASHBOARD_HTML_PATH = _STATIC_DIR / "dashboard.html"
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def premium_dashboard() -> HTMLResponse:
+    """Serve the premium founder dashboard."""
+    if _DASHBOARD_HTML_PATH.exists():
+        return HTMLResponse(content=_DASHBOARD_HTML_PATH.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>Dashboard not found</h1>", status_code=404)
 
 
 # ---------------------------------------------------------------------------
