@@ -12,6 +12,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, HttpUrl
 
+from app.core.config import Settings, get_settings
 from app.core.dependencies import get_marketing_engine
 from app.integrations.marketing_engine import REGION_PLATFORMS, MarketingEngine
 from app.planning.share_templates import ShareMessageBundle, generate_share_messages
@@ -140,3 +141,65 @@ async def list_regions() -> dict:
             for key, val in REGION_PLATFORMS.items()
         }
     }
+
+
+@router.post("/generate-video")
+async def trigger_video_generation(
+    req: dict,
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Trigger promo video generation via GitHub Actions."""
+    import httpx as _httpx
+    title = req.get("title", "My Product")
+    description = req.get("description", "")
+    url = req.get("url", "https://example.com")
+    target_region = req.get("target_region", "global")
+    use_ai_concept = req.get("use_ai_concept", True)
+
+    factory_owner = settings.github_factory_owner
+    factory_repo = settings.github_factory_repo
+    gh_token = settings.github_token
+
+    if not gh_token:
+        return {
+            "status": "no_token",
+            "note": "Set GITHUB_TOKEN in Vercel env vars to trigger video generation.",
+            "instructions": f"Manually trigger at: https://github.com/{factory_owner}/{factory_repo}/actions/workflows/generate-promo-video.yml",
+            "workflow_url": f"https://github.com/{factory_owner}/{factory_repo}/actions/workflows/generate-promo-video.yml",
+        }
+
+    try:
+        async with _httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"https://api.github.com/repos/{factory_owner}/{factory_repo}/actions/workflows/generate-promo-video.yml/dispatches",
+                headers={
+                    "Authorization": f"Bearer {gh_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                json={
+                    "ref": "main",
+                    "inputs": {
+                        "project_name": title,
+                        "tagline": description,
+                        "product_url": url,
+                        "region": target_region,
+                        "use_ai_concept": str(use_ai_concept).lower(),
+                    },
+                },
+            )
+        if resp.status_code == 204:
+            return {
+                "status": "triggered",
+                "workflow_url": f"https://github.com/{factory_owner}/{factory_repo}/actions/workflows/generate-promo-video.yml",
+            }
+        return {
+            "status": "error",
+            "note": f"GitHub API returned {resp.status_code}: {resp.text[:200]}",
+            "workflow_url": f"https://github.com/{factory_owner}/{factory_repo}/actions/workflows/generate-promo-video.yml",
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "note": str(e),
+            "workflow_url": f"https://github.com/{factory_owner}/{factory_repo}/actions/workflows/generate-promo-video.yml",
+        }
