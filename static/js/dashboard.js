@@ -259,7 +259,7 @@
 
   // ─── Actions ─────────────────────────────────────────────────────────────
   function triggerBuild() {
-    if (!state.analyzeResult) { toast('No analysis to build from', 'error'); return; }
+    if (!state.analyzeResult) { toast('Analyze an idea first', 'error'); return; }
     var name = (state.analyzeResult.offer || {}).title || 'new-project';
     var safeName = name.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
 
