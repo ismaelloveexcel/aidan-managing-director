@@ -1,4 +1,5 @@
-"""dependencies.py – Shared application-level dependency providers.
+"""
+dependencies.py – Shared application-level dependency providers.
 
 Centralises the creation of long-lived service clients so that every
 route module shares the same instance.
@@ -199,3 +200,11 @@ def get_ai_provider() -> AIProvider:
         openai_client=get_openai_client(),
         perplexity_client=get_perplexity_client(),
     )
+
+
+@_lru_cache(maxsize=1)
+def get_marketing_engine() -> "MarketingEngine":
+    """Return a cached MarketingEngine bound to the shared AI provider."""
+    from app.integrations.marketing_engine import MarketingEngine
+
+    return MarketingEngine(ai_provider=get_ai_provider())
