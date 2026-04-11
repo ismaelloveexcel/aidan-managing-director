@@ -365,7 +365,7 @@ def _verify_callback_secret(request: Request) -> None:
     """
     settings = get_settings()
     expected = settings.factory_callback_secret
-    is_production = settings.app_env == "production" or settings.strict_prod
+    is_production = settings.is_production_mode()
 
     if not expected:
         if is_production:

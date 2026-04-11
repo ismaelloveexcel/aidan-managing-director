@@ -72,6 +72,4 @@ class PersistentFactoryRunStore:
         this only deletes factory_runs and associated idempotency_keys
         so that project rows survive.
         """
-        with self._repo._db.connect() as conn:
-            conn.execute("DELETE FROM idempotency_keys")
-            conn.execute("DELETE FROM factory_runs")
+        self._repo.clear_factory_runs()

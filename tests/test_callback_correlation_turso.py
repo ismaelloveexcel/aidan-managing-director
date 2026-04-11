@@ -561,7 +561,8 @@ class TestPollingDbFallback:
             repo_url="https://github.com/test/poll-db-repo",
             deploy_url="https://poll-db.vercel.app",
         )
-        # Save directly to DB after all resets to simulate data surviving cold start.
+        # Save to DB — the run store's reset() only clears factory_runs,
+        # so the project row from create_project() survives.
         repo.save_factory_run(run)
 
         resp = client.get("/factory/runs/PRJ-POLLDB-1:polldb123456/result")
@@ -593,7 +594,7 @@ class TestPollingDbFallback:
             dry_run=True,
             correlation_id="PRJ-REHY-1:rehy12345678",
         )
-        # Save directly to DB after all resets.
+        # Save to DB after resets — project row survives store.reset().
         repo.save_factory_run(run)
 
         # First poll triggers DB fallback + rehydration.
@@ -633,7 +634,7 @@ class TestCallbackDbFallback:
             dry_run=True,
             correlation_id="PRJ-CBDB-1:cbdb12345678",
         )
-        # Save directly to DB after all resets.
+        # Save to DB after resets — project row survives store.reset().
         repo.save_factory_run(run)
 
         resp = client.post(

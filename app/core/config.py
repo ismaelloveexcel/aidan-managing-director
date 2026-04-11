@@ -145,8 +145,16 @@ class Settings(BaseSettings):
             missing.append("VERCEL_TOKEN")
         return missing
 
+    def is_production_mode(self) -> bool:
+        """Return True when the system should enforce production constraints.
 
-class _StrictProdError(RuntimeError):
+        Production mode is active when ``app_env`` is ``'production'``
+        *or* ``strict_prod`` is explicitly enabled.
+        """
+        return self.app_env == "production" or self.strict_prod
+
+
+class StrictProductionError(RuntimeError):
     """Raised when STRICT_PROD is enabled and required secrets are missing."""
 
 
@@ -168,6 +176,6 @@ def get_settings() -> Settings:
                 f"are missing: {', '.join(missing)}.  Set them in the "
                 "environment or disable STRICT_PROD for development."
             )
-            raise _StrictProdError(msg)
+            raise StrictProductionError(msg)
 
     return settings
