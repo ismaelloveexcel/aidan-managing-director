@@ -66,5 +66,12 @@ class PersistentFactoryRunStore:
         return [_record_to_result(r) for r in records]
 
     def reset(self) -> None:
-        """Clear all run data (for tests)."""
-        self._repo.reset()
+        """Clear factory run data only (for tests).
+
+        Unlike ``PortfolioRepository.reset()`` which clears *everything*,
+        this only deletes factory_runs and associated idempotency_keys
+        so that project rows survive.
+        """
+        with self._repo._db.connect() as conn:
+            conn.execute("DELETE FROM idempotency_keys")
+            conn.execute("DELETE FROM factory_runs")

@@ -8,15 +8,13 @@ on:
         required: true
         type: string
       correlation_id:
-        description: "End-to-end correlation ID for tracing"
-        required: false
+        description: "End-to-end correlation ID for tracing (REQUIRED for callback matching)"
+        required: true
         type: string
-        default: ""
       callback_url:
-        description: "URL to POST build results back to"
-        required: false
+        description: "URL to POST build results back to (REQUIRED for production)"
+        required: true
         type: string
-        default: ""
       build_brief_json:
         description: "JSON-serialised BuildBrief payload"
         required: false
@@ -45,6 +43,16 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Validate required secrets
+        env:
+          FACTORY_SECRET: ${{ secrets.FACTORY_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FACTORY_SECRET}" ]; then
+            echo "::error::FACTORY_SECRET is not configured. Callback authentication will fail." >&2
+            exit 1
+          fi
 
       - name: Initialize run context
         run: |

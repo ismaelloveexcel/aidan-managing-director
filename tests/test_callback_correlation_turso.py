@@ -14,6 +14,17 @@ from main import app
 client = TestClient(app)
 
 
+def _ensure_project(project_id: str = "PRJ-CB-1") -> None:
+    """Ensure a project row exists so FK constraints on factory_runs pass."""
+    repo = get_portfolio_repository()
+    if repo.get_project(project_id) is None:
+        repo.create_project(
+            name=project_id,
+            description="Test project for callback tests",
+            project_id=project_id,
+        )
+
+
 def _brief_payload() -> dict:
     return {
         "project_id": "PRJ-CB-1",
@@ -64,6 +75,7 @@ class TestCorrelationId:
 
 class TestFactoryCallback:
     def _seed_run(self, correlation_id: str, project_id: str = "PRJ-CB-1") -> FactoryRunResult:
+        _ensure_project(project_id)
         store = get_factory_run_store()
         run = FactoryRunResult(
             project_id=project_id,
@@ -206,6 +218,7 @@ class TestPollingFallback:
     def test_poll_found(self) -> None:
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-POLL-1")
         run = FactoryRunResult(
             project_id="PRJ-POLL-1",
             idea_id="IDEA-POLL-1",
@@ -246,6 +259,7 @@ class TestPollingFallback:
 class TestCorrelationIdInFlow:
     def test_create_run_has_correlation_id(self) -> None:
         get_factory_run_store().reset()
+        _ensure_project("PRJ-CB-1")
         resp = client.post(
             "/factory/runs",
             json={"build_brief": _brief_payload(), "dry_run": True},
@@ -257,6 +271,7 @@ class TestCorrelationIdInFlow:
 
     def test_tracking_includes_correlation_id(self) -> None:
         get_factory_run_store().reset()
+        _ensure_project("PRJ-CB-1")
         created = client.post(
             "/factory/runs",
             json={"build_brief": _brief_payload(), "dry_run": True},
@@ -280,6 +295,7 @@ class TestRunStoreCorrelationLookup:
     def test_get_by_correlation_id(self) -> None:
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-STORE-1")
         run = FactoryRunResult(
             project_id="PRJ-STORE-1",
             idea_id="IDEA-STORE-1",
@@ -545,10 +561,8 @@ class TestPollingDbFallback:
             repo_url="https://github.com/test/poll-db-repo",
             deploy_url="https://poll-db.vercel.app",
         )
+        # Save directly to DB after all resets to simulate data surviving cold start.
         repo.save_factory_run(run)
-
-        # Clear in-memory store to simulate cold start.
-        store.reset()
 
         resp = client.get("/factory/runs/PRJ-POLLDB-1:polldb123456/result")
         assert resp.status_code == 200
@@ -579,8 +593,8 @@ class TestPollingDbFallback:
             dry_run=True,
             correlation_id="PRJ-REHY-1:rehy12345678",
         )
+        # Save directly to DB after all resets.
         repo.save_factory_run(run)
-        store.reset()
 
         # First poll triggers DB fallback + rehydration.
         client.get("/factory/runs/PRJ-REHY-1:rehy12345678/result")
@@ -619,10 +633,8 @@ class TestCallbackDbFallback:
             dry_run=True,
             correlation_id="PRJ-CBDB-1:cbdb12345678",
         )
+        # Save directly to DB after all resets.
         repo.save_factory_run(run)
-
-        # Clear in-memory store to simulate cold start.
-        store.reset()
 
         resp = client.post(
             "/factory/callback",
@@ -659,6 +671,7 @@ class TestExecutionPathSeparation:
         fc = get_factory_client()
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-PATH-1")
 
         from app.factory.models import BuildBrief
 
@@ -820,6 +833,7 @@ class TestExecutionPathSeparation:
         """Callback correctly updates a DISPATCHED run to final status."""
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-DISPATCH-1")
 
         # Create a DISPATCHED run (simulating production path)
         run = FactoryRunResult(
@@ -863,6 +877,7 @@ class TestCallbackFieldCompleteness:
         """Callback endpoint processes the complete set of production fields."""
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-FIELDS-1")
 
         run = FactoryRunResult(
             project_id="PRJ-FIELDS-1",
@@ -896,6 +911,7 @@ class TestCallbackFieldCompleteness:
         """Callback correctly processes failure with error details."""
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-ERRFIELD-1")
 
         run = FactoryRunResult(
             project_id="PRJ-ERRFIELD-1",

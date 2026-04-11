@@ -355,13 +355,24 @@ async def execute_idea_build(request: IdeaExecutionRequest) -> IdeaExecutionResu
 def _verify_callback_secret(request: Request) -> None:
     """Verify the factory callback secret from the request header.
 
-    Raises HTTPException 401 if a secret is configured and the request
-    does not carry a matching ``X-Factory-Secret`` header.  When no
-    secret is configured (development mode), all requests are accepted.
+    Raises HTTPException 401 if:
+    - A secret is configured and the request header does not match.
+    - The system is running in production (``app_env == 'production'``
+      or ``strict_prod == True``) and **no** secret is configured at all.
+
+    When no secret is configured **and** the system is in development
+    mode, all requests are accepted (backward-compatible dev behavior).
     """
     settings = get_settings()
     expected = settings.factory_callback_secret
+    is_production = settings.app_env == "production" or settings.strict_prod
+
     if not expected:
+        if is_production:
+            raise HTTPException(
+                status_code=500,
+                detail="FACTORY_CALLBACK_SECRET is not configured. Cannot accept callbacks in production.",
+            )
         return  # No secret configured → allow (dev mode).
 
     provided = request.headers.get("X-Factory-Secret", "")
@@ -525,114 +536,29 @@ async def factory_callback(payload: FactoryCallbackPayload, request: Request) ->
 
 
 # ---------------------------------------------------------------------------
-# Legacy webhook endpoint – maintained for backward compatibility
+# Legacy webhook endpoint – REMOVED (production hardening)
+#
+# The unauthenticated /webhook endpoint has been replaced by the
+# authenticated /callback endpoint which uses X-Factory-Secret header
+# and correlation_id for end-to-end tracing.  A tombstone route returns
+# 410 Gone so that any leftover callers get a clear signal.
 # ---------------------------------------------------------------------------
 
 
-class FactoryWebhookPayload(BaseModel):
-    """Payload sent by the ai-dan-factory repo on build completion or failure."""
+@router.post("/webhook", status_code=410)
+async def factory_webhook_removed() -> dict[str, str]:
+    """Legacy webhook endpoint – permanently removed.
 
-    project_id: str
-    run_id: str
-    status: Literal["succeeded", "failed"]
-    deploy_url: str = ""
-    repo_url: str = ""
-    error: str | None = None
-
-
-class FactoryWebhookAck(BaseModel):
-    """Acknowledgment returned after processing a factory webhook."""
-
-    received: bool = True
-    project_id: str
-    run_id: str
-    status: str
-
-
-@router.post("/webhook", response_model=FactoryWebhookAck, status_code=200)
-async def factory_webhook(payload: FactoryWebhookPayload) -> FactoryWebhookAck:
-    """Receive build completion/failure callbacks from the ai-dan-factory.
-
-    This endpoint is called by the factory GitHub Actions workflow after a
-    build succeeds or fails.  It updates the portfolio and the factory run
-    store, and records the outcome in the auto-learner for revenue intelligence.
-
-    Args:
-        payload: Build completion payload from the factory.
-
-    Returns:
-        Acknowledgment with the recorded status.
+    Use ``POST /factory/callback`` with the ``X-Factory-Secret`` header
+    and ``correlation_id`` field instead.
     """
-    logger.info(
-        "Factory webhook received: project=%s run=%s status=%s",
-        payload.project_id,
-        payload.run_id,
-        payload.status,
-    )
-
-    new_status = FactoryRunStatus.SUCCEEDED if payload.status == "succeeded" else FactoryRunStatus.FAILED
-
-    # 1. Update the in-memory factory run store.
-    existing_run = _run_store.get_by_run_id(payload.run_id)
-    if existing_run is not None:
-        updated_run = existing_run.model_copy(
-            update={
-                "status": new_status,
-                "deploy_url": payload.deploy_url or existing_run.deploy_url,
-                "repo_url": payload.repo_url or existing_run.repo_url,
-                "error": payload.error,
-            },
-        )
-        _run_store.upsert(updated_run)
-    else:
-        logger.warning("Factory webhook: run_id %s not found in store.", payload.run_id)
-
-    # 2. Persist the factory run in the portfolio if the project exists.
-    project = _portfolio.get_project(payload.project_id)
-    if project is not None and existing_run is not None:
-        run_to_save = existing_run.model_copy(
-            update={
-                "status": new_status,
-                "deploy_url": payload.deploy_url or existing_run.deploy_url,
-                "repo_url": payload.repo_url or existing_run.repo_url,
-                "error": payload.error,
-            },
-        )
-        _portfolio.save_factory_run(run_to_save)
-        _portfolio.log_event(
-            project_id=payload.project_id,
-            event_type="factory_webhook",
-            payload={
-                "run_id": payload.run_id,
-                "status": payload.status,
-                "deploy_url": payload.deploy_url,
-                "repo_url": payload.repo_url,
-                "error": payload.error,
-            },
-        )
-
-    # 3. Record outcome in the auto-learner for revenue intelligence.
-    outcome_label = "build_success" if payload.status == "succeeded" else "build_failure"
-    try:
-        _auto_learner.record_outcome(
-            project_id=payload.project_id,
-            outcome_type=outcome_label,
-            score=1.0 if payload.status == "succeeded" else 0.0,
-            metadata={
-                "run_id": payload.run_id,
-                "deploy_url": payload.deploy_url,
-                "error": payload.error or "",
-            },
-        )
-    except Exception:
-        logger.exception("Failed to record outcome in auto-learner for run %s.", payload.run_id)
-
-    return FactoryWebhookAck(
-        received=True,
-        project_id=payload.project_id,
-        run_id=payload.run_id,
-        status=payload.status,
-    )
+    return {
+        "error": "gone",
+        "detail": (
+            "The /factory/webhook endpoint has been removed. "
+            "Use POST /factory/callback with X-Factory-Secret header."
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------

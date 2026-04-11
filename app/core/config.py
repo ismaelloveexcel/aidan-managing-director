@@ -4,12 +4,21 @@ config.py – Centralised application configuration for AI-DAN.
 Uses pydantic-settings to load values from environment variables and
 .env files.  All external-service credentials are surfaced here so
 that integration clients never read os.environ directly.
+
+When ``STRICT_PROD=true`` the system **refuses to start** unless every
+secret required for real dispatch → callback → deploy is configured.
+This prevents silent fallback paths from masquerading as production.
 """
 
+from __future__ import annotations
+
+import logging
 import os
 from functools import lru_cache as _lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 def _default_portfolio_db_path() -> str:
@@ -38,6 +47,11 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     app_log_level: str = "info"
+
+    # --- Strict Production Mode ------------------------------------------------
+    # When True the system fails fast on startup if any required production
+    # secret is missing.  Set STRICT_PROD=true in production environments.
+    strict_prod: bool = False
 
     # --- LLM Provider ----------------------------------------------------------
     llm_api_key: str = ""
@@ -112,8 +126,48 @@ class Settings(BaseSettings):
     lemonsqueezy_api_key: str = ""
     lemonsqueezy_store_id: str = ""
 
+    # -- production readiness helpers ------------------------------------------
+
+    def validate_production_secrets(self) -> list[str]:
+        """Return a list of missing-but-required secrets for production.
+
+        These are the secrets needed for a real
+        dispatch → callback → deploy loop to function without fallbacks.
+        """
+        missing: list[str] = []
+        if not self.github_token:
+            missing.append("GITHUB_TOKEN")
+        if not self.factory_callback_secret:
+            missing.append("FACTORY_CALLBACK_SECRET")
+        if not self.public_base_url:
+            missing.append("PUBLIC_BASE_URL")
+        if not self.vercel_token:
+            missing.append("VERCEL_TOKEN")
+        return missing
+
+
+class _StrictProdError(RuntimeError):
+    """Raised when STRICT_PROD is enabled and required secrets are missing."""
+
 
 @_lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Return a cached application settings instance."""
-    return Settings()
+    """Return a cached application settings instance.
+
+    When ``STRICT_PROD=true`` and required production secrets are missing,
+    raises :class:`_StrictProdError` to prevent the system from starting
+    in a broken-but-silent state.
+    """
+    settings = Settings()
+
+    if settings.strict_prod:
+        missing = settings.validate_production_secrets()
+        if missing:
+            msg = (
+                "STRICT_PROD is enabled but the following required secrets "
+                f"are missing: {', '.join(missing)}.  Set them in the "
+                "environment or disable STRICT_PROD for development."
+            )
+            raise _StrictProdError(msg)
+
+    return settings

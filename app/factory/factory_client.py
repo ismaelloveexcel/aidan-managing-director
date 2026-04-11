@@ -128,6 +128,14 @@ class FactoryClient:
 
         if use_local_fallback:
             # Dev / fallback: run local orchestrator for immediate output.
+            # Log clearly that production dispatch was NOT used.
+            import logging as _logging
+            _fc_logger = _logging.getLogger(__name__)
+            _fc_logger.warning(
+                "Factory dispatch failed or unavailable for project=%s; "
+                "using LOCAL ORCHESTRATOR fallback (not production).",
+                build_brief.project_id,
+            )
             run = self._orchestrator.run_factory_build(build_brief, dry_run=dry_run)
             run.correlation_id = correlation_id
             run.events.append(dispatch_event)

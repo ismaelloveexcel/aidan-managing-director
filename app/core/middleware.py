@@ -125,6 +125,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             except ImportError:
                 pass  # upstash packages not installed — degrade gracefully
 
+    def reset(self) -> None:
+        """Reset rate-limiter state.
+
+        Called by the test harness to prevent counter bleed between tests.
+        When using Upstash (production), this is a no-op since state lives
+        in Redis and tests should use a separate Redis namespace or mock.
+        """
+        # No in-memory state to clear when using Upstash.  The method
+        # exists so the test fixture in conftest.py can call it safely
+        # regardless of backend.
+
     def _get_client_ip(self, request: Request) -> str:
         """Extract the real client IP, respecting common proxy headers."""
         forwarded = request.headers.get("X-Forwarded-For")
