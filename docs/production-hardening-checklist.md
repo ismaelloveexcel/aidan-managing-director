@@ -1,4 +1,4 @@
-# Production Hardening Checklist — AIDAN System
+# Production Hardening Checklist — AI-DAN System
 
 ## System Architecture
 

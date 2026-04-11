@@ -355,10 +355,13 @@ async def execute_idea_build(request: IdeaExecutionRequest) -> IdeaExecutionResu
 def _verify_callback_secret(request: Request) -> None:
     """Verify the factory callback secret from the request header.
 
-    Raises HTTPException 401 if:
-    - A secret is configured and the request header does not match.
-    - The system is running in production (``app_env == 'production'``
-      or ``strict_prod == True``) and **no** secret is configured at all.
+    Raises:
+        HTTPException: With status code 500 if the system is running in
+            production (``app_env == 'production'`` or
+            ``strict_prod == True``) and **no** secret is configured at all.
+        HTTPException: With status code 401 if a secret is configured and
+            the ``X-Factory-Secret`` request header is missing or does not
+            match.
 
     When no secret is configured **and** the system is in development
     mode, all requests are accepted (backward-compatible dev behavior).

@@ -163,7 +163,7 @@ def get_settings() -> Settings:
     """Return a cached application settings instance.
 
     When ``STRICT_PROD=true`` and required production secrets are missing,
-    raises :class:`_StrictProdError` to prevent the system from starting
+    raises :class:`StrictProductionError` to prevent the system from starting
     in a broken-but-silent state.
     """
     settings = Settings()
