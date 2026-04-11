@@ -29,7 +29,7 @@ class TestRootUI:
     def test_root_contains_input_form(self) -> None:
         resp = client.get("/")
         assert "idea" in resp.text
-        assert "analyzeBtn" in resp.text
+        assert "analyze-btn" in resp.text
 
     def test_root_contains_analyze_endpoint(self) -> None:
         resp = client.get("/")

@@ -7,15 +7,21 @@ services and projects within the AI-DAN ecosystem.
 All methods are currently **stub implementations** that return
 realistic placeholder data.  Real HTTP calls (via ``httpx``) will
 replace the stubs once registry credentials are provisioned.
+
+When ``STRICT_PROD`` is enabled, stub methods raise ``RuntimeError``
+instead of returning fake data.
 """
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class RegistryClient:
@@ -46,6 +52,24 @@ class RegistryClient:
         self._projects: dict[str, dict[str, Any]] = {}
         self._ideas: dict[str, dict[str, Any]] = {}
         self._commands: dict[str, dict[str, Any]] = {}
+
+    @staticmethod
+    def _reject_stub_in_production(method_name: str) -> None:
+        """Raise when a stub method is called in production mode."""
+        try:
+            from app.core.config import get_settings
+
+            settings = get_settings()
+            if settings.is_production_mode():
+                raise RuntimeError(
+                    f"RegistryClient.{method_name}() would return stub data "
+                    "but STRICT_PROD or app_env=production is active. "
+                    "Configure a real registry or disable STRICT_PROD."
+                )
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
 
     # -- lifecycle --------------------------------------------------------------
 
@@ -258,6 +282,7 @@ class RegistryClient:
         Returns:
             The registry-assigned service ID.
         """
+        self._reject_stub_in_production("register_service")
         return f"svc-{uuid.uuid4().hex[:8]}"
 
     def discover(self, capability: str) -> list[dict[str, Any]]:
@@ -270,6 +295,7 @@ class RegistryClient:
         Returns:
             A list of matching service records (empty in stub mode).
         """
+        self._reject_stub_in_production("discover")
         return []
 
     def get_service(self, service_id: str) -> dict[str, Any]:
@@ -282,6 +308,7 @@ class RegistryClient:
         Returns:
             Service metadata dictionary.
         """
+        self._reject_stub_in_production("get_service")
         return {
             "service_id": service_id,
             "name": "stub-service",

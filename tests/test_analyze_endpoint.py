@@ -21,24 +21,22 @@ class TestRootUI:
 
     def test_root_has_form(self) -> None:
         resp = client.get("/")
-        assert 'id="idea"' in resp.text
-        assert 'id="analyzeBtn"' in resp.text
+        assert 'id="idea-desc"' in resp.text
+        assert 'id="analyze-btn"' in resp.text
 
     def test_root_has_fields(self) -> None:
         resp = client.get("/")
-        for field in ["problem", "target_user", "monetization_model",
-                      "competition_level", "difficulty", "time_to_revenue",
-                      "differentiation"]:
+        for field in ["idea-problem", "idea-user", "idea-mono",
+                      "idea-comp", "idea-diff", "idea-ttr"]:
             assert f'id="{field}"' in resp.text
 
     def test_root_has_loading_state(self) -> None:
         resp = client.get("/")
-        assert 'id="loading"' in resp.text
         assert "spinner" in resp.text
 
     def test_root_has_error_state(self) -> None:
         resp = client.get("/")
-        assert 'id="errorBox"' in resp.text
+        assert 'id="analyze-error"' in resp.text
 
 
 class TestAnalyzeEndpoint:

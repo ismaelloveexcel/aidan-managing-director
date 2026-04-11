@@ -9,7 +9,9 @@ from functools import lru_cache as _lru_cache
 
 from app.command_center.service import CommandCenterService
 from app.core.config import get_settings
+from app.factory.dead_letter import DeadLetterQueue
 from app.factory.factory_client import FactoryClient
+from app.factory.ops_events import OpsEventStore
 from app.factory.orchestrator import FactoryOrchestrator
 from app.factory.persistent_store import PersistentFactoryRunStore
 from app.integrations.ai_provider import AIProvider
@@ -46,6 +48,20 @@ def get_factory_run_store() -> PersistentFactoryRunStore:
     survives Vercel serverless cold starts.
     """
     return PersistentFactoryRunStore(repository=get_portfolio_repository())
+
+
+@_lru_cache(maxsize=1)
+def get_dead_letter_queue() -> DeadLetterQueue:
+    """Return a cached dead-letter queue backed by the portfolio DB."""
+    repo = get_portfolio_repository()
+    return DeadLetterQueue(db_connect=repo._db.connect)
+
+
+@_lru_cache(maxsize=1)
+def get_ops_event_store() -> OpsEventStore:
+    """Return a cached ops-event store backed by the portfolio DB."""
+    repo = get_portfolio_repository()
+    return OpsEventStore(db_connect=repo._db.connect)
 
 
 @_lru_cache(maxsize=1)

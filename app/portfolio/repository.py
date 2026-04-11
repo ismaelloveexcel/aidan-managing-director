@@ -658,6 +658,16 @@ class PortfolioRepository:
             conn.execute("DELETE FROM build_briefs")
             conn.execute("DELETE FROM projects")
 
+    def clear_factory_runs(self) -> None:
+        """Clear factory run data and associated idempotency keys only.
+
+        Unlike :meth:`reset`, this preserves project rows so that FK
+        constraints on factory_runs continue to work after re-seeding.
+        """
+        with self._db.connect() as conn:
+            conn.execute("DELETE FROM idempotency_keys")
+            conn.execute("DELETE FROM factory_runs")
+
     # ------------------------------------------------------------------
     # Internal mapping helpers
     # ------------------------------------------------------------------

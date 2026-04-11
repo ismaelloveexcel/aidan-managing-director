@@ -87,3 +87,36 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
     project_id TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+-- Dead-letter queue for failed callbacks (Phase 3)
+CREATE TABLE IF NOT EXISTS dead_letter_callbacks (
+    dlq_id TEXT PRIMARY KEY,
+    correlation_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    error TEXT NOT NULL,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    max_retries INTEGER NOT NULL DEFAULT 3,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT NOT NULL,
+    last_retry_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_dlq_status_created
+    ON dead_letter_callbacks(status, created_at);
+
+-- Ops events for SLO tracking (Phase 3)
+CREATE TABLE IF NOT EXISTS ops_events (
+    event_id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    correlation_id TEXT,
+    project_id TEXT,
+    success INTEGER NOT NULL,
+    latency_ms REAL,
+    error TEXT,
+    metadata_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ops_events_type_created
+    ON ops_events(event_type, created_at);

@@ -14,6 +14,17 @@ from main import app
 client = TestClient(app)
 
 
+def _ensure_project(project_id: str = "PRJ-CB-1") -> None:
+    """Ensure a project row exists so FK constraints on factory_runs pass."""
+    repo = get_portfolio_repository()
+    if repo.get_project(project_id) is None:
+        repo.create_project(
+            name=project_id,
+            description="Test project for callback tests",
+            project_id=project_id,
+        )
+
+
 def _brief_payload() -> dict:
     return {
         "project_id": "PRJ-CB-1",
@@ -64,6 +75,7 @@ class TestCorrelationId:
 
 class TestFactoryCallback:
     def _seed_run(self, correlation_id: str, project_id: str = "PRJ-CB-1") -> FactoryRunResult:
+        _ensure_project(project_id)
         store = get_factory_run_store()
         run = FactoryRunResult(
             project_id=project_id,
@@ -206,6 +218,7 @@ class TestPollingFallback:
     def test_poll_found(self) -> None:
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-POLL-1")
         run = FactoryRunResult(
             project_id="PRJ-POLL-1",
             idea_id="IDEA-POLL-1",
@@ -246,6 +259,7 @@ class TestPollingFallback:
 class TestCorrelationIdInFlow:
     def test_create_run_has_correlation_id(self) -> None:
         get_factory_run_store().reset()
+        _ensure_project("PRJ-CB-1")
         resp = client.post(
             "/factory/runs",
             json={"build_brief": _brief_payload(), "dry_run": True},
@@ -257,6 +271,7 @@ class TestCorrelationIdInFlow:
 
     def test_tracking_includes_correlation_id(self) -> None:
         get_factory_run_store().reset()
+        _ensure_project("PRJ-CB-1")
         created = client.post(
             "/factory/runs",
             json={"build_brief": _brief_payload(), "dry_run": True},
@@ -280,6 +295,7 @@ class TestRunStoreCorrelationLookup:
     def test_get_by_correlation_id(self) -> None:
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-STORE-1")
         run = FactoryRunResult(
             project_id="PRJ-STORE-1",
             idea_id="IDEA-STORE-1",
@@ -545,10 +561,9 @@ class TestPollingDbFallback:
             repo_url="https://github.com/test/poll-db-repo",
             deploy_url="https://poll-db.vercel.app",
         )
+        # Save to DB — the run store's reset() only clears factory_runs,
+        # so the project row from create_project() survives.
         repo.save_factory_run(run)
-
-        # Clear in-memory store to simulate cold start.
-        store.reset()
 
         resp = client.get("/factory/runs/PRJ-POLLDB-1:polldb123456/result")
         assert resp.status_code == 200
@@ -579,8 +594,8 @@ class TestPollingDbFallback:
             dry_run=True,
             correlation_id="PRJ-REHY-1:rehy12345678",
         )
+        # Save to DB after resets — project row survives store.reset().
         repo.save_factory_run(run)
-        store.reset()
 
         # First poll triggers DB fallback + rehydration.
         client.get("/factory/runs/PRJ-REHY-1:rehy12345678/result")
@@ -619,10 +634,8 @@ class TestCallbackDbFallback:
             dry_run=True,
             correlation_id="PRJ-CBDB-1:cbdb12345678",
         )
+        # Save to DB after resets — project row survives store.reset().
         repo.save_factory_run(run)
-
-        # Clear in-memory store to simulate cold start.
-        store.reset()
 
         resp = client.post(
             "/factory/callback",
@@ -659,6 +672,7 @@ class TestExecutionPathSeparation:
         fc = get_factory_client()
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-PATH-1")
 
         from app.factory.models import BuildBrief
 
@@ -804,9 +818,10 @@ class TestExecutionPathSeparation:
                 public_base_url="https://md.example.com",
                 factory_ref="main",
             )
+            mock_settings.return_value.is_production_mode.return_value = False
             run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
 
-        # Fallback path: dispatch failed → local orchestrator provides output
+        # Fallback path (dev mode): dispatch failed → local orchestrator provides output
         assert run.status == FactoryRunStatus.SUCCEEDED
         assert tracking.workflow_dispatched is False
         assert run.correlation_id is not None
@@ -816,10 +831,70 @@ class TestExecutionPathSeparation:
         assert "local_orchestrator_fallback" in event_steps
         assert "awaiting_factory_callback" not in event_steps
 
+    def test_production_mode_blocks_local_fallback(self) -> None:
+        """When STRICT_PROD is active, failed dispatch → FAILED run (no fallback)."""
+        from unittest.mock import MagicMock, patch
+
+        from app.factory.factory_client import FactoryClient
+        from app.factory.models import BuildBrief
+        from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+
+        mock_github = MagicMock()
+        mock_github.dispatch_factory_build.return_value = False
+
+        store = FactoryRunStore()
+        orchestrator = FactoryOrchestrator(
+            github_client=mock_github,
+            vercel_client=MagicMock(),
+            run_store=store,
+        )
+
+        fc = FactoryClient(
+            github_client=mock_github,
+            orchestrator=orchestrator,
+            factory_owner="test-owner",
+            factory_repo="test-factory",
+            workflow_id="factory-build.yml",
+        )
+
+        brief = BuildBrief(
+            project_id="PRJ-PROD-BLOCK",
+            idea_id="IDEA-PROD-BLOCK",
+            hypothesis="Production fallback block test",
+            target_user="developers",
+            problem="Need to test production mode",
+            solution="Direct testing",
+            mvp_scope=["Test page"],
+            acceptance_criteria=["Page loads"],
+            landing_page_requirements=["Primary CTA: Test CTA"],
+            cta="Test CTA",
+            pricing_hint="Free",
+            deployment_target="vercel",
+            command_bundle={"entrypoint": "test"},
+            feature_flags={"dry_run": True},
+        )
+
+        with patch("app.factory.factory_client.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                public_base_url="https://md.example.com",
+                factory_ref="main",
+            )
+            mock_settings.return_value.is_production_mode.return_value = True
+            run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
+
+        # Production mode: dispatch failed → FAILED (no local fallback)
+        assert run.status == FactoryRunStatus.FAILED
+        assert tracking.workflow_dispatched is False
+        assert "local orchestrator fallback" in (run.error or "").lower()
+        event_steps = [e.get("step") for e in run.events]
+        assert "local_orchestrator_blocked" in event_steps
+        assert "local_orchestrator_fallback" not in event_steps
+
     def test_callback_updates_dispatched_run(self) -> None:
         """Callback correctly updates a DISPATCHED run to final status."""
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-DISPATCH-1")
 
         # Create a DISPATCHED run (simulating production path)
         run = FactoryRunResult(
@@ -863,6 +938,7 @@ class TestCallbackFieldCompleteness:
         """Callback endpoint processes the complete set of production fields."""
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-FIELDS-1")
 
         run = FactoryRunResult(
             project_id="PRJ-FIELDS-1",
@@ -896,6 +972,7 @@ class TestCallbackFieldCompleteness:
         """Callback correctly processes failure with error details."""
         store = get_factory_run_store()
         store.reset()
+        _ensure_project("PRJ-ERRFIELD-1")
 
         run = FactoryRunResult(
             project_id="PRJ-ERRFIELD-1",

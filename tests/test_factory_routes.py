@@ -8,6 +8,17 @@ from main import app
 client = TestClient(app)
 
 
+def _ensure_project(project_id: str) -> None:
+    """Ensure a project row exists so FK constraints on factory_runs pass."""
+    repo = get_portfolio_repository()
+    if repo.get_project(project_id) is None:
+        repo.create_project(
+            name=project_id,
+            description="Test project for factory route tests",
+            project_id=project_id,
+        )
+
+
 def _payload() -> dict:
     return {
         "project_id": "PRJ-API-1",
@@ -42,6 +53,7 @@ def test_validate_brief_endpoint() -> None:
 
 def test_create_run_endpoint() -> None:
     get_factory_run_store().reset()
+    _ensure_project("PRJ-API-1")
     response = client.post(
         "/factory/runs",
         json={"build_brief": _payload(), "dry_run": True},
@@ -61,6 +73,7 @@ def test_get_missing_run_endpoint() -> None:
 
 def test_tracking_endpoint_returns_workflow_metadata() -> None:
     get_factory_run_store().reset()
+    _ensure_project("PRJ-API-1")
     created = client.post(
         "/factory/runs",
         json={"build_brief": _payload(), "dry_run": True},
