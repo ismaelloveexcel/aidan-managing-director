@@ -37,7 +37,7 @@ _settings = get_settings()
 # Version
 # ---------------------------------------------------------------------------
 
-_VERSION = "2.5.0"
+_VERSION = "3.0.0"
 
 # ---------------------------------------------------------------------------
 # Lifespan
@@ -270,6 +270,16 @@ select option{background:var(--bg3)}
 .pipeline-bar{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:.3rem}
 .pipeline-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:.6s}
 
+/* ─── Marketing Hub ─────────────────────────────── */
+.campaign-platform-card{background:var(--bg3);border:1px solid var(--border1);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:.75rem}
+.campaign-platform-header{display:flex;align-items:center;gap:.5rem;padding:.6rem .85rem;background:rgba(255,255,255,.03);border-bottom:1px solid var(--border1);font-size:.82rem;font-weight:700}
+.campaign-platform-body{padding:.8rem .85rem}
+.campaign-field{margin-bottom:.6rem}
+.campaign-field-lbl{font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.2rem;display:flex;align-items:center;justify-content:space-between}
+.campaign-field-val{font-size:.82rem;color:var(--text1);white-space:pre-wrap;word-break:break-word;line-height:1.55}
+.project-pipeline-row{display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-bottom:1px solid var(--border1);font-size:.82rem}
+.project-pipeline-row:last-child{border-bottom:none}
+
 /* ─── Toast ─────────────────────────────────────── */
 .toast-container{position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.4rem}
 .toast{padding:.6rem 1rem;border-radius:var(--radius-sm);font-size:.8rem;font-weight:600;min-width:200px;max-width:340px;box-shadow:var(--shadow);animation:slideIn .2s ease;pointer-events:none}
@@ -304,6 +314,8 @@ select option{background:var(--bg3)}
   <button class="nav-btn" data-tab="factory" title="Factory" onclick="showTab('factory')">&#127981;</button>
   <button class="nav-btn" data-tab="launch" title="Launch Kit" onclick="showTab('launch')">&#128640;</button>
   <button class="nav-btn" data-tab="revenue" title="Revenue Loop" onclick="showTab('revenue')">&#128176;</button>
+  <button class="nav-btn" data-tab="marketing" title="Marketing Hub" onclick="showTab('marketing')">&#127881;</button>
+  <button class="nav-btn" data-tab="projects" title="My Projects" onclick="showTab('projects')">&#128218;</button>
 </div>
 
 <!-- CONTENT -->
@@ -602,94 +614,9 @@ select option{background:var(--bg3)}
         </div>
       </div>
     </div>
-  
-
-  <!-- SOCIAL CARD GENERATOR -->
-  <div class="card" style="margin-top:1.2rem">
-    <div class="card-title">&#127912; Animated Social Card Generator</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start">
-      <div>
-        <label for="card-size">Card Size</label>
-        <select id="card-size" onchange="updateCardPreview()">
-          <option value="square">Instagram Square (1080x1080)</option>
-          <option value="landscape">Twitter/LinkedIn (1200x630)</option>
-          <option value="story">Story / TikTok (1080x1920)</option>
-        </select>
-        <label for="card-style">Background Style</label>
-        <select id="card-style" onchange="updateCardPreview()">
-          <option value="purple">Gradient Purple</option>
-          <option value="dark">Gradient Dark</option>
-          <option value="sunset">Gradient Sunset</option>
-          <option value="ocean">Gradient Ocean</option>
-          <option value="black">Solid Black</option>
-        </select>
-        <label for="card-name">Product Name</label>
-        <input type="text" id="card-name" placeholder="e.g. GameForge" oninput="updateCardPreview()"/>
-        <label for="card-tagline">Tagline (max 60 chars)</label>
-        <input type="text" id="card-tagline" maxlength="60" placeholder="e.g. Send games, not just gifts" oninput="updateCardPreview()"/>
-        <label for="card-url">URL (short)</label>
-        <input type="text" id="card-url" placeholder="e.g. gameforge.app" oninput="updateCardPreview()"/>
-        <label for="card-accent">Accent Colour</label>
-        <input type="color" id="card-accent" value="#5b6ef7" oninput="updateCardPreview()" style="width:60px;height:32px;padding:2px;cursor:pointer"/>
-        <div style="margin-top:.8rem;display:flex;gap:.5rem">
-          <button class="btn btn-secondary" style="flex:1" onclick="updateCardPreview()">&#128065; Preview</button>
-          <button class="btn btn-success" style="flex:1" onclick="downloadSocialCard()">&#11123; Download PNG</button>
-        </div>
-      </div>
-      <div style="text-align:center">
-        <canvas id="social-card-canvas" width="300" height="300"
-          style="border-radius:12px;width:100%;max-width:300px;border:1px solid var(--border2);cursor:pointer"
-          onclick="downloadSocialCard()" title="Click to download full-size PNG"></canvas>
-        <div style="font-size:.72rem;color:var(--text4);margin-top:.4rem">Click to download full-size PNG</div>
-        <div style="margin-top:.5rem;font-size:.72rem;color:var(--text3)">&#128039; AI-DAN Dodo mascot included</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PROMO VIDEO GENERATOR -->
-  <div class="card" style="margin-top:1.2rem">
-    <div class="card-title">&#127916; AI Promo Video Generator <span style="font-size:.7rem;color:var(--text3);font-weight:400;margin-left:.5rem">Free &bull; GitHub Actions &bull; ~3 min</span></div>
-    <div class="alert alert-info" style="font-size:.78rem;margin-bottom:.8rem">
-      &#128161; AI writes a creative video script (Grok/OpenAI), then renders a free MP4 via GitHub Actions.
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
-      <div>
-        <label for="vid-product">Product Name</label>
-        <input type="text" id="vid-product" placeholder="e.g. GameForge"/>
-        <label for="vid-tagline">Tagline</label>
-        <input type="text" id="vid-tagline" placeholder="e.g. Send games, not just gifts"/>
-        <label for="vid-url">Product URL</label>
-        <input type="url" id="vid-url" placeholder="https://..."/>
-      </div>
-      <div>
-        <label for="vid-region">Target Region</label>
-        <select id="vid-region">
-          <option value="global">&#127758; Global</option>
-          <option value="mena">MENA</option>
-          <option value="africa">Africa</option>
-          <option value="south_asia">South Asia</option>
-          <option value="southeast_asia">Southeast Asia</option>
-          <option value="latam">Latin America</option>
-          <option value="europe">Europe</option>
-          <option value="north_america">North America</option>
-        </select>
-        <div style="margin-top:.6rem">
-          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:normal;font-size:.85rem">
-            <input type="checkbox" id="vid-ai-concept" checked style="width:auto;margin:0"/>
-            &#10024; Use AI to write video script
-          </label>
-        </div>
-        <div style="margin-top:.8rem">
-          <button class="btn btn-primary btn-full" id="vid-btn" onclick="triggerVideoGeneration()">
-            &#127916; Generate Free Promo Video
-          </button>
-        </div>
-        <div id="vid-result" style="margin-top:.6rem;font-size:.78rem"></div>
-      </div>
-    </div>
-  </div></div>
 </div>
 
+</div>
 <!-- TAB 6: REVENUE LOOP -->
 <div class="tab-panel" id="tab-revenue">
   <div style="max-width:900px">
@@ -743,6 +670,193 @@ select option{background:var(--bg3)}
           <div class="card-title">&#128221; Learning Log</div>
           <textarea id="learning-log" rows="4" placeholder="What worked? What flopped? Record learnings here…"></textarea>
           <button class="btn btn-secondary" style="margin-top:.5rem;font-size:.75rem" onclick="saveLearningLog()">&#128190; Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- TAB 7: MARKETING HUB -->
+<div class="tab-panel" id="tab-marketing">
+  <div style="max-width:960px">
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:1.2rem;align-items:start">
+
+      <!-- Left: Config -->
+      <div>
+        <div class="card">
+          <div class="card-title">&#127881; Campaign Generator</div>
+
+          <label for="mkt-product">Product Name *</label>
+          <input type="text" id="mkt-product" placeholder="e.g. GameForge"/>
+
+          <label for="mkt-hook">Core Hook (what makes it special)</label>
+          <input type="text" id="mkt-hook" placeholder="e.g. Send personalised mini-games as gifts"/>
+
+          <label for="mkt-audience">Target Audience</label>
+          <input type="text" id="mkt-audience" placeholder="e.g. Gift-givers aged 25-40"/>
+
+          <label for="mkt-region">Primary Region</label>
+          <select id="mkt-region" onchange="updateMktPlatforms()">
+            <option value="global">&#127758; Global</option>
+            <option value="mena">MENA (Middle East &amp; North Africa)</option>
+            <option value="africa">Sub-Saharan Africa</option>
+            <option value="south_asia">South Asia</option>
+            <option value="southeast_asia">Southeast Asia</option>
+            <option value="latam">Latin America</option>
+            <option value="europe">Western Europe</option>
+            <option value="north_america">North America</option>
+          </select>
+          <div id="mkt-region-insight" class="alert alert-info" style="margin:.5rem 0;font-size:.75rem;display:none"></div>
+
+          <label for="mkt-goal">Campaign Goal</label>
+          <select id="mkt-goal">
+            <option value="awareness">Brand Awareness</option>
+            <option value="signups">Email / Signups</option>
+            <option value="sales">Direct Sales</option>
+            <option value="viral">Viral / Shares</option>
+          </select>
+
+          <label for="mkt-budget">Budget Level</label>
+          <select id="mkt-budget">
+            <option value="zero">Zero Budget (organic only)</option>
+            <option value="micro">Micro ($1–50/day)</option>
+            <option value="small">Small ($50–200/day)</option>
+          </select>
+
+          <div style="margin-top:1rem;display:flex;gap:.5rem">
+            <button class="btn btn-primary" style="flex:1" id="mkt-gen-btn" onclick="generateCampaign()">
+              &#10024; Generate Campaign
+            </button>
+            <button class="btn btn-secondary" onclick="clearMktForm()">Clear</button>
+          </div>
+          <div id="mkt-error" class="alert alert-error" style="display:none;margin-top:.5rem"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">&#127758; Platform Playbook by Region</div>
+          <div id="mkt-platform-guide" style="font-size:.8rem;line-height:1.7;color:var(--text2)">
+            Select a region above to see the best platforms to use.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Generated output -->
+      <div>
+        <div id="mkt-output">
+          <div class="card" style="text-align:center;color:var(--text4);padding:3rem 1rem">
+            <div style="font-size:2.5rem;margin-bottom:.75rem">&#127756;</div>
+            <div style="font-size:.9rem">Fill in your product details and hit Generate Campaign</div>
+            <div style="font-size:.78rem;margin-top:.5rem;color:var(--text4)">AI-DAN will write region-specific content for each platform</div>
+          </div>
+        </div>
+
+        <!-- Out-of-the-box concepts panel -->
+        <div class="card" style="margin-top:1.2rem">
+          <div class="card-title">&#129513; Out-of-the-Box Campaign Concepts</div>
+          <div class="alert alert-info" style="font-size:.78rem;margin-bottom:.9rem">
+            &#128161; These unconventional ideas have worked for zero-budget founders globally.
+          </div>
+          <div id="mkt-concepts-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+            <div class="card" style="padding:.8rem;margin:0">
+              <div style="font-weight:700;font-size:.82rem;margin-bottom:.3rem;color:var(--accent3)">&#127926; Meme-first launch</div>
+              <div style="font-size:.78rem;color:var(--text2)">Create 5 relatable memes about your audience's pain. Post them before showing your product. No pitch. Just laughs. Then drop the link in comment.</div>
+            </div>
+            <div class="card" style="padding:.8rem;margin:0">
+              <div style="font-weight:700;font-size:.82rem;margin-bottom:.3rem;color:var(--accent3)">&#128247; Behind-the-scenes build</div>
+              <div style="font-size:.78rem;color:var(--text2)">Document building your app in real time on TikTok/Instagram Reels. "Day 1 of building X" series. Founders get 10x more engagement than polished ads.</div>
+            </div>
+            <div class="card" style="padding:.8rem;margin:0">
+              <div style="font-weight:700;font-size:.82rem;margin-bottom:.3rem;color:var(--accent3)">&#127942; Challenge campaign</div>
+              <div style="font-size:.78rem;color:var(--text2)">Create a 7-day challenge relevant to your niche. Free, no signup. On day 7 offer your product as the "next level". Works brilliantly on WhatsApp groups.</div>
+            </div>
+            <div class="card" style="padding:.8rem;margin:0">
+              <div style="font-weight:700;font-size:.82rem;margin-bottom:.3rem;color:var(--accent3)">&#128587; Controversy post</div>
+              <div style="font-size:.78rem;color:var(--text2)">Post a hot take about your industry. Don't be rude — be insightful but polarising. Comments go wild. Algorithm loves this. Drop product link in bio.</div>
+            </div>
+            <div class="card" style="padding:.8rem;margin:0">
+              <div style="font-weight:700;font-size:.82rem;margin-bottom:.3rem;color:var(--accent3)">&#128276; DM cold outreach wave</div>
+              <div style="font-size:.78rem;color:var(--text2)">Send 50 personalised DMs per day to your ICP on Instagram/Twitter. Not a pitch — a genuine question about their problem. 2-3% will convert. That's 1-2 customers/day.</div>
+            </div>
+            <div class="card" style="padding:.8rem;margin:0">
+              <div style="font-weight:700;font-size:.82rem;margin-bottom:.3rem;color:var(--accent3)">&#128101; Community infiltration</div>
+              <div style="font-size:.78rem;color:var(--text2)">Find 10 Facebook Groups / Reddit communities where your ICP hangs out. Spend 2 weeks providing value. Then soft-mention your product when asked for solutions.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 8: MY PROJECTS -->
+<div class="tab-panel" id="tab-projects">
+  <div style="max-width:960px">
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>&#128218; My Projects Pipeline</span>
+        <button class="btn btn-primary" style="font-size:.75rem;padding:.3rem .75rem" onclick="showTab('analyze')">&#43; Score New Idea</button>
+      </div>
+      <div id="projects-pipeline">
+        <div class="loading-row"><span class="spinner"></span> Loading...</div>
+      </div>
+    </div>
+
+    <!-- Pre-built project cards for the three known ideas -->
+    <div style="margin-top:1rem">
+      <div class="card-title" style="margin-bottom:.75rem;color:var(--text3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">&#127959; In Development</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem">
+        <div class="card" style="border-left:3px solid var(--accent3);margin:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem">
+            <div style="font-weight:700;font-size:.95rem">&#127918; Digital Gifts</div>
+            <span class="badge badge-warn">Building</span>
+          </div>
+          <div style="font-size:.8rem;color:var(--text2);margin-bottom:.75rem;line-height:1.55">
+            Personalised mini-games and animated digital invitation cards sold as gifts. AI customisation for any occasion.
+          </div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:.75rem">
+            &#128279; <a href="https://github.com/ismaelloveexcel/gameforge-mobile" target="_blank">gameforge-mobile</a>
+          </div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="usePrompt('How do I get my first 10 paying customers for a digital gift card app that sells personalised mini-games?');showTab('chat')">&#128039; Ask AI-DAN</button>
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="prefillLaunch('Digital Gifts','Send personalised mini-games as gifts','Gift-givers 25-40')">&#128640; Launch Kit</button>
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="prefillMarketing('Digital Gifts','Personalised mini-games as digital gifts')">&#127881; Market It</button>
+          </div>
+        </div>
+
+        <div class="card" style="border-left:3px solid var(--accent2);margin:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem">
+            <div style="font-weight:700;font-size:.95rem">&#127891; EduGate</div>
+            <span class="badge badge-info">Ideation</span>
+          </div>
+          <div style="font-size:.8rem;color:var(--text2);margin-bottom:.75rem;line-height:1.55">
+            Education platform — gateway to quality learning. Connecting students with curated courses and learning pathways.
+          </div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:.75rem">
+            &#128279; <a href="https://github.com/ismaelloveexcel/EduGate" target="_blank">EduGate</a>
+          </div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="usePrompt('What is the fastest way to monetise an education platform targeting students in MENA and Africa?');showTab('chat')">&#128039; Ask AI-DAN</button>
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="prefillAnalyze('EduGate — a platform connecting students with quality curated learning pathways and courses, starting in MENA and Africa','Education access is poor and expensive in emerging markets','Students 16-30 in MENA and Africa')">&#9889; Score It</button>
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="prefillMarketing('EduGate','Quality education accessible to all students')">&#127881; Market It</button>
+          </div>
+        </div>
+
+        <div class="card" style="border-left:3px solid #ec4899;margin:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.6rem">
+            <div style="font-weight:700;font-size:.95rem">&#10084; Sparks</div>
+            <span class="badge badge-info">Concept</span>
+          </div>
+          <div style="font-size:.8rem;color:var(--text2);margin-bottom:.75rem;line-height:1.55">
+            Gaming platform for couples who match on dating apps. Replaces boring chat with fun mini-games to help people get to know each other naturally.
+          </div>
+          <div style="font-size:.75rem;color:var(--text3);margin-bottom:.75rem">
+            &#128161; Concept stage — needs scoring
+          </div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="usePrompt('Score this business idea honestly: Sparks is a gaming platform where people who match on dating apps can play mini-games together to get to know each other. What are the biggest risks and the fastest path to monetisation?');showTab('chat')">&#128039; Ask AI-DAN</button>
+            <button class="btn btn-secondary" style="font-size:.72rem;padding:.25rem .6rem" onclick="prefillAnalyze('Sparks — a gaming platform where people who match on dating apps can play fun mini-games together to get to know each other. Replaces awkward text conversations with interactive games.','People match on dating apps but lose momentum because chat is boring','Single people 18-35 who use dating apps')">&#9889; Score It</button>
+          </div>
         </div>
       </div>
     </div>
@@ -810,6 +924,8 @@ function showTab(name) {
   if (name === 'factory') loadFactory();
   if (name === 'launch') loadLaunchProjects();
   if (name === 'revenue') renderRevTable();
+  if (name === 'marketing') updateMktPlatforms();
+  if (name === 'projects') loadProjectsPipeline();
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────
@@ -820,12 +936,24 @@ function usePrompt(text) {
   sendChatMessage();
 }
 
+function formatBotMsg(text) {
+  // Render basic markdown: **bold**, numbered lists, and preserve newlines
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^(\d+\. .+)$/gm,'<div style="margin:.15rem 0">$1</div>')
+    .replace(/^(#{1,3} .+)$/gm,'<div style="font-weight:700;margin:.4rem 0;color:#fff">$1</div>')
+    .replace(/\n\n/g,'<br><br>')
+    .replace(/\n/g,'<br>');
+}
+
 function appendMsg(role, text) {
   var hist = document.getElementById('chat-history');
   var div = document.createElement('div');
   div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
   var avatar = role === 'user' ? '&#128100;' : '&#128039;';
-  div.innerHTML = '<div class="msg-avatar">'+avatar+'</div><div class="msg-bubble">'+esc(text)+'</div>';
+  var formatted = role === 'bot' ? formatBotMsg(text) : esc(text);
+  div.innerHTML = '<div class="msg-avatar">'+avatar+'</div><div class="msg-bubble">'+formatted+'</div>';
   hist.appendChild(div);
   hist.scrollTop = hist.scrollHeight;
   return div;
@@ -1482,6 +1610,183 @@ function saveLearningLog() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────
+// ─── Marketing Hub ─────────────────────────────────────────────────────────
+var _mktRegionData = {
+  global:       {top:['instagram','tiktok','youtube','twitter','reddit'], note:'All platforms relevant. Prioritise Instagram + TikTok for visual products, Reddit for tech.'},
+  mena:         {top:['instagram','whatsapp','tiktok','snapchat','youtube'], note:'WhatsApp groups are extremely powerful for viral spread in MENA. Snapchat dominant in Saudi/UAE for under-30s.'},
+  africa:       {top:['whatsapp','facebook','tiktok','instagram','youtube'], note:'WhatsApp is the #1 channel in Sub-Saharan Africa. Facebook groups still massive for community reach.'},
+  south_asia:   {top:['whatsapp','instagram','youtube','facebook','snapchat'], note:'WhatsApp dominates India, Pakistan, Bangladesh. YouTube is the #1 video platform. Instagram growing fast.'},
+  southeast_asia:{top:['tiktok','facebook','instagram','youtube','twitter'], note:'TikTok is dominant in SEA. Facebook still very strong in Philippines, Indonesia, Vietnam.'},
+  latam:        {top:['instagram','tiktok','whatsapp','facebook','youtube'], note:'Instagram + WhatsApp are the power combo in Brazil, Mexico, Colombia. TikTok growing very fast.'},
+  europe:       {top:['instagram','linkedin','twitter','reddit','tiktok'], note:'LinkedIn matters more for B2B. Instagram strong for consumer. TikTok growing rapidly with under-35s.'},
+  north_america:{top:['tiktok','instagram','twitter','reddit','linkedin'], note:'TikTok dominates for viral reach. Reddit strong for tech/niche. Twitter/X for building in public.'},
+};
+
+function updateMktPlatforms() {
+  var region = (document.getElementById('mkt-region') || {}).value || 'global';
+  var data = _mktRegionData[region] || _mktRegionData.global;
+  var insight = document.getElementById('mkt-region-insight');
+  if (insight) {
+    insight.style.display = 'block';
+    insight.innerHTML = '<strong>Best platforms for this region:</strong> ' +
+      data.top.map(function(p){ return (_platLabels[p]||p); }).join(', ') +
+      '<br><span style="color:var(--text2)">' + data.note + '</span>';
+  }
+  var guide = document.getElementById('mkt-platform-guide');
+  if (guide) {
+    guide.innerHTML = '<div style="margin-bottom:.5rem"><strong style="color:var(--text1)">Top 5 platforms:</strong></div>' +
+      data.top.map(function(p, i){
+        return '<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--border1)">' +
+          '<span style="color:var(--text3);font-size:.72rem;width:16px">' + (i+1) + '.</span>' +
+          '<span>' + (_platIcons[p]||'') + '</span>' +
+          '<span style="flex:1">' + (_platLabels[p]||p) + '</span>' +
+        '</div>';
+      }).join('') +
+      '<div style="font-size:.78rem;color:var(--text3);margin-top:.5rem;line-height:1.55">' + data.note + '</div>';
+  }
+}
+
+function clearMktForm() {
+  ['mkt-product','mkt-hook','mkt-audience'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('mkt-output').innerHTML =
+    '<div class="card" style="text-align:center;color:var(--text4);padding:3rem 1rem"><div style="font-size:2.5rem;margin-bottom:.75rem">&#127756;</div><div>Fill in your product details and hit Generate Campaign</div></div>';
+  document.getElementById('mkt-error').style.display = 'none';
+}
+
+function generateCampaign() {
+  var product = (document.getElementById('mkt-product') || {}).value || '';
+  var hook = (document.getElementById('mkt-hook') || {}).value || '';
+  var audience = (document.getElementById('mkt-audience') || {}).value || '';
+  var region = (document.getElementById('mkt-region') || {}).value || 'global';
+  var goal = (document.getElementById('mkt-goal') || {}).value || 'awareness';
+  var budget = (document.getElementById('mkt-budget') || {}).value || 'zero';
+  
+  if (!product.trim()) { toast('Enter your product name', 'warn'); return; }
+  if (!hook.trim()) { toast('Enter your product hook/value proposition', 'warn'); return; }
+
+  var btn = document.getElementById('mkt-gen-btn');
+  var errEl = document.getElementById('mkt-error');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Writing campaigns...';
+  errEl.style.display = 'none';
+
+  var regionData = _mktRegionData[region] || _mktRegionData.global;
+  var platforms = regionData.top.slice(0,4).map(function(p){ return _platLabels[p]||p; }).join(', ');
+
+  var prompt = 'You are a viral marketing expert. Write a complete marketing campaign for: ' +
+    product + '. Hook: ' + hook + '. Target audience: ' + audience + '. ' +
+    'Region: ' + region + ' (best platforms: ' + platforms + '). ' +
+    'Campaign goal: ' + goal + '. Budget: ' + budget + '. ' +
+    'For each of the top 4 platforms ('+platforms+'), write: ' +
+    '1) A specific post/caption (ready to copy-paste), ' +
+    '2) Best time to post, ' +
+    '3) One unconventional growth hack for that platform. ' +
+    'Be creative, specific, and conversion-focused. No generic advice.';
+
+  apiFetch('/chat/talk', {method:'POST', body: JSON.stringify({message: prompt, history: []})})
+    .then(function(data) {
+      var reply = data.reply || data.message || '';
+      renderCampaignOutput(reply, product, regionData.top.slice(0,4));
+    })
+    .catch(function(err) {
+      errEl.textContent = err.message;
+      errEl.style.display = 'block';
+      toast('Campaign generation failed: ' + err.message, 'error');
+    })
+    .finally(function() {
+      btn.disabled = false;
+      btn.innerHTML = '&#10024; Generate Campaign';
+    });
+}
+
+function renderCampaignOutput(text, product, platforms) {
+  var html = '<div class="card">' +
+    '<div class="card-title" style="display:flex;justify-content:space-between;align-items:center">' +
+      '<span>&#127881; ' + esc(product) + ' — Campaign</span>' +
+      '<button class="export-btn" onclick="copyText('+JSON.stringify(text)+', 'campaign content')">&#128203; Copy All</button>' +
+    '</div>' +
+    '<div style="white-space:pre-wrap;font-size:.83rem;color:var(--text1);line-height:1.7">' + esc(text) + '</div>' +
+    '<div class="section-sep"></div>' +
+    '<div style="display:flex;gap:.5rem;flex-wrap:wrap">' +
+      '<button class="btn btn-secondary" style="font-size:.72rem" onclick="copyText('+JSON.stringify(text)+','campaign content')">&#128203; Copy All</button>' +
+      '<button class="btn btn-secondary" style="font-size:.72rem" onclick="generateCampaign()">&#8635; Regenerate</button>' +
+      '<button class="btn btn-primary" style="font-size:.72rem" onclick="showTab('launch')">&#128640; Build Launch Kit</button>' +
+    '</div>' +
+  '</div>';
+  document.getElementById('mkt-output').innerHTML = html;
+  toast('Campaign generated! Copy and post.', 'success');
+}
+
+// ─── Projects Pipeline ─────────────────────────────────────────────────────
+function loadProjectsPipeline() {
+  apiFetch('/portfolio/projects')
+    .then(function(projects) {
+      var list = Array.isArray(projects) ? projects : [];
+      if (!list.length) {
+        document.getElementById('projects-pipeline').innerHTML =
+          '<div style="color:var(--text4);text-align:center;padding:1.2rem;font-size:.82rem">No projects in pipeline yet. Score an idea to add one.</div>';
+        return;
+      }
+      var html = '';
+      list.forEach(function(p) {
+        var state = p.state || 'idea';
+        var icon = {idea:'&#128161;',approved:'&#9989;',building:'&#127981;',deployed:'&#127640;',scaling:'&#128640;'}[state] || '&#128462;';
+        var badgeCls = {idea:'badge-muted',approved:'badge-success',building:'badge-info',deployed:'badge-success',scaling:'badge-warn'}[state] || 'badge-muted';
+        html += '<div class="project-pipeline-row">' +
+          '<span style="font-size:1.1rem">' + icon + '</span>' +
+          '<span style="flex:1;font-weight:600">' + esc(p.name||p.title||'Untitled') + '</span>' +
+          '<span class="badge ' + badgeCls + '">' + esc(state) + '</span>' +
+          (p.score ? '<span style="color:var(--text3);font-size:.75rem">' + p.score + '/10</span>' : '') +
+          '<button class="btn btn-secondary" style="font-size:.7rem;padding:.2rem .5rem" onclick="prefillLaunch('+JSON.stringify(p.name||p.title||'')+','+JSON.stringify(p.description||'')+',\'\')">&#128640;</button>' +
+        '</div>';
+      });
+      document.getElementById('projects-pipeline').innerHTML = html;
+    })
+    .catch(function() {
+      document.getElementById('projects-pipeline').innerHTML =
+        '<div class="alert alert-error">Failed to load projects pipeline</div>';
+    });
+}
+
+// ─── Cross-tab helpers ─────────────────────────────────────────────────────
+function prefillLaunch(title, desc, user) {
+  showTab('launch');
+  setTimeout(function() {
+    var el = document.getElementById('launch-title');
+    if (el && title) el.value = title;
+    el = document.getElementById('launch-desc');
+    if (el && desc) el.value = desc;
+    el = document.getElementById('launch-user');
+    if (el && user) el.value = user;
+  }, 100);
+}
+
+function prefillMarketing(product, hook) {
+  showTab('marketing');
+  setTimeout(function() {
+    var el = document.getElementById('mkt-product');
+    if (el && product) el.value = product;
+    el = document.getElementById('mkt-hook');
+    if (el && hook) el.value = hook;
+    updateMktPlatforms();
+  }, 100);
+}
+
+function prefillAnalyze(idea, problem, user) {
+  showTab('analyze');
+  setTimeout(function() {
+    var el = document.getElementById('idea-desc');
+    if (el && idea) el.value = idea;
+    el = document.getElementById('idea-problem');
+    if (el && problem) el.value = problem;
+    el = document.getElementById('idea-user');
+    if (el && user) el.value = user;
+  }, 100);
+}
+
 (function init(){
   // Load learning log
   var ll = localStorage.getItem('learning_log');
