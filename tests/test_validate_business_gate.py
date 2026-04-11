@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.reasoning.validate_business_gate import (
     GateDecision,

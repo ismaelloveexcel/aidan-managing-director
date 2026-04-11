@@ -10,7 +10,7 @@ import uuid
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.core.dependencies import (
@@ -62,7 +62,7 @@ _auto_learner = get_auto_learner()
 class IdeaExecutionRequest(BaseModel):
     """Input payload for decision-gated factory execution from raw idea text."""
 
-    message: str
+    message: str = Field(min_length=1)
     context: dict[str, Any] | None = None
     project_id: str | None = None
     dry_run: bool = True
@@ -383,15 +383,15 @@ def _verify_callback_secret(request: Request) -> None:
         return  # No secret configured → allow (dev mode).
 
     provided = request.headers.get("X-Factory-Secret", "")
-    if not provided or not hmac.compare_digest(provided, expected):
+    if not hmac.compare_digest(provided, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing factory callback secret.")
 
 
 class FactoryCallbackPayload(BaseModel):
     """Payload sent by the ai-dan-factory repo on build completion or failure."""
 
-    project_id: str
-    correlation_id: str
+    project_id: str = Field(min_length=1)
+    correlation_id: str = Field(min_length=1)
     run_id: str = ""
     status: Literal["succeeded", "failed", "deployed", "building"]
     deploy_url: str = ""
@@ -484,8 +484,9 @@ async def factory_callback(payload: FactoryCallbackPayload, request: Request) ->
         )
         _run_store.upsert(updated_run)
     else:
-        logger.warning(
-            "Factory callback: correlation_id %s not found in store or portfolio DB.",
+        logger.error(
+            "Factory callback: correlation_id %s not found in store or portfolio DB. "
+            "This callback will be dead-lettered. Check /ops/dlq for recovery.",
             payload.correlation_id,
         )
 

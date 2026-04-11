@@ -5,7 +5,13 @@ Centralises the creation of long-lived service clients so that every
 route module shares the same instance.
 """
 
+from __future__ import annotations
+
 from functools import lru_cache as _lru_cache
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.integrations.marketing_engine import MarketingEngine
 
 from app.command_center.service import CommandCenterService
 from app.core.config import get_settings

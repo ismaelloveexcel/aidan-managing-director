@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from app.reasoning.llm_scoring import (
     _parse_llm_dimensions,

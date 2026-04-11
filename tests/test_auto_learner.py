@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.memory.auto_learner import AutoLearner, ScoringWeights
+from app.memory.auto_learner import AutoLearner
 from app.memory.store import MemoryStore
 
 

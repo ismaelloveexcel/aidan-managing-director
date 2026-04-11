@@ -121,6 +121,7 @@ class TursoPortfolioDB:
         columns = {row[1] for row in conn.execute("PRAGMA table_info(factory_runs)").fetchall()}
         if "correlation_id" not in columns:
             conn.execute("ALTER TABLE factory_runs ADD COLUMN correlation_id TEXT")
+            conn.commit()
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_factory_runs_correlation_id "
             "ON factory_runs(correlation_id)"

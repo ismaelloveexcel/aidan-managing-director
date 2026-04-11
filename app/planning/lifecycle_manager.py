@@ -122,7 +122,8 @@ class LifecycleManager:
 
     def get_project(self, project_id: str) -> ProjectRecord | None:
         """Get project record by ID."""
-        return self._projects.get(project_id)
+        with self._lock:
+            return self._projects.get(project_id)
 
     def list_projects(
         self,
@@ -130,10 +131,11 @@ class LifecycleManager:
         state: ProjectState | None = None,
     ) -> list[ProjectRecord]:
         """List projects, optionally filtered by state."""
-        projects = list(self._projects.values())
-        if state is not None:
-            projects = [p for p in projects if p.state == state]
-        return projects
+        with self._lock:
+            projects = list(self._projects.values())
+            if state is not None:
+                projects = [p for p in projects if p.state == state]
+            return projects
 
     def transition(
         self,
@@ -218,25 +220,28 @@ class LifecycleManager:
 
     def get_active_count(self) -> int:
         """Return count of active (non-terminal) projects."""
-        return sum(
-            1 for p in self._projects.values()
-            if p.state not in {ProjectState.KILLED, ProjectState.SCALED, ProjectState.IDEA}
-        )
+        with self._lock:
+            return sum(
+                1 for p in self._projects.values()
+                if p.state not in {ProjectState.KILLED, ProjectState.SCALED, ProjectState.IDEA}
+            )
 
     def get_building_count(self) -> int:
         """Return count of currently building projects."""
-        return sum(
-            1 for p in self._projects.values()
-            if p.state == ProjectState.BUILDING
-        )
+        with self._lock:
+            return sum(
+                1 for p in self._projects.values()
+                if p.state == ProjectState.BUILDING
+            )
 
     def get_queue_priority(self) -> list[ProjectRecord]:
         """Get queued projects sorted by priority (score desc)."""
-        queued = [
-            p for p in self._projects.values()
-            if p.state == ProjectState.QUEUED
-        ]
-        return sorted(queued, key=lambda p: p.score, reverse=True)
+        with self._lock:
+            queued = [
+                p for p in self._projects.values()
+                if p.state == ProjectState.QUEUED
+            ]
+            return sorted(queued, key=lambda p: p.score, reverse=True)
 
     def can_transition(
         self,
@@ -246,7 +251,8 @@ class LifecycleManager:
         """Check if a transition is valid without performing it."""
         if isinstance(new_state, str):
             new_state = ProjectState(new_state)
-        record = self._projects.get(project_id)
-        if record is None:
-            return False
-        return new_state in _TRANSITIONS.get(record.state, set())
+        with self._lock:
+            record = self._projects.get(project_id)
+            if record is None:
+                return False
+            return new_state in _TRANSITIONS.get(record.state, set())

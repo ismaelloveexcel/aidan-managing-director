@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.planning.ui_kit_manifest import UIComponent, UIKitManifest, generate_ui_kit_manifest
 

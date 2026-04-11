@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
 
 from app.skills.competitor_analysis import CompetitorAnalysis, analyze_competitors
 from app.skills.market_research import MarketResearchReport, research_market
@@ -240,9 +239,6 @@ class TestSkillsInit:
 
     def test_all_exports_importable(self) -> None:
         from app.skills import (
-            CompetitorAnalysis,
-            MarketResearchReport,
-            TrendReport,
             analyze_competitors,
             detect_trends,
             research_market,

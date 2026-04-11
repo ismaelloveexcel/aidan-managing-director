@@ -115,7 +115,7 @@ def verify_deployment(
         ui_accessible = False
     elif issues:
         status = VerificationStatus.DEGRADED
-        health_passed = True
+        health_passed = False
         ui_accessible = True
     else:
         status = VerificationStatus.HEALTHY

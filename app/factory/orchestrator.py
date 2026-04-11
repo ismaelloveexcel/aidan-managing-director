@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from app.factory.build_brief_validator import validate_build_brief
 from app.factory.models import BuildBrief, FactoryRunResult, FactoryRunStatus

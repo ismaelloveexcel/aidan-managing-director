@@ -178,4 +178,16 @@ def get_settings() -> Settings:
             )
             raise StrictProductionError(msg)
 
+    if not settings.api_key:
+        logger.warning(
+            "API_KEY is not set — API authentication is DISABLED. "
+            "All endpoints are publicly accessible."
+        )
+
+    if not settings.factory_callback_secret:
+        logger.warning(
+            "FACTORY_CALLBACK_SECRET is not set — factory callback "
+            "authentication is disabled in development mode."
+        )
+
     return settings

@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from app.factory.deployment_verifier import (
-    DeploymentVerification,
     VerificationStatus,
     async_verify_deployment,
     verify_deployment,

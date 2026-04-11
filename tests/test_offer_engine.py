@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.planning.offer_engine import (
     OfferDecision,
