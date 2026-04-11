@@ -131,6 +131,53 @@ class FactoryClient:
             # Log clearly that production dispatch was NOT used.
             import logging as _logging
             _fc_logger = _logging.getLogger(__name__)
+
+            # In strict production mode, the local orchestrator is not
+            # acceptable — the factory MUST execute via GitHub Actions.
+            if settings.is_production_mode():
+                _fc_logger.error(
+                    "Factory dispatch FAILED for project=%s and STRICT_PROD "
+                    "is active — local orchestrator fallback is BLOCKED.",
+                    build_brief.project_id,
+                )
+                run = FactoryRunResult(
+                    run_id=str(uuid.uuid4()),
+                    project_id=build_brief.project_id,
+                    idea_id=build_brief.idea_id,
+                    status=FactoryRunStatus.FAILED,
+                    idempotency_key=f"{build_brief.idempotency_key()}:{'dry_run' if dry_run else 'live'}",
+                    dry_run=dry_run,
+                    correlation_id=correlation_id,
+                    error=(
+                        "Factory dispatch failed and local orchestrator fallback "
+                        "is disabled in production mode (STRICT_PROD=true). "
+                        "Ensure GITHUB_TOKEN has access to the factory repository."
+                    ),
+                    events=[
+                        dispatch_event,
+                        {
+                            "timestamp": _utcnow_iso(),
+                            "step": "local_orchestrator_blocked",
+                            "status": "failed",
+                            "details": {
+                                "reason": "STRICT_PROD blocks local fallback in production",
+                            },
+                        },
+                    ],
+                )
+                run.updated_at = _utcnow_iso()
+                self._orchestrator.store.upsert(run)
+                tracking = FactoryTrackingResult(
+                    run_id=run.run_id,
+                    workflow_dispatched=False,
+                    workflow_run_id=workflow_run_id,
+                    correlation_id=correlation_id,
+                    status=run.status.value,
+                    repo_url=run.repo_url,
+                    deployment_url=run.deploy_url,
+                )
+                return run, tracking
+
             _fc_logger.warning(
                 "Factory dispatch failed or unavailable for project=%s; "
                 "using LOCAL ORCHESTRATOR fallback (not production).",

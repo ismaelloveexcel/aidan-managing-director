@@ -818,9 +818,10 @@ class TestExecutionPathSeparation:
                 public_base_url="https://md.example.com",
                 factory_ref="main",
             )
+            mock_settings.return_value.is_production_mode.return_value = False
             run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
 
-        # Fallback path: dispatch failed → local orchestrator provides output
+        # Fallback path (dev mode): dispatch failed → local orchestrator provides output
         assert run.status == FactoryRunStatus.SUCCEEDED
         assert tracking.workflow_dispatched is False
         assert run.correlation_id is not None
@@ -829,6 +830,65 @@ class TestExecutionPathSeparation:
         event_steps = [e.get("step") for e in run.events]
         assert "local_orchestrator_fallback" in event_steps
         assert "awaiting_factory_callback" not in event_steps
+
+    def test_production_mode_blocks_local_fallback(self) -> None:
+        """When STRICT_PROD is active, failed dispatch → FAILED run (no fallback)."""
+        from unittest.mock import MagicMock, patch
+
+        from app.factory.factory_client import FactoryClient
+        from app.factory.models import BuildBrief
+        from app.factory.orchestrator import FactoryOrchestrator, FactoryRunStore
+
+        mock_github = MagicMock()
+        mock_github.dispatch_factory_build.return_value = False
+
+        store = FactoryRunStore()
+        orchestrator = FactoryOrchestrator(
+            github_client=mock_github,
+            vercel_client=MagicMock(),
+            run_store=store,
+        )
+
+        fc = FactoryClient(
+            github_client=mock_github,
+            orchestrator=orchestrator,
+            factory_owner="test-owner",
+            factory_repo="test-factory",
+            workflow_id="factory-build.yml",
+        )
+
+        brief = BuildBrief(
+            project_id="PRJ-PROD-BLOCK",
+            idea_id="IDEA-PROD-BLOCK",
+            hypothesis="Production fallback block test",
+            target_user="developers",
+            problem="Need to test production mode",
+            solution="Direct testing",
+            mvp_scope=["Test page"],
+            acceptance_criteria=["Page loads"],
+            landing_page_requirements=["Primary CTA: Test CTA"],
+            cta="Test CTA",
+            pricing_hint="Free",
+            deployment_target="vercel",
+            command_bundle={"entrypoint": "test"},
+            feature_flags={"dry_run": True},
+        )
+
+        with patch("app.factory.factory_client.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(
+                public_base_url="https://md.example.com",
+                factory_ref="main",
+            )
+            mock_settings.return_value.is_production_mode.return_value = True
+            run, tracking = fc.trigger_build(build_brief=brief, dry_run=True)
+
+        # Production mode: dispatch failed → FAILED (no local fallback)
+        assert run.status == FactoryRunStatus.FAILED
+        assert tracking.workflow_dispatched is False
+        assert "local orchestrator fallback" in (run.error or "").lower()
+        event_steps = [e.get("step") for e in run.events]
+        assert "local_orchestrator_blocked" in event_steps
+        assert "local_orchestrator_fallback" not in event_steps
 
     def test_callback_updates_dispatched_run(self) -> None:
         """Callback correctly updates a DISPATCHED run to final status."""

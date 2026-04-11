@@ -6,9 +6,9 @@ issues, pull requests, and workflow dispatch events.  Also exposes
 higher-level helpers for preparing structured project-creation
 request payloads that downstream factory systems can consume.
 
-All methods are currently **stub implementations** that return
-realistic placeholder data.  Real HTTP calls (via ``httpx``) will
-replace the stubs once API credentials are provisioned.
+When ``STRICT_PROD`` is enabled (or ``app_env == 'production'``),
+methods that would previously return stubs raise ``RuntimeError``
+instead—stubs are never acceptable in a production execution path.
 """
 
 from __future__ import annotations
@@ -21,6 +21,8 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, Field
+
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +192,27 @@ class GitHubClient:
         """
         return int(uuid.uuid4().int % 900_000_000) + 100_000_000
 
+    @staticmethod
+    def _reject_stub_in_production(method_name: str) -> None:
+        """Raise when a stub method is called in production mode.
+
+        In dev/test (``STRICT_PROD=false``), stubs are silently
+        returned.  In production, stubs would create fake success
+        paths—so we hard-fail instead.
+        """
+        try:
+            settings = get_settings()
+            if settings.is_production_mode():
+                raise RuntimeError(
+                    f"GitHubClient.{method_name}() returned stub data "
+                    "but STRICT_PROD or app_env=production is active. "
+                    "Configure a valid GITHUB_TOKEN or disable STRICT_PROD."
+                )
+        except RuntimeError:
+            raise
+        except Exception:
+            pass  # Settings unavailable → dev mode, allow stubs
+
     def _html_base(self) -> str:
         """Derive the HTML base URL from the API base URL.
 
@@ -220,6 +243,7 @@ class GitHubClient:
         Returns:
             Repository metadata dictionary.
         """
+        self._reject_stub_in_production("create_repo")
         html_base = self._html_base()
         return {
             "id": self._stub_id(),
@@ -252,6 +276,7 @@ class GitHubClient:
         Returns:
             Issue metadata dictionary.
         """
+        self._reject_stub_in_production("create_issue")
         issue_number = int(uuid.uuid4().int % 9_999) + 1
         html_base = self._html_base()
         return {
@@ -288,6 +313,7 @@ class GitHubClient:
         Returns:
             Pull-request metadata dictionary.
         """
+        self._reject_stub_in_production("create_pr")
         pr_number = int(uuid.uuid4().int % 9_999) + 1
         html_base = self._html_base()
         return {
@@ -414,7 +440,9 @@ class GitHubClient:
         """Create a repository from a template repository.
 
         Stub implementation returns a realistic repository metadata payload.
+        Rejected in production mode.
         """
+        self._reject_stub_in_production("create_repo_from_template")
         repo_meta = self.create_repo(name=name, owner=owner, private=private)
         repo_meta["description"] = description
         repo_meta["template_used"] = f"{template_owner}/{template_repo}"
@@ -434,7 +462,9 @@ class GitHubClient:
         """Create or update a repository file.
 
         Stub implementation returns synthetic commit metadata.
+        Rejected in production mode.
         """
+        self._reject_stub_in_production("upsert_file")
         html_base = self._html_base()
         commit_sha = uuid.uuid4().hex[:12]
         result = CommitFileResult(
@@ -574,6 +604,7 @@ class GitHubClient:
         Returns:
             Serialised :class:`RepoStatus` dictionary.
         """
+        self._reject_stub_in_production("get_repo_status")
         html_base = self._html_base()
         status = RepoStatus(
             owner=owner,

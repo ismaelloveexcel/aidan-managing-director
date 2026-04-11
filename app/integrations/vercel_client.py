@@ -4,6 +4,9 @@ vercel_client.py - Vercel deployment integration for the GitHub Factory.
 Makes real Vercel REST API calls when a token is configured.
 Falls back to deterministic stub behavior when no token is set,
 so the factory orchestrator can be built and tested without credentials.
+
+When ``STRICT_PROD`` is enabled, stub fallbacks are rejected—real
+Vercel credentials must be configured.
 """
 
 from __future__ import annotations
@@ -14,6 +17,8 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel
+
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +62,22 @@ class VercelClient:
             return {"teamId": self.team_id}
         return {}
 
+    @staticmethod
+    def _reject_stub_in_production(method_name: str) -> None:
+        """Raise when a stub method is called in production mode."""
+        try:
+            settings = get_settings()
+            if settings.is_production_mode():
+                raise RuntimeError(
+                    f"VercelClient.{method_name}() returned stub data "
+                    "but STRICT_PROD or app_env=production is active. "
+                    "Configure a valid VERCEL_TOKEN or disable STRICT_PROD."
+                )
+        except RuntimeError:
+            raise
+        except Exception:
+            pass
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -68,6 +89,7 @@ class VercelClient:
         Falls back to stub behavior on missing token or API error.
         """
         if not self.token:
+            self._reject_stub_in_production("ensure_project")
             return self._stub_project(name)
 
         try:
@@ -108,6 +130,7 @@ class VercelClient:
 
         except Exception as exc:
             logger.warning("Vercel ensure_project failed, using stub: %s", exc)
+            self._reject_stub_in_production("ensure_project")
 
         return self._stub_project(name)
 
@@ -124,6 +147,7 @@ class VercelClient:
         Falls back to stub behavior on missing token or API error.
         """
         if not self.token:
+            self._reject_stub_in_production("deploy_git_repo")
             return self._stub_deploy(project_name)
 
         try:
@@ -152,6 +176,7 @@ class VercelClient:
 
         except Exception as exc:
             logger.warning("Vercel deploy_git_repo failed, using stub: %s", exc)
+            self._reject_stub_in_production("deploy_git_repo")
 
         return self._stub_deploy(project_name)
 
