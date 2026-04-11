@@ -83,8 +83,7 @@ class TestPremiumDashboardRoute:
     def test_contains_dashboard_markup(self) -> None:
         resp = client.get("/dashboard")
         assert "AI-DAN" in resp.text
-        assert "Founder Dashboard" in resp.text
-        assert "Command Center" in resp.text
+        assert "What do you want to build" in resp.text
 
     def test_loads_static_assets(self) -> None:
         resp = client.get("/dashboard")
