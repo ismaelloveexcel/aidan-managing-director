@@ -92,6 +92,8 @@ _APPROVED_STATES = {
 }
 _BLOCKED_STATES = {LifecycleState.KILLED}
 
+_MAX_RECENT_BUILDS = 20
+
 
 def _compute_health(
     total: int,
@@ -359,7 +361,7 @@ def get_dashboard_summary() -> DashboardSummary:
     try:
         run_store = get_factory_run_store()
         runs = run_store.list_runs()
-        for run in runs[:20]:
+        for run in runs[:_MAX_RECENT_BUILDS]:
             recent_builds.append(
                 {
                     "run_id": run.run_id,
@@ -410,7 +412,7 @@ def update_project_type(project_id: str, request: ProjectTypeUpdate) -> dict[str
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    metadata = dict(project.metadata)
+    metadata = dict(project.metadata or {})
     metadata["project_type"] = request.project_type
 
     with repo._db.connect() as conn:
