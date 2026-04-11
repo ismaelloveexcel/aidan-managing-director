@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
 from main import app
@@ -126,7 +125,10 @@ class TestAnalyzeEndpoint:
     def test_health_still_works(self) -> None:
         resp = client.get("/health")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "ok"}
+        data = resp.json()
+        assert data["status"] in {"ok", "degraded"}
+        assert "checks" in data
+        assert "version" in data
 
     def test_analyze_high_competition_weak_diff_rejected(self) -> None:
         resp = client.post("/api/analyze/", json={

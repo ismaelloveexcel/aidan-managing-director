@@ -4,6 +4,7 @@ main.py – FastAPI application entry point for AI-DAN Managing Director.
 Registers all route modules, serves the root UI, and configures the application.
 """
 
+import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
@@ -40,6 +41,8 @@ _settings = get_settings()
 
 _VERSION = "3.0.0"
 
+_logger = logging.getLogger("aidan.startup")
+
 # ---------------------------------------------------------------------------
 # Lifespan
 # ---------------------------------------------------------------------------
@@ -47,6 +50,12 @@ _VERSION = "3.0.0"
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    _logger.info("AI-DAN Managing Director v%s starting", _VERSION)
+    missing = _settings.validate_production_secrets()
+    if missing:
+        _logger.warning("Missing production secrets: %s", ", ".join(missing))
+    else:
+        _logger.info("All production secrets configured")
     yield
 
 
@@ -93,7 +102,29 @@ app.include_router(ops.router, prefix="/ops")
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    checks: dict[str, str] = {}
+    overall = "ok"
+
+    # Database connectivity check
+    try:
+        from app.core.dependencies import get_portfolio_repository
+        repo = get_portfolio_repository()
+        repo.list_projects()
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "error"
+        overall = "degraded"
+
+    # Config readiness check
+    missing = _settings.validate_production_secrets()
+    if missing:
+        checks["config"] = "missing_secrets"
+        if _settings.is_production_mode():
+            overall = "degraded"
+    else:
+        checks["config"] = "ok"
+
+    return {"status": overall, "checks": checks, "version": _VERSION}
 
 
 # ---------------------------------------------------------------------------
@@ -942,11 +973,11 @@ function formatBotMsg(text) {
   // Render basic markdown: **bold**, numbered lists, and preserve newlines
   return text
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/^(\d+\. .+)$/gm,'<div style="margin:.15rem 0">$1</div>')
+    .replace(/\\*\\*(.+?)\\*\\*/g,'<strong>$1</strong>')
+    .replace(/^(\\d+\\. .+)$/gm,'<div style="margin:.15rem 0">$1</div>')
     .replace(/^(#{1,3} .+)$/gm,'<div style="font-weight:700;margin:.4rem 0;color:#fff">$1</div>')
-    .replace(/\n\n/g,'<br><br>')
-    .replace(/\n/g,'<br>');
+    .replace(/\\n\\n/g,'<br><br>')
+    .replace(/\\n/g,'<br>');
 }
 
 function appendMsg(role, text) {
@@ -1505,7 +1536,7 @@ function downloadSocialCard(){
   ctx.strokeStyle=ac;ctx.lineWidth=6;ctx.strokeRect(3,3,fw-6,fh-6);
   off.toBlob(function(b){
     var a=document.createElement('a');a.href=URL.createObjectURL(b);
-    a.download=(pn.replace(/\s+/g,'-').toLowerCase()||'card')+'-'+sk+'.png';
+    a.download=(pn.replace(/\\s+/g,'-').toLowerCase()||'card')+'-'+sk+'.png';
     a.click();URL.revokeObjectURL(a.href);toast('Social card downloaded!','success');
   },'image/png');
 }
@@ -1584,9 +1615,9 @@ function renderRevTable() {
 function exportRevenue() {
   var entries = JSON.parse(localStorage.getItem('revenue_entries') || '[]');
   if (!entries.length) { toast('No revenue data to export', 'warn'); return; }
-  var csv = 'Date,Project,Amount,Source,Note\n' + entries.map(function(e){
+  var csv = 'Date,Project,Amount,Source,Note\\n' + entries.map(function(e){
     return [e.date,e.project,e.amount,e.source,e.note].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"';}).join(',');
-  }).join('\n');
+  }).join('\\n');
   var blob = new Blob([csv], {type:'text/csv'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

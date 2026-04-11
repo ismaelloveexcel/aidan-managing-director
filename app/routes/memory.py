@@ -10,7 +10,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.core.dependencies import get_auto_learner, get_memory_store
-from app.memory.auto_learner import OUTCOME_TYPES, LearningInsight, OutcomeType
+from app.memory.auto_learner import LearningInsight, OutcomeType
 from app.memory.store import LearningSignal
 
 router = APIRouter()

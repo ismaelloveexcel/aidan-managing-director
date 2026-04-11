@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.integrations.repo_discovery_engine import (
     RepoCandidate,
-    RepoDiscoveryResult,
     SelectionMode,
     discover_repos,
     score_candidate,

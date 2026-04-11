@@ -37,7 +37,7 @@ def _post_webhook(*, url: str, payload: dict, timeout: int = 15) -> None:
                 time.sleep(_RETRY_DELAY_SECONDS)
                 continue
             raise
-        except urllib.error.URLError as exc:
+        except urllib.error.URLError:
             if attempt < _MAX_RETRIES - 1:
                 time.sleep(_RETRY_DELAY_SECONDS)
                 continue

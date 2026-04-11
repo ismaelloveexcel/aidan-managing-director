@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.reasoning.scoring_engine import (
-    RevenueScore,
     ScoringDecision,
     score_idea,
 )

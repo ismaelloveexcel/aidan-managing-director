@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from app.core.dependencies import get_feedback_service, get_memory_store, get_portfolio_repository
+from app.core.dependencies import get_memory_store, get_portfolio_repository
 from app.feedback.decision_policy import decide
 from app.feedback.fast_decision import FastDecisionInput, fast_decide_with_signals
 from app.feedback.models import (

@@ -1,6 +1,6 @@
 """Tests for the fast decision engine."""
 
-from app.feedback.fast_decision import FastDecision, fast_decide, reset_tracker
+from app.feedback.fast_decision import fast_decide, reset_tracker
 
 
 def setup_function() -> None:
