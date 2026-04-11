@@ -69,7 +69,7 @@ class VercelClient:
             settings = get_settings()
             if settings.is_production_mode():
                 raise RuntimeError(
-                    f"VercelClient.{method_name}() returned stub data "
+                    f"VercelClient.{method_name}() would return stub data "
                     "but STRICT_PROD or app_env=production is active. "
                     "Configure a valid VERCEL_TOKEN or disable STRICT_PROD."
                 )

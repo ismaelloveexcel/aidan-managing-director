@@ -204,7 +204,7 @@ class GitHubClient:
             settings = get_settings()
             if settings.is_production_mode():
                 raise RuntimeError(
-                    f"GitHubClient.{method_name}() returned stub data "
+                    f"GitHubClient.{method_name}() would return stub data "
                     "but STRICT_PROD or app_env=production is active. "
                     "Configure a valid GITHUB_TOKEN or disable STRICT_PROD."
                 )
