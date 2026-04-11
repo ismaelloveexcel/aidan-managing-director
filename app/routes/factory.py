@@ -15,10 +15,12 @@ from pydantic import BaseModel
 from app.core.config import get_settings
 from app.core.dependencies import (
     get_auto_learner,
+    get_dead_letter_queue,
     get_factory_client,
     get_factory_orchestrator,
     get_factory_run_store,
     get_governance_service,
+    get_ops_event_store,
     get_portfolio_intelligence_service,
     get_portfolio_repository,
 )
@@ -48,6 +50,8 @@ _orchestrator = get_factory_orchestrator()
 _factory_client = get_factory_client()
 _portfolio = get_portfolio_repository()
 _run_store = get_factory_run_store()
+_dead_letter = get_dead_letter_queue()
+_ops_events = get_ops_event_store()
 _idea_engine = IdeaEngine()
 _evaluator = Evaluator()
 _intelligence = get_portfolio_intelligence_service()
@@ -529,6 +533,38 @@ async def factory_callback(payload: FactoryCallbackPayload, request: Request) ->
             "Failed to record outcome in auto-learner for correlation_id %s.",
             payload.correlation_id,
         )
+
+    # 4. Record ops event for SLO tracking.
+    from app.factory.ops_events import OpsEvent
+
+    try:
+        _ops_events.record(
+            OpsEvent(
+                event_type="callback",
+                correlation_id=payload.correlation_id,
+                project_id=payload.project_id,
+                success=payload.status in ("succeeded", "deployed", "building"),
+                error=payload.error,
+            )
+        )
+    except Exception:
+        logger.warning("Failed to record ops event for callback %s", payload.correlation_id)
+
+    # 5. Dead-letter queue: enqueue failed callbacks that had no matching run.
+    if existing_run is None:
+        from app.factory.dead_letter import DeadLetterEntry
+
+        try:
+            _dead_letter.enqueue(
+                DeadLetterEntry(
+                    correlation_id=payload.correlation_id,
+                    project_id=payload.project_id,
+                    payload=payload.model_dump(),
+                    error="No matching factory run found for correlation_id",
+                )
+            )
+        except Exception:
+            logger.warning("Failed to enqueue dead-letter for callback %s", payload.correlation_id)
 
     return FactoryCallbackAck(
         received=True,

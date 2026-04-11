@@ -26,6 +26,7 @@ from app.routes import (
     ideas,
     intelligence,
     memory,
+    ops,
     portfolio,
     projects,
     revenue,
@@ -82,6 +83,7 @@ app.include_router(revenue.router, prefix="/revenue")
 app.include_router(control.router, prefix="/control")
 app.include_router(distribution.router, prefix="/api/distribution")
 app.include_router(dashboard.router, prefix="/api/dashboard")
+app.include_router(ops.router, prefix="/ops")
 
 
 # ---------------------------------------------------------------------------

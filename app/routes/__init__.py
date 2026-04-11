@@ -12,6 +12,7 @@ from app.routes import (
     ideas,
     intelligence,
     memory,
+    ops,
     portfolio,
     projects,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "ideas",
     "intelligence",
     "memory",
+    "ops",
     "portfolio",
     "projects",
 ]
