@@ -7,7 +7,6 @@ GET /api/dashboard/tokens  – Design token JSON for visual consistency.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any, Literal
 
@@ -15,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.dependencies import get_factory_run_store, get_portfolio_repository
-from app.portfolio.models import LifecycleState, utcnow_iso
+from app.portfolio.models import LifecycleState
 
 logger = logging.getLogger(__name__)
 
@@ -412,13 +411,11 @@ def update_project_type(project_id: str, request: ProjectTypeUpdate) -> dict[str
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    metadata = dict(project.metadata or {})
-    metadata["project_type"] = request.project_type
-
-    with repo._db.connect() as conn:
-        conn.execute(
-            "UPDATE projects SET metadata_json = ?, updated_at = ? WHERE project_id = ?",
-            (json.dumps(metadata, sort_keys=True), utcnow_iso(), project_id),
-        )
+    updated = repo.update_project_metadata(
+        project_id=project_id,
+        metadata_updates={"project_type": request.project_type},
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     return {"status": "ok", "project_id": project_id, "project_type": request.project_type}

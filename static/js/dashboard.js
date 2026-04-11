@@ -22,8 +22,8 @@
   // ─── API Helper ──────────────────────────────────────────────────────────
   function api(path, opts) {
     opts = opts || {};
-    var mergedOpts = Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts);
-    if (opts.headers) mergedOpts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers);
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    var mergedOpts = Object.assign({}, opts, { headers: headers });
     return fetch(path, mergedOpts).then(function (r) {
       if (!r.ok) return r.text().then(function (t) {
         var msg = t;
@@ -95,8 +95,9 @@
   function setMode(mode) {
     state.mode = mode;
     document.querySelectorAll('.mode-btn').forEach(function (el) {
-      el.classList.toggle('active', el.dataset.mode === mode);
-      if (mode === 'personal') el.classList.toggle('personal', el.dataset.mode === 'personal' && el.classList.contains('active'));
+      var isActive = el.dataset.mode === mode;
+      el.classList.toggle('active', isActive);
+      el.classList.toggle('personal', isActive && mode === 'personal');
     });
     // Refresh current view after mode change
     if (state.currentView === 'home') loadHome();
@@ -574,7 +575,7 @@
   function triggerBuild() {
     if (!state.analyzeResult) { toast('No analysis result to build from', 'error'); return; }
     var name = (state.analyzeResult.offer || {}).title || 'new-project';
-    var safeName = name.replace(/[^a-z0-9-]/gi, '_').toLowerCase();
+    var safeName = name.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
 
     api('/factory/trigger', { method: 'POST', body: JSON.stringify({ project_name: safeName, dry_run: false }) })
       .then(function () { toast('Build triggered for: ' + safeName, 'success'); navigate('builds'); })
