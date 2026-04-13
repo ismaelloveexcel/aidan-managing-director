@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Idea Factory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0f0f0f;color:#e8e8e8;min-height:100vh;padding:2rem 1rem}
+.container{max-width:780px;margin:0 auto}
+h1{font-size:1.6rem;font-weight:700;margin-bottom:.25rem;letter-spacing:-.5px}
+.sub{color:#888;font-size:.85rem;margin-bottom:1.5rem}
+
+/* Tabs */
+.tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:1px solid #222;padding-bottom:.75rem}
+.tab{background:none;border:none;color:#888;font-size:.9rem;padding:.4rem .9rem;border-radius:6px;cursor:pointer;transition:all .15s}
+.tab.active{background:#1a1a1a;color:#fff;font-weight:600}
+.tab:hover:not(.active){color:#ccc}
+
+/* Panels */
+.panel{display:none}.panel.active{display:block}
+
+/* Inputs */
+textarea{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#e8e8e8;
+  font-size:.95rem;padding:.85rem;resize:vertical;min-height:100px;outline:none;transition:border .15s}
+textarea:focus{border-color:#555}
+button.primary{background:#fff;color:#000;border:none;border-radius:8px;
+  font-size:.9rem;font-weight:600;padding:.65rem 1.4rem;cursor:pointer;transition:opacity .15s}
+button.primary:hover{opacity:.85}
+button.primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-row{display:flex;gap:.75rem;align-items:center;margin-top:.75rem}
+
+/* Status */
+.status{font-size:.82rem;color:#888;font-style:italic}
+
+/* Results */
+#results{margin-top:1.5rem}
+.decision-banner{padding:.75rem 1.1rem;border-radius:8px;font-size:1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
+.decision-banner.GO{background:#0d2e0d;color:#4ade80;border:1px solid #166534}
+.decision-banner.SKIP{background:#2e2500;color:#fbbf24;border:1px solid #78350f}
+.decision-banner.KILL{background:#2e0d0d;color:#f87171;border:1px solid #7f1d1d}
+.score-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0}
+.score-hi{background:#0d2e0d;color:#4ade80;border:2px solid #166534}
+.score-mid{background:#2e2500;color:#fbbf24;border:2px solid #78350f}
+.score-lo{background:#2e0d0d;color:#f87171;border:2px solid #7f1d1d}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:1rem 1.1rem;margin-bottom:.75rem}
+.card h3{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#666;margin-bottom:.45rem}
+.card p,.card li{font-size:.9rem;line-height:1.55;color:#d4d4d4}
+.card ul{padding-left:1.1rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.bar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem;font-size:.82rem}
+.bar-bg{flex:1;background:#2a2a2a;border-radius:4px;height:7px}
+.bar-fill{height:7px;border-radius:4px;background:#60a5fa}
+.tag{display:inline-block;padding:.2rem .55rem;border-radius:5px;font-size:.75rem;font-weight:600}
+.tag-hi{background:#0d2e0d;color:#4ade80}
+.tag-mid{background:#2e2500;color:#fbbf24}
+.tag-lo{background:#2e0d0d;color:#f87171}
+
+/* Chat */
+.chat-messages{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;
+  padding:.85rem;min-height:220px;max-height:420px;overflow-y:auto;margin-bottom:.75rem;
+  display:flex;flex-direction:column;gap:.55rem}
+.msg{max-width:82%;padding:.55rem .8rem;border-radius:10px;font-size:.88rem;line-height:1.5;white-space:pre-wrap}
+.msg.user{background:#2a2a2a;align-self:flex-end;color:#e8e8e8}
+.msg.assistant{background:#111;border:1px solid #2a2a2a;align-self:flex-start;color:#d4d4d4}
+.msg.thinking{color:#666;font-style:italic}
+.chat-input-row{display:flex;gap:.6rem}
+.chat-input-row textarea{min-height:44px;max-height:120px;resize:none;padding:.6rem .8rem;font-size:.88rem}
+.turn-counter{font-size:.78rem;color:#666;margin-bottom:.5rem}
+#view-analysis-btn{margin-top:.75rem;width:100%}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Idea Factory</h1>
+  <p class="sub">Validate ideas fast. Ship the ones that pass.</p>
+
+  <!-- Tab toggle -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('validate')">Quick Validate</button>
+    <button class="tab" onclick="switchTab('brainstorm')">Brainstorm</button>
+  </div>
+
+  <!-- ── Quick Validate Panel ── -->
+  <div id="panel-validate" class="panel active">
+    <textarea id="idea-input" placeholder="Describe your idea and who it's for (minimum 40 characters)…" rows="4"></textarea>
+    <div class="btn-row">
+      <button class="primary" id="analyze-btn" onclick="startAnalysis()">Analyze</button>
+      <span class="status" id="qv-status"></span>
+    </div>
+    <div id="results"></div>
+  </div>
+
+  <!-- ── Brainstorm Panel ── -->
+  <div id="panel-brainstorm" class="panel">
+    <div class="turn-counter" id="turn-counter">Turn 0 of ~8</div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div id="chat-input-area">
+      <div class="chat-input-row">
+        <textarea id="chat-input" placeholder="Describe your idea or answer the question…" rows="2"></textarea>
+        <button class="primary" id="send-btn" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+    <button class="primary" id="view-analysis-btn" style="display:none" onclick="showFinalAnalysis()">
+      View Full Analysis
+    </button>
+    <div id="chat-results"></div>
+  </div>
+</div>
+
+<script>
+// ── Tab switching ─────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['validate','brainstorm'][i]===name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function esc(s){
+  if(s==null)return'';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function scoreClass(n){return n>=65?'score-hi':n>=40?'score-mid':'score-lo'}
+function tagClass(v){const u=(v||'').toUpperCase();return u==='HIGH'||u==='GO'?'tag-hi':u==='LOW'||u==='KILL'?'tag-lo':'tag-mid'}
+function bar(val){return`<div class="bar-bg"><div class="bar-fill" style="width:${Math.max(0,Math.min(100,val||0))}%"></div></div>`}
+
+// ── renderResults — used by both Quick Validate and Brainstorm ────
+function renderResults(r, targetId) {
+  targetId = targetId || 'results';
+  const dec = (r.final_decision||'SKIP').toUpperCase();
+  const score = r.score||0;
+  const dirs = r.directions||{};
+  const wtmt = Array.isArray(r.what_must_be_true)?r.what_must_be_true:(r.what_must_be_true?[r.what_must_be_true]:[]);
+
+  const html = `
+  <div class="decision-banner ${dec}">
+    <div class="score-circle ${scoreClass(score)}">${esc(score)}</div>
+    <div>
+      <div style="font-size:.8rem;margin-bottom:2px">${esc(r.concept||'')}</div>
+      <div>${dec} &nbsp;·&nbsp; ${esc(r.category||'')}</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h3>Target User</h3><p>${esc(r.target_user)}</p></div>
+    <div class="card"><h3>Core Pain</h3><p>${esc(r.core_pain)}</p></div>
+    <div class="card"><h3>Value Promise</h3><p>${esc(r.value_promise)}</p></div>
+    <div class="card"><h3>Price</h3><p>${esc(r.price)}</p></div>
+  </div>
+
+  ${r.kill_reason?`<div class="card" style="border-color:#7f1d1d"><h3>Kill Reason</h3><p>${esc(r.kill_reason)}</p></div>`:''}
+
+  <div class="card">
+    <h3>Sub-scores</h3>
+    <div class="bar-row"><span style="width:80px">Pain</span>${bar(r.pain_score)}<span>${esc(r.pain_score)}</span></div>
+    <div class="bar-row"><span style="width:80px">Market</span>${bar(r.market_score)}<span>${esc(r.market_score)}</span></div>
+    <div class="bar-row"><span style="width:80px">Execution</span>${bar(r.execution_score)}<span>${esc(r.execution_score)}</span></div>
+  </div>
+
+  <div class="card"><h3>Score Reasoning</h3><p>${esc(r.score_reasoning)}</p></div>
+  <div class="card"><h3>Fastest Revenue</h3><p>${esc(r.fastest_revenue)}</p></div>
+  <div class="card"><h3>Why It Fails</h3><p>${esc(r.why_it_fails)}</p></div>
+
+  ${wtmt.length?`<div class="card"><h3>What Must Be True</h3><ul>${wtmt.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
+
+  <div class="grid2">
+    <div class="card"><h3>Safe Direction</h3><p>${esc(dirs.safe)}</p></div>
+    <div class="card"><h3>Fast Direction</h3><p>${esc(dirs.fast)}</p></div>
+  </div>
+  <div class="card"><h3>High Upside</h3><p>${esc(dirs.high_upside)}</p></div>
+
+  <div class="card">
+    <h3>Global Intelligence</h3>
+    <div style="margin-bottom:.4rem">
+      <span style="color:#888;font-size:.8rem">Viability&nbsp;</span>
+      <span class="tag ${tagClass(r.global_viability)}">${esc(r.global_viability)}</span>
+      &nbsp;
+      <span style="color:#888;font-size:.8rem">Pricing Power&nbsp;</span>
+      <span class="tag ${tagClass(r.pricing_power)}">${esc(r.pricing_power)}</span>
+    </div>
+    <p style="margin-bottom:.4rem"><strong>Best Launch Market:</strong> ${esc(r.best_launch_market)}</p>
+    <p><strong>Scalability:</strong> ${esc(r.global_scalability)}</p>
+  </div>
+
+  ${r.grok_take?`<div class="card"><h3>Contrarian Take (Grok)</h3><p>${esc(r.grok_take)}</p></div>`:''}
+  ${r.perplexity_context?`<div class="card"><h3>Market Research</h3><p>${esc(r.perplexity_context)}</p></div>`:''}
+  ${r.gpt_score!=null?`<div class="card"><h3>GPT Second Opinion</h3><p><strong>${esc(r.gpt_score)}/100</strong> — ${esc(r.gpt_reasoning)}</p></div>`:''}
+  `;
+  document.getElementById(targetId).innerHTML = html;
+}
+
+// ── Quick Validate (SSE) ──────────────────────────────────
+async function startAnalysis() {
+  const idea = document.getElementById('idea-input').value.trim();
+  if(!idea){alert('Enter an idea first.');return;}
+  const btn = document.getElementById('analyze-btn');
+  const status = document.getElementById('qv-status');
+  const results = document.getElementById('results');
+  btn.disabled = true;
+  results.innerHTML = '';
+  status.textContent = 'Sending…';
+
+  try{
+    const resp = await fetch('/api/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({idea}),
+    });
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({detail:resp.statusText}));
+      status.textContent = err.detail||'Error';
+      btn.disabled=false;
+      return;
+    }
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf='';
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const parts=buf.split('\n\n');
+      buf=parts.pop();
+      for(const part of parts){
+        const lines=part.split('\n');
+        let evtName='message',dataStr='';
+        for(const l of lines){
+          if(l.startsWith('event:'))evtName=l.slice(6).trim();
+          else if(l.startsWith('data:'))dataStr=l.slice(5).trim();
+        }
+        if(!dataStr)continue;
+        const data=JSON.parse(dataStr);
+        if(evtName==='status')status.textContent=data.message||'';
+        else if(evtName==='result'){status.textContent='Done';renderResults(data,'results');}
+        else if(evtName==='error'){status.textContent=data.message||'Error';}
+        else if(evtName==='done'){btn.disabled=false;}
+      }
+    }
+  }catch(e){
+    status.textContent='Network error: '+e.message;
+  }
+  btn.disabled=false;
+}
+
+// ── Brainstorm (chat) ─────────────────────────────────────
+let chatMessages = [];
+let chatState = {};
+let chatFinalResult = null;
+
+function appendMsg(role, text){
+  const box = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'msg '+role;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+
+function updateTurnCounter(){
+  const turns = chatState.turns||0;
+  document.getElementById('turn-counter').textContent = `Turn ${turns} of ~8`;
+}
+
+async function sendChat(){
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text)return;
+  const btn = document.getElementById('send-btn');
+  btn.disabled=true;
+  input.value='';
+
+  chatMessages.push({role:'user',content:text});
+  appendMsg('user',text);
+
+  const thinking = appendMsg('assistant','thinking…');
+  thinking.classList.add('thinking');
+
+  try{
+    const resp = await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:chatMessages,state:chatState}),
+    });
+    const data = await resp.json();
+    thinking.remove();
+
+    if(data.reply && data.reply!=='Analysis complete.'){
+      chatMessages.push({role:'assistant',content:data.reply});
+      appendMsg('assistant',data.reply);
+    }
+    chatState = data.state||chatState;
+    updateTurnCounter();
+
+    if(data.is_complete){
+      chatFinalResult = data.final_result;
+      document.getElementById('chat-input-area').style.display='none';
+      document.getElementById('view-analysis-btn').style.display='block';
+      if(!data.final_result){
+        appendMsg('assistant','Analysis complete! Click "View Full Analysis" above.');
+      }
+    }
+  }catch(e){
+    thinking.remove();
+    appendMsg('assistant','Something went wrong, try again.');
+  }
+  btn.disabled=false;
+}
+
+function showFinalAnalysis(){
+  if(!chatFinalResult)return;
+  document.getElementById('view-analysis-btn').style.display='none';
+  renderResults(chatFinalResult,'chat-results');
+  document.getElementById('chat-results').scrollIntoView({behavior:'smooth'});
+}
+
+// Allow Enter to submit chat (Shift+Enter for newline)
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('chat-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}
+  });
+  // Kick off the brainstorm with a greeting
+  document.querySelector('.tab:nth-child(2)').addEventListener('click',()=>{
+    if(chatMessages.length===0){
+      setTimeout(()=>{
+        const intro = "Hi! Tell me about your idea — even a rough description is fine. What problem are you trying to solve?";
+        chatMessages.push({role:'assistant',content:intro});
+        appendMsg('assistant',intro);
+      },100);
+    }
+  });
+});
+</script>
+</body>
+</html>
