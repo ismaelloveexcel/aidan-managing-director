@@ -1,204 +1,42 @@
-# AI-DAN - Copilot Instructions
+# Copilot Instructions — Arie Finance
 
-## ROLE DEFINITION
+## About this project
+Arie Finance is a Mauritius-based financial services startup. I (Ismael) am the AI & Automation Lead.
+These repos are internal tools, client portals, and automation workflows for the business.
 
-This repository represents **AI-DAN**, the Managing Director layer of an AI venture system.
+## My role & goals
+- Build sales automation, CRM workflows, client onboarding tools, and management reporting
+- Minimize manual intervention at every step — if something can be automated, automate it
+- Build for a small team: lean, pragmatic, production-ready code only
 
-AI-DAN is NOT:
-- a CRUD API
-- a generic chatbot
-- a product builder
+## Tech stack
+- **Frontend**: Next.js App Router (TypeScript), Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + RLS + Edge Functions)
+- **Auth**: Supabase Auth
+- **Payments**: Lemon Squeezy
+- **Deployment**: Vercel
+- **Package manager**: pnpm
+- **Monorepo**: Turborepo (when applicable)
 
-AI-DAN IS:
-- a strategic decision engine
-- a portfolio manager
-- an idea generator and evaluator
-- a command issuer to downstream systems (GitHub Factory, Marketing Engine)
+## Coding standards
+- TypeScript strict mode always
+- No `any` types — use proper types or `unknown`
+- Prefer server components and server actions in Next.js
+- Always use Row Level Security (RLS) on Supabase tables
+- Keep components small and composable
+- Error handling must be explicit — never swallow errors silently
+- Environment variables go in `.env.local` (never hardcode secrets)
+- Use Zod for all input validation
 
----
+## Supabase patterns
+- Always generate TypeScript types from schema: `supabase gen types typescript`
+- Use `supabase/migrations` for all schema changes — never alter DB manually
+- Enable RLS on every table, write policies before inserting data
 
-## SYSTEM ARCHITECTURE RULES
+## What I want from Copilot
+- Suggest automation opportunities when you see repetitive patterns
+- Flag when something could be a Supabase Edge Function instead of client-side code
+- Always suggest the most scalable, low-touch solution
+- If I ask for a form, also suggest the server action and validation
+- Remind me to add RLS policies when creating new tables
 
-You MUST respect this separation:
-
-- This repo = BRAIN (decision + reasoning)
-- Other repos = EXECUTION (factory, marketing, deployment)
-
-DO NOT:
-- build product logic
-- implement deployment pipelines
-- mix execution logic into this repo
-
-The root UI at `/` is an embedded operational dashboard -- it stays in main.py.
-
----
-
-## ENFORCED PIPELINE (NO BYPASS)
-
-```
-Idea -> Validate -> Score -> APPROVE -> Offer -> Distribution -> Queue -> Build -> Deploy -> Verify -> Track -> Decide
-```
-
-If ANY stage fails, HARD BLOCK. No skipping stages.
-
----
-
-## MONETIZATION-FIRST RULES (MANDATORY)
-
-1. **Every idea MUST have monetization proof** before proceeding
-2. **No build without validation** -- `validate_business_gate.py` must pass
-3. **No build without scoring** -- `scoring_engine.py` must score >= 6/10
-4. **Pricing is MANDATORY** in every offer -- `offer_engine.py` enforces this
-5. **Weak ideas get REJECTED** -- no hand-holding or softening
-
----
-
-## DEVELOPMENT PRINCIPLES
-
-### 1. Modular Architecture (MANDATORY)
-
-Every capability must be isolated:
-
-- `reasoning/` -> thinking (ideas, evaluation, critique, validation gate, scoring)
-- `planning/` -> structuring decisions into actions (offers, distribution, lifecycle)
-- `feedback/` -> analytics tracking and decision policies
-- `factory/` -> build orchestration and deployment verification
-- `integrations/` -> external communication (GitHub, Vercel, LLM, repo discovery)
-- `routes/` -> API interface only
-
-No cross-contamination between modules.
-
-### 2. No Business Logic in Routes
-
-Routes must:
-- validate input
-- call appropriate module
-- return response
-
-All logic belongs in reasoning/, planning/, feedback/.
-
-### 3. Structured Outputs Only
-
-All outputs must be:
-- typed (Pydantic models)
-- predictable
-- machine-readable
-
-### 4. Think Like a Managing Director
-
-- prioritization over execution
-- critical thinking over agreement
-- challenge weak ideas
-- optimize for ROI, speed, and scalability
-- reject bad ideas, suggest better alternatives
-
-### 5. No Fake Intelligence
-
-DO NOT:
-- pretend to call external APIs
-- simulate complex behavior without clarity
-- generate vague placeholders
-
-### 6. Clean Code Requirements
-
-- Python 3.11+
-- Type hints everywhere
-- Pydantic for schemas
-- Small, focused functions
-- Clear docstrings
-
-### 7. Error Handling Standard
-
-- Use HTTPException in routes
-- Use explicit errors in modules
-- Never allow silent failures
-- Implement retries for external calls (max 3)
-
-### 8. Integration Design
-
-All external systems must go through:
-- `integrations/github_client.py`
-- `integrations/registry_client.py`
-- `integrations/llm_client.py`
-- `integrations/vercel_client.py`
-- `integrations/repo_discovery_engine.py`
-
-### 9. Automation Required
-
-- Scheduled pipeline runs every 6 hours
-- Auto idea -> validation -> scoring flow
-- Auto build (approved only)
-- Zero manual deployment required
-
-### 10. Solo Operator Simplicity
-
-- System operable by ONE non-technical user
-- No manual steps required
-- Clear UI with one action (Analyze Idea)
-
----
-
-## REQUIRED ENGINE FILES
-
-These files MUST exist and be functional:
-
-| File | Module | Purpose |
-|------|--------|---------|
-| `validate_business_gate.py` | reasoning/ | Demand + monetization validation |
-| `scoring_engine.py` | reasoning/ | 0-10 revenue scoring (5 dimensions) |
-| `offer_engine.py` | planning/ | Structured offer generation |
-| `distribution_engine.py` | planning/ | Channel + acquisition planning |
-| `lifecycle_manager.py` | planning/ | State machine + control layer |
-| `analytics_tracker.py` | feedback/ | Visit/click/conversion/revenue tracking |
-| `deployment_verifier.py` | factory/ | Deployment URL verification |
-| `repo_discovery_engine.py` | integrations/ | External repo discovery + scoring |
-
----
-
-## AI BEHAVIOR GUIDELINES
-
-When implementing logic:
-
-### Idea generation
-Must include:
-- problem
-- target user
-- monetization path
-- difficulty
-- time to launch
-
-### Evaluation
-Must score on 5 dimensions (0-2 each, total 0-10):
-- Demand
-- Monetization
-- Saturation (reverse)
-- Complexity (reverse)
-- Speed to revenue
-
-Thresholds: <6 REJECT, 6-7 HOLD, >=8 APPROVE
-
-### Critique
-Must:
-- identify weaknesses
-- challenge assumptions
-- suggest improvements
-
----
-
-## COMMAND GENERATION RULES
-
-AI-DAN does NOT execute.
-
-AI-DAN:
-- analyzes
-- decides
-- outputs structured commands
-
-Example:
-```json
-{
-  "action": "create_repo",
-  "name": "idea-x",
-  "priority": "high"
-}
-```
